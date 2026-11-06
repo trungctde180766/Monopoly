@@ -1,0 +1,1719 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
+import { Volume2, VolumeX, ShieldAlert, Coins, History, ArrowRight, RotateCcw, Home, Gavel, DollarSign, Music } from 'lucide-react';
+import { BOARD_TILES, CHANCE_CARDS, COMMUNITY_CHEST_CARDS, INITIAL_MONEY, JAIL_FINE, GO_REWARD, TOKENS } from './data/boardData.js';
+import { calculateRent, canBuildHouse, canSellHouse, canMortgage, canUnmortgage, calculateNetWorth, formatVND, calculateMaxLiquidatable, calculateBuyoutPrice, checkBusinessTourVictory } from './logic/gameEngine.js';
+import { AIEngine } from './logic/aiEngine.js';
+import { soundFX } from './utils/soundFx.js';
+
+import Board from './components/Board.jsx';
+import Board3D from './components/Board3D.jsx';
+import Dice3D from './components/Dice3D.jsx';
+import PlayerHUD from './components/PlayerHUD.jsx';
+import CornerHUD from './components/CornerHUD.jsx';
+import Lobby from './components/Lobby.jsx';
+import OnlineRoom from './components/OnlineRoom.jsx';
+import DeedModal from './components/DeedModal.jsx';
+import {
+  BusinessTourBuildModal,
+  BuyoutModal,
+  FestivalModal,
+  AuctionModal,
+  CardModal,
+  JailModal,
+  ManagePropertiesModal,
+  TradeModal,
+  VictoryModal,
+} from './components/ActionModals.jsx';
+
+class BoardErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Board3D Error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+export default function App() {
+  // Trạng thái màn hình: 'lobby' | 'online_waiting' | 'playing'
+  const [screen, setScreen] = useState('lobby');
+  const [gameMode, setGameMode] = useState('pass_play'); // pass_play | online | quick
+
+  // Trạng thái trò chơi
+  const [players, setPlayers] = useState([]);
+  const [propertiesState, setPropertiesState] = useState({});
+  const [turnIndex, setTurnIndex] = useState(0);
+  const [dice, setDice] = useState([1, 1]);
+  const [isRolling, setIsRolling] = useState(false);
+  const [isHopping, setIsHopping] = useState(false);
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [hasRolled, setHasRolled] = useState(false);
+  const [doublesCount, setDoublesCount] = useState(0);
+  const [freeParkingPool, setFreeParkingPool] = useState(0);
+  const [customRules, setCustomRules] = useState({ freeParkingJackpot: true });
+  const [gameLog, setGameLog] = useState(['Chào mừng bạn đến với Cờ Tỷ Phú Việt Nam!']);
+  const [viewMode, setViewMode] = useState('3d'); // '3d' (Three.js) hoặc '2d' (Classic)
+  const [constructionAlert, setConstructionAlert] = useState(null);
+  const [floatingNumbers, setFloatingNumbers] = useState([]);
+  const [screenShake, setScreenShake] = useState(false);
+  const [isBGMPlaying, setIsBGMPlaying] = useState(false);
+
+  // Modals chuẩn Business Tour
+  const [viewDeedTile, setViewDeedTile] = useState(null);
+  const [buildModalTile, setBuildModalTile] = useState(null);
+  const [festivalModal, setFestivalModal] = useState(null);
+  const [buyoutState, setBuyoutState] = useState(null);
+  const [auctionState, setAuctionState] = useState(null);
+  const [activeCard, setActiveCard] = useState(null);
+  const [showJailModal, setShowJailModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [winner, setWinner] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  // Online Multiplayer State
+  const socketRef = useRef(null);
+  const [room, setRoom] = useState(null);
+  const [socketId, setSocketId] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+
+  // Khởi tạo Socket.io
+  useEffect(() => {
+    const socketServerUrl = import.meta.env.VITE_SOCKET_URL || undefined;
+    const socket = io(socketServerUrl, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      setSocketId(socket.id);
+    });
+
+    socket.on('room_updated', (updatedRoom) => {
+      setRoom(updatedRoom);
+    });
+
+    socket.on('game_started', ({ gameState }) => {
+      setPlayers(gameState.players);
+      setPropertiesState(gameState.propertiesState);
+      setTurnIndex(gameState.turnIndex);
+      setFreeParkingPool(gameState.freeParkingPool);
+      setScreen('playing');
+      setGameMode('online');
+    });
+
+    socket.on('game_state_updated', (incomingState) => {
+      setPlayers(incomingState.players);
+      setPropertiesState(incomingState.propertiesState);
+      setTurnIndex(incomingState.turnIndex);
+      setDice(incomingState.dice);
+      setHasRolled(incomingState.hasRolled);
+      setFreeParkingPool(incomingState.freeParkingPool);
+      setGameLog(incomingState.gameLog);
+      if (incomingState.winner) setWinner(incomingState.winner);
+    });
+
+    socket.on('chat_received', (msg) => {
+      setChatMessages((prev) => [...prev, msg]);
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
+  const currentPlayer = players[turnIndex] || null;
+
+  const addLog = (msg) => {
+    setGameLog((prev) => [msg, ...prev.slice(0, 40)]);
+  };
+
+  const toggleMute = () => {
+    const muted = soundFX.toggleMute();
+    setIsMuted(muted);
+  };
+
+  const toggleBGM = () => {
+    const active = soundFX.toggleBGM();
+    setIsBGMPlaying(active);
+  };
+
+  const triggerScreenShake = () => {
+    setScreenShake(true);
+    setTimeout(() => setScreenShake(false), 380);
+  };
+
+  const triggerFloatingMoney = (amount, isGain) => {
+    if (!amount) return;
+    const id = Date.now() + Math.random();
+    setFloatingNumbers((prev) => [
+      ...prev,
+      {
+        id,
+        amount: Math.abs(amount),
+        isGain,
+      },
+    ]);
+    if (isGain) {
+      soundFX.playMoneyGain();
+    } else {
+      soundFX.playPayRent();
+    }
+    setTimeout(() => {
+      setFloatingNumbers((prev) => prev.filter((item) => item.id !== id));
+    }, 2000);
+  };
+
+  // Đồng bộ trạng thái sang socket (nếu ở chế độ Online)
+  const syncOnlineState = (updated) => {
+    if (gameMode === 'online' && socketRef.current && room) {
+      socketRef.current.emit('sync_game_state', {
+        players: updated.players || players,
+        propertiesState: updated.propertiesState || propertiesState,
+        turnIndex: updated.turnIndex !== undefined ? updated.turnIndex : turnIndex,
+        dice: updated.dice || dice,
+        hasRolled: updated.hasRolled !== undefined ? updated.hasRolled : hasRolled,
+        freeParkingPool: updated.freeParkingPool !== undefined ? updated.freeParkingPool : freeParkingPool,
+        gameLog: updated.gameLog || gameLog,
+        winner: updated.winner || winner,
+      });
+    }
+  };
+
+  // 1. BẮT ĐẦU CHƠI PASS & PLAY
+  const handleStartPassAndPlay = ({ players: activePlayers, customRules: rules }) => {
+    setPlayers(activePlayers);
+    setCustomRules(rules);
+    setGameMode('pass_play');
+    setScreen('playing');
+    setTurnIndex(0);
+    setHasRolled(false);
+    setDoublesCount(0);
+    setFreeParkingPool(0);
+    setPropertiesState({});
+    setWinner(null);
+    setGameLog([`Trận đấu Pass & Play bắt đầu với ${activePlayers.length} người chơi!`]);
+  };
+
+  // 2. BẮT ĐẦU CHƠI NHANH VỚI BOTS
+  const handleStartQuickBot = ({ freeParkingJackpot }) => {
+    const defaultPlayers = [
+      {
+        id: 'player_user',
+        name: 'Bạn (Tỷ Phú)',
+        token: 'car',
+        color: '#ef4444',
+        isBot: false,
+        money: INITIAL_MONEY,
+        position: 0,
+        inJail: false,
+        jailTurns: 0,
+        outOfJailCards: 0,
+        isBankrupt: false,
+      },
+      {
+        id: 'bot_1',
+        name: 'Đại Gia Hà Thành',
+        token: 'hat',
+        color: '#eab308',
+        isBot: true,
+        money: INITIAL_MONEY,
+        position: 0,
+        inJail: false,
+        jailTurns: 0,
+        outOfJailCards: 0,
+        isBankrupt: false,
+      },
+      {
+        id: 'bot_2',
+        name: 'Trùm Địa Ốc Sài Gòn',
+        token: 'diamond',
+        color: '#3b82f6',
+        isBot: true,
+        money: INITIAL_MONEY,
+        position: 0,
+        inJail: false,
+        jailTurns: 0,
+        outOfJailCards: 0,
+        isBankrupt: false,
+      },
+      {
+        id: 'bot_3',
+        name: 'Tỷ Phú Miền Tây',
+        token: 'jet',
+        color: '#10b981',
+        isBot: true,
+        money: INITIAL_MONEY,
+        position: 0,
+        inJail: false,
+        jailTurns: 0,
+        outOfJailCards: 0,
+        isBankrupt: false,
+      },
+    ];
+
+    setPlayers(defaultPlayers);
+    setCustomRules({ freeParkingJackpot });
+    setGameMode('quick');
+    setScreen('playing');
+    setTurnIndex(0);
+    setHasRolled(false);
+    setDoublesCount(0);
+    setFreeParkingPool(0);
+    setPropertiesState({});
+    setWinner(null);
+    setGameLog(['Trận đấu cùng 3 Bot thông minh chính thức bắt đầu!']);
+  };
+
+  // 3. TẠO PHÒNG ONLINE
+  const handleStartOnlineHost = ({ hostName, hostToken, freeParkingJackpot }) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit(
+      'create_room',
+      { hostName, token: hostToken, customRules: { freeParkingJackpot } },
+      (res) => {
+        if (res.success) {
+          setRoom(res.room);
+          setScreen('online_waiting');
+        }
+      }
+    );
+  };
+
+  // 4. VÀO PHÒNG ONLINE
+  const handleStartOnlineJoin = ({ roomCode, playerName, token }) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('join_room', { roomCode, playerName, token }, (res) => {
+      if (res.success) {
+        setRoom(res.room);
+        setScreen('online_waiting');
+      } else {
+        alert(res.message || 'Không thể vào phòng!');
+      }
+    });
+  };
+
+  // 5. CHỦ PHÒNG BẮT ĐẦU GAME ONLINE
+  const handleHostStartGame = () => {
+    if (!socketRef.current || !room) return;
+    const initialPlayers = room.players.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      token: p.token,
+      color: p.color,
+      isBot: false,
+      money: INITIAL_MONEY,
+      position: 0,
+      inJail: false,
+      jailTurns: 0,
+      outOfJailCards: 0,
+      isBankrupt: false,
+    }));
+
+    const initialGameState = {
+      players: initialPlayers,
+      propertiesState: {},
+      turnIndex: 0,
+      freeParkingPool: 0,
+    };
+
+    socketRef.current.emit('start_game', initialGameState);
+  };
+
+  // HÀNH ĐỘNG: ĐỔ XÚC XẮC
+  const handleRollDice = () => {
+    if (isRolling || isHopping || hasRolled || !currentPlayer || currentPlayer.isBankrupt) return;
+
+    // Kiểm tra nếu đang ở trong tù
+    if (currentPlayer.inJail) {
+      setShowJailModal(true);
+      return;
+    }
+
+    setIsRolling(true);
+    soundFX.playDiceRoll();
+
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    const total = d1 + d2;
+    const isDoubles = d1 === d2;
+
+    setTimeout(() => {
+      setDice([d1, d2]);
+      setIsRolling(false);
+
+      let newDoubles = isDoubles ? doublesCount + 1 : 0;
+      setDoublesCount(newDoubles);
+
+      // Quy tắc: Đổ đôi 3 lần liên tiếp thì BỊ BẮT VÀO TÙ
+      if (newDoubles === 3) {
+        soundFX.playGoToJail();
+        addLog(`🚨 ${currentPlayer.name} đổ đôi 3 lần liên tiếp! Bị bắt giam vào tù vì quá tốc độ!`);
+        const updatedPlayers = players.map((p) =>
+          p.id === currentPlayer.id
+            ? { ...p, inJail: true, jailTurns: 0, position: 10 }
+            : p
+        );
+        setPlayers(updatedPlayers);
+        setHasRolled(true);
+        syncOnlineState({ players: updatedPlayers, dice: [d1, d2], hasRolled: true });
+        return;
+      }
+
+      // Di chuyển quân cờ từng ô một với hoạt ảnh nhảy 3D
+      movePlayer(currentPlayer.id, total, isDoubles);
+    }, 900);
+  };
+
+  // DI CHUYỂN QUÂN CỜ VỚI HOẠT ẢNH STEP-BY-STEP
+  const movePlayer = (playerId, steps, isDoubles) => {
+    const p = players.find((x) => x.id === playerId);
+    if (!p) return;
+
+    const oldPos = p.position;
+    const newPos = (oldPos + steps) % 40;
+    const passedGo = oldPos + steps >= 40;
+
+    let updatedMoney = p.money;
+    if (passedGo) {
+      updatedMoney += GO_REWARD;
+      triggerFloatingMoney(GO_REWARD, true);
+      addLog(`💰 ${p.name} đi qua ô Khởi Hành (GO), nhận lương ${formatVND(GO_REWARD)}!`);
+    }
+
+    const updatedPlayers = players.map((x) =>
+      x.id === playerId ? { ...x, position: newPos, money: updatedMoney } : x
+    );
+    setPlayers(updatedPlayers);
+    setIsHopping(true);
+
+    // Thời gian quân cờ nhảy từng bước (mỗi ô khoảng 240ms)
+    const hopDuration = Math.max(400, steps * 250);
+    setTimeout(() => {
+      setIsHopping(false);
+      // Xử lý ô đáp xuống sau khi nhảy xong
+      handleTileLanding(newPos, { ...p, position: newPos, money: updatedMoney }, isDoubles, updatedPlayers);
+    }, hopDuration);
+  };
+
+  // XỬ LÝ KHI DỪNG CHÂN Ở Ô
+  const handleTileLanding = (tileId, player, isDoubles, currentPlayersList) => {
+    const tile = BOARD_TILES[tileId];
+    if (!tile) return;
+
+    addLog(`📍 ${player.name} đặt chân tới: ${tile.name}`);
+
+    // 1. Ô Vào Tù Ngay (Go to Jail)
+    if (tile.type === 'go_to_jail') {
+      soundFX.playGoToJail();
+      triggerScreenShake();
+      addLog(`🚨 ${player.name} bị tống giam vào nhà tù ngay lập tức!`);
+      const updated = currentPlayersList.map((p) =>
+        p.id === player.id ? { ...p, inJail: true, jailTurns: 0, position: 10 } : p
+      );
+      setPlayers(updated);
+      setHasRolled(true);
+      syncOnlineState({ players: updated, hasRolled: true });
+      return;
+    }
+
+    // 2. Ô Thuế (Income / Luxury Tax)
+    if (tile.type === 'tax') {
+      const tax = tile.taxAmount;
+      triggerFloatingMoney(tax, false);
+      triggerScreenShake();
+      addLog(`💸 ${player.name} nộp thuế ${formatVND(tax)} vào ngân khố.`);
+      let pool = freeParkingPool;
+      if (customRules.freeParkingJackpot) {
+        pool += tax;
+        setFreeParkingPool(pool);
+      }
+      deductMoney(player.id, tax, null, currentPlayersList, pool);
+      setHasRolled(true);
+      return;
+    }
+
+    // 3. Ô Lễ Hội / World Championship (Joust)
+    if (tile.type === 'free_parking' || tile.id === 20) {
+      const owned = BOARD_TILES.filter(
+        (t) => propertiesState[t.id]?.owner === player.id && t.type === 'property'
+      ).map((t) => ({
+        ...t,
+        houses: propertiesState[t.id]?.houses || 1,
+      }));
+
+      if (owned.length > 0) {
+        if (player.isBot) {
+          const best = [...owned].sort(
+            (a, b) => (b.rent[b.houses] || 0) - (a.rent[a.houses] || 0)
+          )[0];
+          setPropertiesState((prev) => ({
+            ...prev,
+            [best.id]: { ...prev[best.id], isFestival: true },
+          }));
+          addLog(`🎪 ${player.name} chọn thành phố ${best.name} để tổ chức Lễ Hội (x2 tiền thuê)!`);
+          setHasRolled(true);
+        } else {
+          setFestivalModal({ player, ownedTiles: owned });
+          return;
+        }
+      } else {
+        const bonus = 500000;
+        triggerFloatingMoney(bonus, true);
+        addLog(`🎪 ${player.name} đến Đại Hội Thể Thao / Lễ Hội, nhận 500.000₫ tiền tài trợ!`);
+        const updated = currentPlayersList.map((p) =>
+          p.id === player.id ? { ...p, money: p.money + bonus } : p
+        );
+        setPlayers(updated);
+        setHasRolled(true);
+      }
+      return;
+    }
+
+    // 4. Ô Cơ Hội (Chance) & Khí Vận (Community Chest)
+    if (tile.type === 'chance' || tile.type === 'community_chest') {
+      soundFX.playCardDraw();
+      const deck = tile.type === 'chance' ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
+      const card = deck[Math.floor(Math.random() * deck.length)];
+      setActiveCard({ card, type: tile.type, player });
+      return;
+    }
+
+    // 5. Ô Bất Động Sản / Ga Tàu / Tiện Ích
+    if (tile.type === 'property' || tile.type === 'railroad' || tile.type === 'utility') {
+      const prop = propertiesState[tile.id];
+
+      // Nếu ô chưa có chủ: Mua và xây dựng theo 4 cấp bậc
+      if (!prop || !prop.owner) {
+        if (player.isBot) {
+          const wantBuy = AIEngine.shouldBuyProperty(player, tile, propertiesState, currentPlayersList);
+          if (wantBuy) {
+            let bestTier = 1;
+            const hPrice = tile.housePrice || 500000;
+            if (player.money >= tile.price + hPrice * 3) bestTier = 4;
+            else if (player.money >= tile.price + hPrice * 2) bestTier = 3;
+            else if (player.money >= tile.price + hPrice) bestTier = 2;
+
+            const cost = tile.price + (bestTier - 1) * hPrice;
+            handleConfirmBuildTier(tile.id, bestTier, cost, player);
+          } else {
+            startAuction(tile, currentPlayersList);
+          }
+        } else {
+          setBuildModalTile({ tile, player, propState: null, isNewPurchase: true });
+        }
+        return;
+      }
+
+      // Nếu ô thuộc sở hữu của người chơi khác
+      if (prop.owner !== player.id) {
+        const owner = currentPlayersList.find((p) => p.id === prop.owner);
+        if (owner && !owner.isBankrupt && !prop.isMortgaged) {
+          const rent = calculateRent(tile, propertiesState, dice[0] + dice[1]);
+          triggerFloatingMoney(rent, false);
+          addLog(
+            `🏠 ${player.name} trả tiền thuê ${formatVND(rent)} cho ${owner.name} tại ${tile.name}${
+              prop.isFestival ? ' (Đang có Lễ Hội x2 🔥)' : ''
+            }.`
+          );
+          const playersAfterRent = transferMoney(player.id, owner.id, rent, currentPlayersList) || currentPlayersList;
+
+          // CƯỚP ĐẤT (BUYOUT) CHUẨN BUSINESS TOUR:
+          // Nếu ô đất đã đạt Cấp 4 (Khách Sạn / Landmark): BẤT KHẢ XÂM PHẠM, KHÔNG THỂ BỊ CƯỚP!
+          if (prop.houses >= 4) {
+            addLog(`🛡️ ${tile.name} đã là Khách Sạn (Landmark) - Bất khả xâm phạm, đối thủ không thể cướp đất!`);
+            setHasRolled(true);
+            return;
+          }
+
+          const buyoutPrice = calculateBuyoutPrice(tile, prop);
+          const buyer = playersAfterRent.find((x) => x.id === player.id);
+          if (buyoutPrice > 0 && buyer && buyer.money >= buyoutPrice && !buyer.isBankrupt) {
+            if (player.isBot) {
+              if (buyer.money >= buyoutPrice * 1.5) {
+                executeBuyout(player.id, owner.id, tile.id, buyoutPrice, playersAfterRent);
+              } else {
+                setHasRolled(true);
+              }
+            } else {
+              setBuyoutState({ tile, owner, player: buyer, buyoutPrice });
+            }
+            return;
+          }
+        } else if (prop.isMortgaged) {
+          addLog(`🛡️ ${tile.name} đang bị thế chấp nên ${player.name} được miễn tiền thuê.`);
+        }
+      } else {
+        // ĐẶT CHÂN LÊN ĐẤT CỦA CHÍNH MÌNH: NÂNG CẤP NHÀ THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR
+        if (prop.houses >= 4) {
+          addLog(`🏰 ${player.name} ghé thăm Khách Sạn (Landmark) của mình tại ${tile.name}!`);
+          setHasRolled(true);
+        } else {
+          if (player.isBot) {
+            const nextTier = Math.min(4, (prop.houses || 0) + 1);
+            const cost = (nextTier - (prop.houses || 0)) * (tile.housePrice || 500000);
+            if (player.money >= cost) {
+              handleConfirmBuildTier(tile.id, nextTier, cost, player);
+            } else {
+              setHasRolled(true);
+            }
+          } else {
+            setBuildModalTile({ tile, player, propState: prop, isNewPurchase: false });
+            return;
+          }
+        }
+      }
+      setHasRolled(true);
+    } else {
+      setHasRolled(true);
+    }
+  };
+
+  // XÁC NHẬN XÂY DỰNG / NÂNG CẤP THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR
+  const handleConfirmBuildTier = (tileId, targetTier, totalCost, activeP = currentPlayer) => {
+    const tile = BOARD_TILES[tileId];
+    if (!tile || !activeP || activeP.money < totalCost) return;
+
+    const isLandmark = targetTier >= 4;
+    const isNew = !propertiesState[tileId]?.owner;
+
+    const updatedPlayers = players.map((p) =>
+      p.id === activeP.id ? { ...p, money: p.money - totalCost } : p
+    );
+
+    const updatedProps = {
+      ...propertiesState,
+      [tileId]: {
+        ...propertiesState[tileId],
+        owner: activeP.id,
+        houses: targetTier,
+        isMortgaged: false,
+      },
+    };
+
+    setPlayers(updatedPlayers);
+    setPropertiesState(updatedProps);
+    setBuildModalTile(null);
+    setHasRolled(true);
+
+    soundFX.playBuildHouse();
+    addLog(
+      `🏗️ ${activeP.name} ${isNew ? 'mua và xây' : 'nâng cấp'} ${tile.name} lên ${
+        isLandmark ? '🏰 KHÁCH SẠN (LANDMARK - BẤT KHẢ XÂM PHẠM)' : `Nhà Cấp ${targetTier}`
+      } (Chi ${formatVND(totalCost)})!`
+    );
+    setConstructionAlert({
+      player: activeP.name,
+      tileName: tile.name,
+      type: isLandmark ? 'hotel' : 'house',
+    });
+    setTimeout(() => setConstructionAlert(null), 3500);
+
+    const victory = checkBusinessTourVictory(updatedProps, updatedPlayers);
+    if (victory) {
+      setWinner({ ...victory.winner, winReason: victory.reason });
+      syncOnlineState({
+        players: updatedPlayers,
+        propertiesState: updatedProps,
+        winner: { ...victory.winner, winReason: victory.reason },
+      });
+    } else {
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, hasRolled: true });
+    }
+  };
+
+  // ĐĂNG CAI LỄ HỘI / WORLD CHAMPIONSHIP
+  const handleSelectFestivalCity = (tileId) => {
+    const tile = BOARD_TILES[tileId];
+    const updatedProps = {
+      ...propertiesState,
+      [tileId]: {
+        ...propertiesState[tileId],
+        isFestival: true,
+      },
+    };
+    setPropertiesState(updatedProps);
+    soundFX.playVictory();
+    addLog(`🎪 ${currentPlayer?.name} chính thức tổ chức LỄ HỘI THẾ GIỚI tại ${tile?.name}! Tiền thuê tại đây được NHÂN ĐÔI (x2)!`);
+    setFestivalModal(null);
+    setHasRolled(true);
+    syncOnlineState({ propertiesState: updatedProps, hasRolled: true });
+  };
+
+  // CƯỚP ĐẤT (BUYOUT) CHUẨN BUSINESS TOUR
+  const executeBuyout = (buyerId, ownerId, tileId, price, currentList = players) => {
+    const buyer = currentList.find((p) => p.id === buyerId);
+    const owner = currentList.find((p) => p.id === ownerId);
+    const tile = BOARD_TILES[tileId];
+    if (!buyer || !owner || !tile || buyer.money < price) return;
+
+    soundFX.playCollectMoney();
+    addLog(`⚔️ ${buyer.name} chi ${formatVND(price)} CƯỚP ĐỨT khu đất ${tile.name} của ${owner.name}!`);
+
+    const updatedPlayers = currentList.map((p) => {
+      if (p.id === buyerId) return { ...p, money: p.money - price };
+      if (p.id === ownerId) return { ...p, money: p.money + price };
+      return p;
+    });
+
+    const updatedProps = {
+      ...propertiesState,
+      [tileId]: {
+        ...propertiesState[tileId],
+        owner: buyerId,
+      },
+    };
+
+    setPlayers(updatedPlayers);
+    setPropertiesState(updatedProps);
+    setBuyoutState(null);
+    setHasRolled(true);
+
+    // Kiểm tra điều kiện thắng nhanh Business Tour
+    const victory = checkBusinessTourVictory(updatedProps, updatedPlayers);
+    if (victory) {
+      setWinner({ ...victory.winner, winReason: victory.reason });
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, winner: { ...victory.winner, winReason: victory.reason } });
+    } else {
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, hasRolled: true });
+    }
+  };
+
+  // MUA ĐẤT
+  const buyProperty = (playerId, tileId, price) => {
+    const p = players.find((x) => x.id === playerId);
+    const tile = BOARD_TILES[tileId];
+    if (!p || !tile || p.money < price) return;
+
+    soundFX.playBuyProperty();
+    addLog(`📜 ${p.name} đã mua thành công: ${tile.name} với giá ${formatVND(price)}!`);
+
+    const updatedPlayers = players.map((x) =>
+      x.id === playerId ? { ...x, money: x.money - price } : x
+    );
+    const updatedProps = {
+      ...propertiesState,
+      [tileId]: { owner: playerId, houses: 0, isMortgaged: false },
+    };
+
+    setPlayers(updatedPlayers);
+    setPropertiesState(updatedProps);
+    setPendingBuyTile(null);
+    setHasRolled(true);
+
+    // Kiểm tra điều kiện thắng nhanh Business Tour
+    const victory = checkBusinessTourVictory(updatedProps, updatedPlayers);
+    if (victory) {
+      setWinner({ ...victory.winner, winReason: victory.reason });
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, winner: { ...victory.winner, winReason: victory.reason } });
+    } else {
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, hasRolled: true });
+    }
+  };
+
+  // KHỞI ĐỘNG ĐẤU GIÁ (AUCTION)
+  const startAuction = (tile, currentPlayersList = players) => {
+    setPendingBuyTile(null);
+    const eligibleBidders = currentPlayersList.filter((p) => !p.isBankrupt);
+    if (eligibleBidders.length === 0) return;
+
+    soundFX.playGavel();
+    addLog(`📢 Mở phiên đấu giá cho khu đất: ${tile.name}!`);
+
+    const initialBid = Math.floor(tile.price * 0.5);
+    setAuctionState({
+      tile,
+      currentBid: initialBid,
+      highestBidderId: null,
+      currentTurnPlayerId: eligibleBidders[0].id,
+      activeBidders: eligibleBidders.map((p) => p.id),
+      turnIdx: 0,
+    });
+  };
+
+  // TRẢ GIÁ ĐẤU GIÁ
+  const handlePlaceBid = (bidAmount) => {
+    if (!auctionState) return;
+    const bidder = players.find((p) => p.id === auctionState.currentTurnPlayerId);
+    if (!bidder || bidder.money < bidAmount) return;
+
+    soundFX.playGavel();
+    addLog(`🔨 ${bidder.name} trả giá: ${formatVND(bidAmount)}`);
+
+    advanceAuctionTurn(bidAmount, bidder.id, auctionState.activeBidders);
+  };
+
+  // BỎ QUA ĐẤU GIÁ
+  const handlePassBid = () => {
+    if (!auctionState) return;
+    const remaining = auctionState.activeBidders.filter(
+      (id) => id !== auctionState.currentTurnPlayerId
+    );
+    advanceAuctionTurn(auctionState.currentBid, auctionState.highestBidderId, remaining);
+  };
+
+  const advanceAuctionTurn = (currentBid, highestBidderId, activeBidders) => {
+    // Nếu chỉ còn 1 người tham gia và đã có người trả giá: Người đó thắng đấu giá!
+    if (activeBidders.length === 1 && highestBidderId) {
+      const winnerPlayer = players.find((p) => p.id === highestBidderId);
+      const tile = auctionState.tile;
+      if (winnerPlayer && tile) {
+        soundFX.playBuyProperty();
+        addLog(`🏆 ${winnerPlayer.name} thắng đấu giá ${tile.name} với mức giá ${formatVND(currentBid)}!`);
+        buyProperty(winnerPlayer.id, tile.id, currentBid);
+      }
+      setAuctionState(null);
+      return;
+    }
+
+    // Nếu tất cả cùng bỏ cuộc mà chưa ai trả giá: Hủy đấu giá
+    if (activeBidders.length === 0) {
+      addLog(`❌ Phiên đấu giá kết thúc mà không có ai mua.`);
+      setAuctionState(null);
+      setHasRolled(true);
+      return;
+    }
+
+    // Chuyển lượt đấu giá sang người tiếp theo
+    const nextIdx = (auctionState.turnIdx + 1) % activeBidders.length;
+    const nextBidderId = activeBidders[nextIdx];
+    const nextBidder = players.find((p) => p.id === nextBidderId);
+
+    const updatedAuction = {
+      ...auctionState,
+      currentBid,
+      highestBidderId,
+      activeBidders,
+      currentTurnPlayerId: nextBidderId,
+      turnIdx: nextIdx,
+    };
+    setAuctionState(updatedAuction);
+
+    // Nếu người kế tiếp là BOT, tự động tính toán
+    if (nextBidder && nextBidder.isBot) {
+      setTimeout(() => {
+        const botBid = AIEngine.getAuctionBid(nextBidder, auctionState.tile, currentBid, propertiesState, players);
+        if (botBid) {
+          handlePlaceBid(botBid);
+        } else {
+          handlePassBid();
+        }
+      }, 700);
+    }
+  };
+
+  // XỬ LÝ KHI XÁC NHẬN THẺ CƠ HỘI / KHÍ VẬN
+  const handleConfirmCard = () => {
+    if (!activeCard) return;
+    const { card, player } = activeCard;
+    setActiveCard(null);
+
+    let updatedPlayers = [...players];
+
+    switch (card.action) {
+      case 'collect_money':
+        triggerFloatingMoney(card.amount, true);
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, money: p.money + card.amount } : p
+        );
+        addLog(`🎁 ${player.name} nhận được ${formatVND(card.amount)}.`);
+        break;
+
+      case 'pay_money':
+        triggerFloatingMoney(card.amount, false);
+        deductMoney(player.id, card.amount, null, updatedPlayers);
+        return;
+
+      case 'move_to':
+        const targetTile = card.targetTile;
+        const passed = card.collectPassGo && player.position > targetTile;
+        let cash = player.money + (passed ? GO_REWARD : 0);
+        if (passed) {
+          soundFX.playCollectMoney();
+          addLog(`💰 ${player.name} đi qua GO, nhận ${formatVND(GO_REWARD)}.`);
+        }
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, position: targetTile, money: cash } : p
+        );
+        setPlayers(updatedPlayers);
+        handleTileLanding(targetTile, { ...player, position: targetTile, money: cash }, false, updatedPlayers);
+        return;
+
+      case 'move_relative':
+        const relPos = (player.position + card.steps + 40) % 40;
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, position: relPos } : p
+        );
+        setPlayers(updatedPlayers);
+        handleTileLanding(relPos, { ...player, position: relPos }, false, updatedPlayers);
+        return;
+
+      case 'go_to_jail':
+        soundFX.playGoToJail();
+        triggerScreenShake();
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, inJail: true, jailTurns: 0, position: 10 } : p
+        );
+        addLog(`🚨 ${player.name} bị áp giải vào tù!`);
+        break;
+
+      case 'get_out_of_jail_free':
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, outOfJailCards: (p.outOfJailCards || 0) + 1 } : p
+        );
+        addLog(`🎟️ ${player.name} nhận được Thẻ Miễn Vào Tù!`);
+        break;
+
+      case 'collect_from_all':
+        let totalCollected = 0;
+        updatedPlayers = updatedPlayers.map((p) => {
+          if (p.id !== player.id && !p.isBankrupt) {
+            totalCollected += card.amount;
+            return { ...p, money: p.money - card.amount };
+          }
+          return p;
+        });
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, money: p.money + totalCollected } : p
+        );
+        triggerFloatingMoney(totalCollected, true);
+        addLog(`🎂 Mỗi người chơi tặng ${player.name} ${formatVND(card.amount)}!`);
+        break;
+
+      case 'pay_all_players':
+        const totalPaid = card.amount * (players.filter(p => p.id !== player.id && !p.isBankrupt).length);
+        triggerFloatingMoney(totalPaid, false);
+        updatedPlayers = updatedPlayers.map((p) => {
+          if (p.id !== player.id && !p.isBankrupt) {
+            return { ...p, money: p.money + card.amount };
+          } else if (p.id === player.id) {
+            return { ...p, money: p.money - totalPaid };
+          }
+          return p;
+        });
+        addLog(`🍾 ${player.name} khao mỗi người chơi ${formatVND(card.amount)}.`);
+        break;
+
+      default:
+        break;
+    }
+
+    setPlayers(updatedPlayers);
+    setHasRolled(true);
+    syncOnlineState({ players: updatedPlayers, hasRolled: true });
+  };
+
+  // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI
+  const transferMoney = (fromId, toId, amount, currentPlayersList = players) => {
+    let updated = currentPlayersList.map((p) => {
+      if (p.id === fromId) return { ...p, money: p.money - amount };
+      if (p.id === toId) return { ...p, money: p.money + amount };
+      return p;
+    });
+
+    const debtor = updated.find((p) => p.id === fromId);
+    if (debtor && debtor.money < 0) {
+      handleDebtCrisis(debtor, toId, updated);
+      return updated;
+    }
+
+    setPlayers(updated);
+    syncOnlineState({ players: updated });
+    return updated;
+  };
+
+  // TRỪ TIỀN VÀO NGÂN KHỐ (THUẾ / PHẠT)
+  const deductMoney = (playerId, amount, creditorId = null, currentPlayersList = players, poolVal = freeParkingPool) => {
+    let updated = currentPlayersList.map((p) =>
+      p.id === playerId ? { ...p, money: p.money - amount } : p
+    );
+
+    const debtor = updated.find((p) => p.id === playerId);
+    if (debtor && debtor.money < 0) {
+      handleDebtCrisis(debtor, creditorId, updated);
+      return;
+    }
+
+    setPlayers(updated);
+    syncOnlineState({ players: updated, freeParkingPool: poolVal });
+  };
+
+  // XỬ LÝ KHỦNG HOẢNG NỢ / PHÁ SẢN (BANKRUPTCY CHECK)
+  const handleDebtCrisis = (debtor, creditorId, currentPlayersList) => {
+    const maxLiquid = calculateMaxLiquidatable(debtor, propertiesState);
+
+    // Nếu ngay cả khi bán hết tài sản vẫn không đủ trả nợ: TUYÊN BỐ PHÁ SẢN!
+    if (debtor.money + maxLiquid < 0) {
+      declareBankruptcy(debtor.id, creditorId, currentPlayersList);
+    } else {
+      // Nếu là Bot: tự động bán nhà và thế chấp để cứu nguy
+      if (debtor.isBot) {
+        const debtNeeded = Math.abs(debtor.money);
+        const reliefActions = AIEngine.planDebtRelief(debtor, debtNeeded, propertiesState);
+        let currentCash = debtor.money;
+        let propsCopy = { ...propertiesState };
+
+        reliefActions.forEach((act) => {
+          if (act.type === 'sell_house') {
+            propsCopy[act.tileId].houses = Math.max(0, (propsCopy[act.tileId].houses || 0) - 1);
+            currentCash += act.amount;
+          } else if (act.type === 'mortgage') {
+            propsCopy[act.tileId].isMortgaged = true;
+            currentCash += act.amount;
+          }
+        });
+
+        const updated = currentPlayersList.map((p) =>
+          p.id === debtor.id ? { ...p, money: currentCash } : p
+        );
+        setPlayers(updated);
+        setPropertiesState(propsCopy);
+        addLog(`⚠️ ${debtor.name} đã thế chấp tài sản để trả nợ xong!`);
+        syncOnlineState({ players: updated, propertiesState: propsCopy });
+      } else {
+        // Người chơi thật: hiển thị thông báo mở Modal Sổ đỏ để thanh lý
+        addLog(`⚠️ Cảnh báo: ${debtor.name} đang bị âm tiền! Hãy vào Sổ Đỏ để bán nhà hoặc thế chấp!`);
+        setPlayers(currentPlayersList);
+        setShowManageModal(true);
+      }
+    }
+  };
+
+  // TUYÊN BỐ PHÁ SẢN
+  const declareBankruptcy = (bankruptId, creditorId, currentPlayersList = players) => {
+    soundFX.playBankruptcy();
+    const bankruptPlayer = currentPlayersList.find((p) => p.id === bankruptId);
+    const creditor = currentPlayersList.find((p) => p.id === creditorId);
+
+    addLog(`💥 ${bankruptPlayer?.name} chính thức TUYÊN BỐ PHÁ SẢN! Rời khỏi cuộc chơi!`);
+
+    let updatedProps = { ...propertiesState };
+
+    // Chuyển giao tài sản cho chủ nợ hoặc trả lại ngân hàng
+    BOARD_TILES.forEach((tile) => {
+      if (updatedProps[tile.id]?.owner === bankruptId) {
+        if (creditor) {
+          updatedProps[tile.id] = { ...updatedProps[tile.id], owner: creditor.id };
+        } else {
+          // Trả về ngân hàng
+          delete updatedProps[tile.id];
+        }
+      }
+    });
+
+    const updatedPlayers = currentPlayersList.map((p) =>
+      p.id === bankruptId ? { ...p, isBankrupt: true, money: 0 } : p
+    );
+
+    setPlayers(updatedPlayers);
+    setPropertiesState(updatedProps);
+
+    // Kiểm tra người chiến thắng cuối cùng
+    const survivors = updatedPlayers.filter((p) => !p.isBankrupt);
+    if (survivors.length === 1) {
+      setWinner(survivors[0]);
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, winner: survivors[0] });
+    } else {
+      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps });
+    }
+  };
+
+  // KẾT THÚC LƯỢT ĐI
+  const handleEndTurn = () => {
+    if (!currentPlayer) return;
+
+    // Nếu đổ xúc xắc đôi (và không bị vào tù), được đi tiếp thêm lượt!
+    const isDoubles = dice[0] === dice[1];
+    if (isDoubles && !currentPlayer.inJail && doublesCount < 3) {
+      setHasRolled(false);
+      addLog(`🎲 ${currentPlayer.name} được đi tiếp nhờ đổ xúc xắc đôi!`);
+      return;
+    }
+
+    // Chuyển lượt sang người chơi tiếp theo còn sống
+    let nextIdx = (turnIndex + 1) % players.length;
+    while (players[nextIdx].isBankrupt) {
+      nextIdx = (nextIdx + 1) % players.length;
+    }
+
+    setTurnIndex(nextIdx);
+    setHasRolled(false);
+    setDoublesCount(0);
+
+    const nextPlayer = players[nextIdx];
+    addLog(`👉 Đến lượt của: ${nextPlayer.name}`);
+    syncOnlineState({ turnIndex: nextIdx, hasRolled: false, doublesCount: 0 });
+  };
+
+  // BOT AUTOMATION HOOK
+  useEffect(() => {
+    if (screen !== 'playing' || !currentPlayer || !currentPlayer.isBot || currentPlayer.isBankrupt) {
+      return;
+    }
+
+    // 1. Nếu Bot đang trong tù
+    if (currentPlayer.inJail && !hasRolled) {
+      const timer = setTimeout(() => {
+        const action = AIEngine.decideJailAction(currentPlayer, currentPlayer.jailTurns || 0, propertiesState);
+        if (action === 'use_card') {
+          soundFX.playCollectMoney();
+          addLog(`🎟️ ${currentPlayer.name} dùng Thẻ Đặc Xá để ra tù!`);
+          const updated = players.map((p) =>
+            p.id === currentPlayer.id
+              ? { ...p, inJail: false, jailTurns: 0, outOfJailCards: p.outOfJailCards - 1 }
+              : p
+          );
+          setPlayers(updated);
+        } else if (action === 'pay_fine') {
+          soundFX.playCollectMoney();
+          addLog(`💰 ${currentPlayer.name} nộp ${formatVND(JAIL_FINE)} tiền bảo lãnh ra tù!`);
+          const updated = players.map((p) =>
+            p.id === currentPlayer.id
+              ? { ...p, inJail: false, jailTurns: 0, money: p.money - JAIL_FINE }
+              : p
+          );
+          setPlayers(updated);
+        } else {
+          // Thử đổ đôi
+          handleRollDice();
+          return;
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    // 2. Bot tự động đổ xúc xắc
+    if (!hasRolled && !isRolling && !isHopping && !pendingBuyTile && !auctionState && !activeCard) {
+      const timer = setTimeout(() => {
+        handleRollDice();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+
+    // 3. Bot tự động kết thúc lượt
+    if (hasRolled && !isRolling && !isHopping && !pendingBuyTile && !auctionState && !activeCard) {
+      const timer = setTimeout(() => {
+        // Tự động xem xét xây nhà
+        const builds = AIEngine.getBuildRecommendations(currentPlayer, propertiesState, players);
+        if (builds.length > 0) {
+          let propsCopy = { ...propertiesState };
+          let botCash = currentPlayer.money;
+          builds.forEach((tileId) => {
+            const tile = BOARD_TILES[tileId];
+            if (tile && botCash >= tile.housePrice) {
+              const nextHouses = (propsCopy[tileId].houses || 0) + 1;
+              propsCopy[tileId].houses = nextHouses;
+              botCash -= tile.housePrice;
+              soundFX.playBuildHouse();
+              addLog(`🔨 ${currentPlayer.name} nâng cấp nhà tại ${tile.name}!`);
+              setConstructionAlert({
+                player: currentPlayer.name,
+                tileName: tile.name,
+                type: nextHouses === 5 ? 'hotel' : 'house'
+              });
+              setTimeout(() => setConstructionAlert(null), 3500);
+            }
+          });
+          setPropertiesState(propsCopy);
+          setPlayers((prev) =>
+            prev.map((p) => (p.id === currentPlayer.id ? { ...p, money: botCash } : p))
+          );
+        }
+
+        handleEndTurn();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPlayer, hasRolled, isRolling, pendingBuyTile, auctionState, activeCard, screen]);
+
+  // NẾU ĐANG Ở MÀN HÌNH LOBBY
+  if (screen === 'lobby') {
+    return (
+      <Lobby
+        onStartPassAndPlay={handleStartPassAndPlay}
+        onStartQuickBot={handleStartQuickBot}
+        onStartOnlineHost={handleStartOnlineHost}
+        onStartOnlineJoin={handleStartOnlineJoin}
+        isMuted={isMuted}
+        onToggleMute={toggleMute}
+      />
+    );
+  }
+
+  // NẾU ĐANG Ở PHÒNG CHỜ ONLINE
+  if (screen === 'online_waiting') {
+    return (
+      <OnlineRoom
+        room={room}
+        currentSocketId={socketId}
+        onToggleReady={() => socketRef.current?.emit('toggle_ready')}
+        onStartGame={handleHostStartGame}
+        onLeaveRoom={() => {
+          socketRef.current?.disconnect();
+          setScreen('lobby');
+        }}
+        onSendChat={(msg) => {
+          socketRef.current?.emit('send_chat', {
+            message: msg,
+            senderName: room?.players.find((p) => p.id === socketId)?.name || 'Bạn',
+            token: room?.players.find((p) => p.id === socketId)?.token || 'car',
+          });
+        }}
+        chatMessages={chatMessages}
+      />
+    );
+  }
+
+  // MÀN HÌNH CHƠI GAME CHÍNH (FULL SCREEN 3D BUSINESS TOUR - VIP DARK SLATE LUXURY)
+  return (
+    <div
+      className={`fixed inset-0 w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 select-none transition-all ${
+        screenShake ? 'animate-screen-shake' : ''
+      }`}
+    >
+      {/* Floating Money Numbers (+/- VNĐ) */}
+      <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
+        {floatingNumbers.map((fn) => (
+          <div
+            key={fn.id}
+            className={`text-2xl md:text-4xl font-black px-5 py-2.5 rounded-2xl shadow-2xl border-2 animate-float-number backdrop-blur-md ${
+              fn.isGain
+                ? 'bg-emerald-950/95 text-emerald-300 border-emerald-400 shadow-glow-emerald'
+                : 'bg-red-950/95 text-red-300 border-red-500 shadow-glow-crimson'
+            }`}
+          >
+            {fn.isGain ? `+${formatVND(fn.amount)}` : `-${formatVND(fn.amount)}`}
+          </div>
+        ))}
+      </div>
+
+      {/* Thông báo công trình 3D vừa hoàn thành */}
+      {constructionAlert && (
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 px-6 py-2 rounded-2xl shadow-2xl border-2 border-white font-black text-xs sm:text-sm flex items-center gap-2 animate-bounce">
+          <span className="text-xl">{constructionAlert.type === 'hotel' ? '🏨' : '🏡'}</span>
+          <span>
+            {constructionAlert.player} vừa xây dựng {constructionAlert.type === 'hotel' ? 'KHÁCH SẠN 3D' : 'NGÔI NHÀ 3D'} tại {constructionAlert.tileName}!
+          </span>
+        </div>
+      )}
+
+      {/* KHUNG BÀN CỜ FULL-SCREEN 3D VIEWPORT */}
+      <div className="absolute inset-0 w-full h-full z-0">
+        {viewMode === '3d' ? (
+          <BoardErrorBoundary
+            fallback={
+              <div className="w-full h-full flex items-center justify-center bg-slate-950 p-4">
+                <div className="w-full max-w-[700px]">
+                  <Board
+                    propertiesState={propertiesState}
+                    players={players}
+                    activePlayerId={currentPlayer?.id}
+                    freeParkingPool={freeParkingPool}
+                    onTileClick={(tile) => setViewDeedTile(tile)}
+                  />
+                </div>
+              </div>
+            }
+          >
+            <Board3D
+              propertiesState={propertiesState}
+              players={players}
+              activePlayerId={currentPlayer?.id}
+              freeParkingPool={freeParkingPool}
+              onTileClick={(tile) => setViewDeedTile(tile)}
+              dice={dice}
+              isRolling={isRolling}
+            />
+          </BoardErrorBoundary>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-4 bg-slate-950 overflow-auto">
+            <div className="w-full max-w-[700px]">
+              <Board
+                propertiesState={propertiesState}
+                players={players}
+                activePlayerId={currentPlayer?.id}
+                freeParkingPool={freeParkingPool}
+                onTileClick={(tile) => setViewDeedTile(tile)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* BẢNG ĐIỂM / LƯỢT ĐI TRÊN KHÔNG GIAN BÀN CỜ (ROUND CAPSULE CHUẨN BUSINESS TOUR) */}
+      <div className="fixed top-[18%] sm:top-[22%] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+        <div className="bg-slate-900/90 text-white border-2 border-slate-700/80 px-4 py-1 rounded-full text-xs font-black tracking-widest shadow-2xl flex items-center gap-2 backdrop-blur-md">
+          <span className="text-amber-400">VÒNG {Math.floor(turnIndex / Math.max(1, players.length)) + 1}</span>
+          <span className="text-slate-600">•</span>
+          <span className="text-emerald-400">LƯỢT #{turnIndex + 1}</span>
+        </div>
+      </div>
+
+      {/* BÓNG THOẠI HOẠT HÌNH TRÊN XÚC XẮC CHUẨN BUSINESS TOUR */}
+      {(isRolling || isHopping) && (
+        <div className="fixed top-[38%] left-[54%] transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none animate-bounce">
+          <div className="bg-slate-900/95 text-amber-300 border-2 border-amber-500/50 px-4 py-1.5 rounded-2xl text-xs font-black shadow-2xl relative flex items-center gap-1.5 backdrop-blur-md">
+            <span>🎲</span>
+            <span>{isRolling ? 'Đang lắc xúc xắc...' : 'Đang di chuyển...'}</span>
+            <div className="w-3 h-3 bg-slate-900 border-r-2 border-b-2 border-amber-500/50 transform rotate-45 absolute -bottom-1.5 left-4" />
+          </div>
+        </div>
+      )}
+
+      {/* 4 GÓC: AVATAR + TIỀN + TÀI SẢN 4 NGƯỜI CHƠI (CORNER HUD BUSINESS TOUR) */}
+      <CornerHUD
+        players={players}
+        activePlayerId={currentPlayer?.id}
+        propertiesState={propertiesState}
+        onOpenManage={() => setShowManageModal(true)}
+        onOpenTrade={() => setShowTradeModal(true)}
+        gameLog={gameLog}
+        isLogOpen={isLogOpen}
+        onToggleLog={() => setIsLogOpen(!isLogOpen)}
+      />
+
+      {/* NÚT TIỆN ÍCH TRÒN BÊN CẠNH PHẢI MÀN HÌNH CHUẨN BUSINESS TOUR */}
+      <div className="fixed right-3 top-1/2 transform -translate-y-1/2 z-30 flex flex-col gap-2.5 pointer-events-auto">
+        <button
+          onClick={toggleBGM}
+          className={`w-10 h-10 rounded-full border-2 shadow-2xl flex items-center justify-center transition active:scale-95 ${
+            isBGMPlaying
+              ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-glow-gold'
+              : 'bg-slate-900/90 text-slate-300 border-slate-700/80 hover:bg-slate-800 hover:text-white backdrop-blur-md'
+          }`}
+          title="Nhạc Nền Jazz Tycoon"
+        >
+          <Music size={18} className={isBGMPlaying ? 'animate-bounce' : ''} />
+        </button>
+
+        <button
+          onClick={toggleMute}
+          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-300 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white backdrop-blur-md transition active:scale-95"
+          title={isMuted ? 'Bật âm thanh SFX' : 'Tắt âm thanh SFX'}
+        >
+          {isMuted ? <VolumeX size={18} className="text-red-400" /> : <Volume2 size={18} className="text-emerald-400" />}
+        </button>
+
+        <button
+          onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
+          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-200 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white backdrop-blur-md text-xs font-black transition active:scale-95"
+          title="Đổi góc 3D / 2D"
+        >
+          {viewMode === '3d' ? '2D' : '3D'}
+        </button>
+
+        <button
+          onClick={() => setScreen('lobby')}
+          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-300 hover:text-red-400 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 backdrop-blur-md transition active:scale-95 text-xs font-black"
+          title="Rời Bàn"
+        >
+          🚪
+        </button>
+      </div>
+
+      {/* THÔNG TIN BÀN & CƯỢC Ở ĐÁY MÀN HÌNH CHUẨN BUSINESS TOUR */}
+      <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none text-center">
+        <span className="text-[12px] font-bold text-slate-400 tracking-wide drop-shadow">
+          Cờ Tỷ Phú Việt Nam • Bàn #VN-2026 • Hũ Jackpot: {formatVND(freeParkingPool)}
+        </span>
+      </div>
+
+      {/* FLOATING ACTION DOCK Ở ĐÁY MÀN HÌNH (BOTTOM-CENTER) */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-xl border-2 border-slate-700/80 p-2 sm:p-2.5 rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] max-w-[95vw]">
+        {/* Thông tin người đang đến lượt */}
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-800/90 rounded-2xl border border-slate-700/80 shrink-0">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-md shrink-0 border border-white/80"
+            style={{ backgroundColor: currentPlayer?.color || '#ef4444' }}
+          >
+            {TOKENS.find(t => t.id === currentPlayer?.token)?.emoji || '🏎️'}
+          </div>
+          <div className="hidden sm:block">
+            <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block leading-tight">
+              Đang Đến Lượt
+            </span>
+            <span className="text-xs font-black text-white truncate max-w-[90px] block leading-tight">
+              {currentPlayer?.name}
+            </span>
+          </div>
+        </div>
+
+        {/* Xúc xắc & Tổng điểm */}
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-800/90 rounded-2xl border border-slate-700/80 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-500 ${isRolling ? 'animate-spin' : ''}`}>
+              {dice[0]}
+            </div>
+            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-500 ${isRolling ? 'animate-spin' : ''}`}>
+              {dice[1]}
+            </div>
+          </div>
+          <div className="text-left hidden xs:block">
+            <span className="text-[9px] text-slate-400 block font-semibold leading-tight">Tổng điểm</span>
+            <span className="text-xs font-black text-white block leading-tight">
+              {dice[0] + dice[1]} {dice[0] === dice[1] ? '🔥 ĐÔI!' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Nút hành động chính: Lắc Xúc Xắc hoặc Kết Thúc Lượt */}
+        <div className="shrink-0">
+          {currentPlayer?.isBot ? (
+            <div className="px-4 py-2.5 rounded-2xl bg-slate-800 border border-sky-500/40 text-sky-300 text-xs font-black flex items-center gap-2 animate-pulse">
+              <span className="animate-spin">🤖</span>
+              <span>{isHopping ? 'Bot đang di chuyển...' : isRolling ? 'Bot đang lắc...' : 'Bot đang xử lý...'}</span>
+            </div>
+          ) : !hasRolled ? (
+            <button
+              type="button"
+              disabled={isRolling || isHopping}
+              onClick={handleRollDice}
+              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-2 shadow-xl active:scale-95 ${
+                isRolling || isHopping
+                  ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 shadow-[0_4px_15px_rgba(245,158,11,0.5)] hover:brightness-110 hover:scale-105 border-2 border-white animate-pulse'
+              }`}
+            >
+              <span className="text-base sm:text-lg">🎲</span>
+              <span>{isRolling ? 'Đang Lắc...' : isHopping ? 'Đang Đi...' : 'Lắc Xúc Xắc'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isHopping}
+              onClick={handleEndTurn}
+              className="px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-110 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
+            >
+              <span>Xong Lượt</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Nút thao tác nhanh */}
+        {!currentPlayer?.isBot && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowManageModal(true)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 transition shadow-sm"
+              title="Quản lý bất động sản & xây nhà"
+            >
+              <Home size={14} className="inline mr-1" />
+              <span className="hidden sm:inline">Sổ Đỏ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTradeModal(true)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 transition shadow-sm"
+              title="Thương lượng đổi đất với đối thủ"
+            >
+              <Gavel size={14} className="inline mr-1" />
+              <span className="hidden sm:inline">Đổi Đất</span>
+            </button>
+          </div>
+        )}
+
+        {/* Nút mở Nhật Ký Trận Đấu */}
+        <button
+          type="button"
+          onClick={() => setIsLogOpen(!isLogOpen)}
+          className={`p-2 rounded-xl text-xs font-bold border transition ${
+            isLogOpen
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+          }`}
+          title="Bật/Tắt Nhật Ký Trận Đấu"
+        >
+          <History size={15} />
+        </button>
+      </div>
+
+      {/* KHUNG NHẬT KÝ CHI TIẾT TRẬN ĐẤU KHI MỞ RỘNG */}
+      {isLogOpen && (
+        <div className="fixed bottom-20 right-4 z-40 w-80 sm:w-96 max-h-80 bg-slate-900/95 backdrop-blur-xl border-2 border-slate-700/80 rounded-2xl shadow-2xl p-3 flex flex-col text-slate-100">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+              <History size={14} /> Nhật Ký Trận Đấu
+            </span>
+            <button
+              onClick={() => setIsLogOpen(false)}
+              className="text-xs text-slate-400 hover:text-white px-2 py-0.5 rounded-lg bg-slate-800"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs">
+            {gameLog.map((log, idx) => (
+              <div
+                key={idx}
+                className={`p-2 rounded-xl border leading-relaxed ${
+                  idx === 0
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-200 font-bold shadow-sm'
+                    : 'bg-slate-950/80 border-slate-800 text-slate-300'
+                }`}
+              >
+                {log}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* MODALS */}
+      {viewDeedTile && (
+        <DeedModal
+          tile={viewDeedTile}
+          propertyState={propertiesState[viewDeedTile.id]}
+          owner={players.find((p) => p.id === propertiesState[viewDeedTile.id]?.owner)}
+          onClose={() => setViewDeedTile(null)}
+        />
+      )}
+
+      {buyoutState && (
+        <BuyoutModal
+          tile={buyoutState.tile}
+          owner={buyoutState.owner}
+          player={buyoutState.player}
+          buyoutPrice={buyoutState.buyoutPrice}
+          onBuyout={() => {
+            executeBuyout(buyoutState.player.id, buyoutState.owner.id, buyoutState.tile.id, buyoutState.buyoutPrice);
+            setBuyoutState(null);
+            setHasRolled(true);
+          }}
+          onSkip={() => {
+            setBuyoutState(null);
+            setHasRolled(true);
+          }}
+        />
+      )}
+
+      {upgradePropertyTile && (
+        <UpgradePropertyModal
+          tile={upgradePropertyTile.tile}
+          player={upgradePropertyTile.player}
+          propState={upgradePropertyTile.propState}
+          onUpgrade={() => executeUpgrade(upgradePropertyTile.tile.id)}
+          onSkip={() => {
+            setUpgradePropertyTile(null);
+            setHasRolled(true);
+          }}
+        />
+      )}
+
+      {pendingBuyTile && currentPlayer && (
+        <BuyPropertyModal
+          tile={pendingBuyTile}
+          player={currentPlayer}
+          onBuy={() => buyProperty(currentPlayer.id, pendingBuyTile.id, pendingBuyTile.price)}
+          onAuction={() => startAuction(pendingBuyTile)}
+        />
+      )}
+
+      {auctionState && (
+        <AuctionModal
+          tile={auctionState.tile}
+          players={players}
+          auctionState={auctionState}
+          onPlaceBid={handlePlaceBid}
+          onPass={handlePassBid}
+        />
+      )}
+
+      {activeCard && (
+        <CardModal
+          card={activeCard.card}
+          type={activeCard.type}
+          onClose={handleConfirmCard}
+        />
+      )}
+
+      {showJailModal && currentPlayer && (
+        <JailModal
+          player={currentPlayer}
+          onPayFine={() => {
+            setShowJailModal(false);
+            const updated = players.map((p) =>
+              p.id === currentPlayer.id
+                ? { ...p, inJail: false, jailTurns: 0, money: p.money - JAIL_FINE }
+                : p
+            );
+            setPlayers(updated);
+            addLog(`💰 ${currentPlayer.name} nộp bảo lãnh ${formatVND(JAIL_FINE)} ra tù!`);
+          }}
+          onUseCard={() => {
+            setShowJailModal(false);
+            const updated = players.map((p) =>
+              p.id === currentPlayer.id
+                ? { ...p, inJail: false, jailTurns: 0, outOfJailCards: p.outOfJailCards - 1 }
+                : p
+            );
+            setPlayers(updated);
+            addLog(`🎟️ ${currentPlayer.name} dùng Thẻ Miễn Vào Tù để được tự do!`);
+          }}
+          onRollDoubles={() => {
+            setShowJailModal(false);
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            setDice([d1, d2]);
+            if (d1 === d2) {
+              soundFX.playCollectMoney();
+              addLog(`🎉 ${currentPlayer.name} đổ đôi [${d1}-${d2}], được tha bổng ngay lập tức!`);
+              const updated = players.map((p) =>
+                p.id === currentPlayer.id ? { ...p, inJail: false, jailTurns: 0 } : p
+              );
+              setPlayers(updated);
+              movePlayer(currentPlayer.id, d1 + d2, false);
+            } else {
+              soundFX.playPayRent();
+              const turns = (currentPlayer.jailTurns || 0) + 1;
+              if (turns >= 3) {
+                addLog(`⏳ ${currentPlayer.name} đã ở tù đủ 3 lượt, buộc phải nộp ${formatVND(JAIL_FINE)} để ra tù!`);
+                const updated = players.map((p) =>
+                  p.id === currentPlayer.id
+                    ? { ...p, inJail: false, jailTurns: 0, money: p.money - JAIL_FINE }
+                    : p
+                );
+                setPlayers(updated);
+                movePlayer(currentPlayer.id, d1 + d2, false);
+              } else {
+                addLog(`🔒 ${currentPlayer.name} đổ thất bại [${d1}-${d2}], tiếp tục ngồi tù (Lượt ${turns}/3).`);
+                const updated = players.map((p) =>
+                  p.id === currentPlayer.id ? { ...p, jailTurns: turns } : p
+                );
+                setPlayers(updated);
+                setHasRolled(true);
+              }
+            }
+          }}
+        />
+      )}
+
+      {showManageModal && currentPlayer && (
+        <ManagePropertiesModal
+          player={currentPlayer}
+          players={players}
+          propertiesState={propertiesState}
+          onBuildHouse={(tileId) => {
+            const tile = BOARD_TILES[tileId];
+            const nextHouses = (propertiesState[tileId]?.houses || 0) + 1;
+            setPropertiesState((prev) => ({
+              ...prev,
+              [tileId]: { ...prev[tileId], houses: nextHouses },
+            }));
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === currentPlayer.id ? { ...p, money: p.money - tile.housePrice } : p
+              )
+            );
+            soundFX.playBuildHouse();
+            addLog(`🏠 ${currentPlayer.name} xây thêm nhà tại ${tile.name}.`);
+            setConstructionAlert({
+              player: currentPlayer.name,
+              tileName: tile.name,
+              type: nextHouses === 5 ? 'hotel' : 'house'
+            });
+            setTimeout(() => setConstructionAlert(null), 3500);
+          }}
+          onSellHouse={(tileId) => {
+            const tile = BOARD_TILES[tileId];
+            const refund = Math.floor(tile.housePrice / 2);
+            setPropertiesState((prev) => ({
+              ...prev,
+              [tileId]: { ...prev[tileId], houses: Math.max(0, (prev[tileId]?.houses || 0) - 1) },
+            }));
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === currentPlayer.id ? { ...p, money: p.money + refund } : p
+              )
+            );
+            addLog(`💸 ${currentPlayer.name} bán bớt 1 nhà tại ${tile.name}, thu hồi ${formatVND(refund)}.`);
+          }}
+          onMortgage={(tileId) => {
+            const tile = BOARD_TILES[tileId];
+            setPropertiesState((prev) => ({
+              ...prev,
+              [tileId]: { ...prev[tileId], isMortgaged: true },
+            }));
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === currentPlayer.id ? { ...p, money: p.money + tile.mortgageValue } : p
+              )
+            );
+            addLog(`🏦 ${currentPlayer.name} thế chấp ${tile.name}, nhận ${formatVND(tile.mortgageValue)}.`);
+          }}
+          onUnmortgage={(tileId) => {
+            const tile = BOARD_TILES[tileId];
+            const cost = Math.floor(tile.mortgageValue * 1.1);
+            setPropertiesState((prev) => ({
+              ...prev,
+              [tileId]: { ...prev[tileId], isMortgaged: false },
+            }));
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === currentPlayer.id ? { ...p, money: p.money - cost } : p
+              )
+            );
+            addLog(`🔓 ${currentPlayer.name} chuộc lại ${tile.name} với chi phí ${formatVND(cost)}.`);
+          }}
+          onClose={() => setShowManageModal(false)}
+        />
+      )}
+
+      {showTradeModal && currentPlayer && (
+        <TradeModal
+          activePlayer={currentPlayer}
+          players={players}
+          propertiesState={propertiesState}
+          onSendTrade={({ senderId, targetId, offerMoney, offerTiles, demandMoney, demandTiles }) => {
+            setShowTradeModal(false);
+            const target = players.find((p) => p.id === targetId);
+
+            // Tự động chấp thuận nếu là BOT hoặc Pass & Play đồng thuận
+            addLog(`🤝 Giao dịch thành công giữa ${currentPlayer.name} và ${target?.name}!`);
+            soundFX.playBuyProperty();
+
+            let propsCopy = { ...propertiesState };
+            offerTiles.forEach((id) => {
+              propsCopy[id] = { ...propsCopy[id], owner: targetId };
+            });
+            demandTiles.forEach((id) => {
+              propsCopy[id] = { ...propsCopy[id], owner: senderId };
+            });
+
+            setPlayers((prev) =>
+              prev.map((p) => {
+                if (p.id === senderId) {
+                  return { ...p, money: p.money - offerMoney + demandMoney };
+                }
+                if (p.id === targetId) {
+                  return { ...p, money: p.money - demandMoney + offerMoney };
+                }
+                return p;
+              })
+            );
+            setPropertiesState(propsCopy);
+          }}
+          onClose={() => setShowTradeModal(false)}
+        />
+      )}
+
+      {winner && (
+        <VictoryModal
+          winner={winner}
+          onRestart={() => setScreen('lobby')}
+        />
+      )}
+    </div>
+  );
+}
