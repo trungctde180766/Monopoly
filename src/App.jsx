@@ -523,7 +523,8 @@ export default function App() {
             if (wantBuy && player.money >= tile.price) {
               buyProperty(player.id, tile.id, tile.price);
             } else {
-              startAuction(tile, currentPlayersList);
+              addLog(`⏩ ${player.name} quyết định không mua ${tile.name}.`);
+              setHasRolled(true);
             }
           } else {
             setBuildModalTile({ tile, player, propState: null, isNewPurchase: true });
@@ -543,7 +544,8 @@ export default function App() {
             const cost = tile.price + (bestTier - 1) * hPrice;
             handleConfirmBuildTier(tile.id, bestTier, cost, player);
           } else {
-            startAuction(tile, currentPlayersList);
+            addLog(`⏩ ${player.name} quyết định không mua ${tile.name}.`);
+            setHasRolled(true);
           }
         } else {
           setBuildModalTile({ tile, player, propState: null, isNewPurchase: true });
@@ -1756,12 +1758,8 @@ export default function App() {
           onConfirmBuild={(targetTier, cost) =>
             handleConfirmBuildTier(buildModalTile.tile.id, targetTier, cost, buildModalTile.player)
           }
-          onAuction={() => {
-            const tile = buildModalTile.tile;
-            setBuildModalTile(null);
-            startAuction(tile);
-          }}
           onClose={() => {
+            addLog(`⏩ ${buildModalTile.player.name} không mua/xây tại ${buildModalTile.tile.name}.`);
             setBuildModalTile(null);
             setHasRolled(true);
           }}
@@ -1778,16 +1776,6 @@ export default function App() {
             setFestivalModal(null);
             setHasRolled(true);
           }}
-        />
-      )}
-
-      {auctionState && (
-        <AuctionModal
-          tile={auctionState.tile}
-          players={players}
-          auctionState={auctionState}
-          onPlaceBid={handlePlaceBid}
-          onPass={handlePassBid}
         />
       )}
 

@@ -89,14 +89,11 @@ export function BusinessTourBuildModal({
 
             <button
               type="button"
-              onClick={() => {
-                soundFX.playGavel();
-                onAuction();
-              }}
-              className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
+              onClick={onClose}
+              className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
             >
-              <Gavel size={16} />
-              <span>Mở Đấu Giá</span>
+              <X size={16} />
+              <span>Bỏ Qua (Không Mua)</span>
             </button>
           </div>
         </div>
@@ -276,14 +273,11 @@ export function BusinessTourBuildModal({
           {isNewPurchase ? (
             <button
               type="button"
-              onClick={() => {
-                soundFX.playGavel();
-                onAuction();
-              }}
-              className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
+              onClick={onClose}
+              className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
             >
-              <Gavel size={16} />
-              <span>Mở Đấu Giá</span>
+              <X size={16} />
+              <span>Bỏ Qua (Không Mua)</span>
             </button>
           ) : (
             <button
@@ -291,7 +285,8 @@ export function BusinessTourBuildModal({
               onClick={onClose}
               className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
             >
-              <span>Bỏ Qua</span>
+              <X size={16} />
+              <span>Bỏ Qua (Không Xây)</span>
             </button>
           )}
         </div>
