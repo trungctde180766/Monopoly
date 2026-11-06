@@ -1,0 +1,83 @@
+name: CI/CD Pipeline - Monopoly Vietnam
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: 🧪 Run Tests & Build Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🎲 Run Automated Game Rules & Business Tour Tests
+        run: npm test
+
+      - name: 🏗️ Build Vite Production Bundle
+        run: npm run build
+
+      - name: 🔍 Verify Build Artifacts
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "❌ Build failed: dist/index.html not found!"
+            exit 1
+          fi
+          echo "✅ Production build successfully verified!"
+          ls -la dist/
+
+      - name: 📤 Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build
+          path: dist/
+          retention-days: 7
+
+  deploy-vercel:
+    name: 🚀 Deploy to Vercel
+    needs: test-and-build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 🚀 Deploy to Vercel (if VERCEL_TOKEN provided)
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel build --prod --token=$VERCEL_TOKEN
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+
+      - name: ℹ️ Vercel Git Integration Notice
+        if: env.VERCEL_TOKEN == ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "ℹ️ VERCEL_TOKEN secret not set in GitHub Actions."
+          echo "✅ Vercel's native GitHub App integration automatically deploys on every push to main!"
