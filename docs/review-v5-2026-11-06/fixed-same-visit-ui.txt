@@ -1,0 +1,67 @@
+Browser tab: 7, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "http://localhost:3138/".
+0 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: localhost:3138/
+	1 container
+		2 AXWebArea about:blank
+		94 container
+			95 container
+				96 button Góc Chuẩn (3D), Help: Về góc nhìn chuẩn bao quát 4 góc bàn cờ
+				97 button Nhìn Thẳng, Help: Góc nhìn thẳng từ trên xuống
+				98 text Kéo chuột để xoay 360° • Lăn chuột để phóng to
+			99 text VÒNG  1 • LƯỢT # 1 00:56
+			100 text 0 ₫
+			101 text 🏎️
+			102 container
+				103 text NGƯỜI CHƠI 1 🪙 13 Triệu ₫ 🏰  1  Đất 🏠  3
+				104 button 🏛️ Sổ Đỏ
+				105 button 🤝 Đổi Đất
+			106 text ✈️
+			107 container
+				108 text NGƯỜI CHƠI 2 🪙 15 Triệu ₫ 🏰  0  Đất
+			109 text 🎩
+			110 container
+				111 text BOT TỶ PHÚ BOT 🪙 15 Triệu ₫ 🏰  0  Đất
+			112 text 💎
+			113 container
+				114 text BOT ĐẠI GIA BOT 🪙 15 Triệu ₫ 🏰  0  Đất
+			115 text 🛥️
+			116 container
+				117 text 🪙 15 Triệu ₫ 🏰  0  Đất NGƯỜI CHƠI 5
+			118 text 🐕
+			119 container
+				120 text 🪙 15 Triệu ₫ 🏰  0  Đất NGƯỜI CHƠI 6
+			121 button Nhạc Nền Jazz Tycoon
+			122 button Tắt âm thanh SFX
+			123 button 2D, Help: Đổi góc 3D / 2D
+			124 button 🚪, Help: Rời Bàn
+			125 text Cờ Tỷ Phú Việt Nam • Bàn #VN-2026 • Hũ Jackpot:  0₫ 🏎️ ĐANG ĐẾN LƯỢT Người Chơi 1 3 5
+			126 button XONG LƯỢT
+			129 button Sổ Đỏ, Help: Quản lý bất động sản & thế chấp
+			130 button Đổi Đất, Help: Thương lượng đổi đất với đối thủ
+			131 button Bật/Tắt Nhật Ký Trận Đấu
+			132 container
+				133 heading SỔ TÀI SẢN & ĐẦU TƯ, Value: 2
+					134 text SỔ TÀI SẢN & ĐẦU TƯ
+				135 text Chủ sở hữu:
+				136 text Người Chơi 1
+				137 text  • Số dư ví:
+				138 text 13 Triệu ₫
+				139 button
+				140 text Phố Cổ Hội An 🟢 Nhà Cấp 3
+				141 button (disabled) +Xây (500k ₫), Help: Lần ghé này đã dùng quyền xây hoặc chưa có quyền xây
+					142 text +Xây ( 500k ₫ )
+				143 button -Bán Nhà (+250k ₫)
+					144 text -Bán Nhà (+
+					145 text 250k ₫
+					146 text )
+				147 button (disabled) Thế Chấp (+500k ₫), Help: Phải bán hết nhà trên chính ô đất này trước khi thế chấp
+					148 text Thế Chấp (+ 500k ₫ )
+	86 container
+		87 button logo icon
+			88 image logo icon
+			89 image
+		90 container
+			91 button
+	92 container grammarly-integration
+		93 text {"mode":"full","isActive":true,"isUserDisabled":false}
+
+The focused UI element is 104 button 🏛️ Sổ Đỏ

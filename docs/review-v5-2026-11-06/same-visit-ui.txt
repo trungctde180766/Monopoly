@@ -1,0 +1,59 @@
+Browser tab: 6, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "https://monopoly-silk-ten.vercel.app/".
+0 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: monopoly-silk-ten.vercel.app/
+	1 container
+		2 AXWebArea about:blank
+		54 container
+			106 container
+				107 button Góc Chuẩn (3D), Help: Về góc nhìn chuẩn bao quát 4 góc bàn cờ
+				108 button Nhìn Thẳng, Help: Góc nhìn thẳng từ trên xuống
+				109 text Kéo chuột để xoay 360° • Lăn chuột để phóng to
+			58 text VÒNG  1 • LƯỢT # 1 03:00
+			59 text 0 ₫
+			60 text 🏎️
+			61 container
+				62 text NGƯỜI CHƠI 1 🪙 12.50 Triệu ₫ 🏰  1  Đất 🏨  1
+				63 button 🏛️ Sổ Đỏ
+				64 button 🤝 Đổi Đất
+			65 text ✈️
+			66 container
+				67 text NGƯỜI CHƠI 2 🪙 15 Triệu ₫ 🏰  0  Đất
+			100 text 📜 NHẬT KÝ TRẬN ĐẤU
+			101 button Mở rộng
+			102 container
+				103 text 🏠 Người Chơi 1 xây thêm nhà tại Phố Cổ Hội An. 🏗️ Người Chơi 1 mua và xây Phố Cổ Hội An lên Nhà Cấp 3 (Chi 2 Triệu ₫)! 📍 Người Chơi 1 đặt chân tới: Phố Cổ Hội An Trận đấu Pass & Play bắt đầu với 2 người chơi!
+			68 button Nhạc Nền Jazz Tycoon
+			69 button Tắt âm thanh SFX
+			70 button 2D, Help: Đổi góc 3D / 2D
+			71 button 🚪, Help: Rời Bàn
+			72 text Cờ Tỷ Phú Việt Nam • Bàn #VN-2026 • Hũ Jackpot:  0₫ 🏎️ ĐANG ĐẾN LƯỢT Người Chơi 1 6 2
+			73 button XONG LƯỢT
+			104 button Sổ Đỏ, Help: Quản lý bất động sản & thế chấp
+			105 button Đổi Đất, Help: Thương lượng đổi đất với đối thủ
+			76 button Bật/Tắt Nhật Ký Trận Đấu
+			110 container
+				111 heading SỔ TÀI SẢN & ĐẦU TƯ, Value: 2
+					112 text SỔ TÀI SẢN & ĐẦU TƯ
+				113 text Chủ sở hữu:
+				114 text Người Chơi 1
+				115 text  • Số dư ví:
+				116 text 12.50 Triệu ₫
+				117 button
+				118 text Phố Cổ Hội An 🏰 1 Khách Sạn (Landmark)
+				119 button (disabled) +Xây (500k ₫), Help: Đã đạt cấp tối đa: Khách Sạn / Kỳ Quan (Bất khả xâm phạm, không thể bị phá hủy hay cướp)
+					120 text +Xây ( 500k ₫ )
+				121 button -Bán Nhà (+250k ₫)
+					122 text -Bán Nhà (+
+					123 text 250k ₫
+					124 text )
+				125 button (disabled) Thế Chấp (+500k ₫), Help: Phải bán hết toàn bộ nhà trong nhóm màu trước khi thế chấp
+					126 text Thế Chấp (+ 500k ₫ )
+	46 container
+		47 button logo icon
+			48 image logo icon
+			49 image
+		50 container
+			51 button
+	52 container grammarly-integration
+		53 text {"mode":"full","isActive":true,"isUserDisabled":false}
+
+The focused UI element is 63 button 🏛️ Sổ Đỏ

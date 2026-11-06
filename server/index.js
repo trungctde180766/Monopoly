@@ -4,7 +4,9 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { checkBusinessTourVictory } from '../src/logic/gameEngine.js';
+import { validateTradeOffer } from '../src/logic/gameEngine.js';
+import { createGameSession, reduceGameAction, applySessionTrade, forfeitSessionPlayer } from './gameSession.js';
+import { randomUUID } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +41,38 @@ app.use(express.static(distPath, {
 // Quản lý phòng chơi (Rooms State)
 const rooms = new Map();
 
+function removeRoomPlayer(room, playerId) {
+  room.players = room.players.filter(p => p.id !== playerId);
+  room.connections?.delete(playerId);
+  for (const [token, id] of room.resumeTokens || []) if (id === playerId) room.resumeTokens.delete(token);
+  for (const [id, offer] of room.pendingOffers || []) if ([offer.senderId, offer.targetId].includes(playerId)) room.pendingOffers.delete(id);
+  if (!room.players.length) { rooms.delete(room.code); return; }
+  if (room.hostId === playerId) {
+    room.hostId = room.players[0].id; room.players[0].isHost = true; room.players[0].isReady = true;
+  }
+  if (room.status === 'playing') {
+    room.gameState = forfeitSessionPlayer(room.gameState, playerId);
+    io.to(room.code).emit('game_state_updated', room.gameState);
+  }
+  io.to(room.code).emit('room_updated', room);
+}
+
+function leaveRoom(socket, immediate) {
+  const room = rooms.get(socket.roomCode), id = socket.playerId || socket.id;
+  if (!room) return;
+  socket.leave(room.code); socket.leave('player:' + id);
+  room.connections?.delete(id);
+  if (immediate || room.status !== 'playing') removeRoomPlayer(room, id);
+  else {
+    const p = room.players.find(x => x.id === id);
+    if (p) p.connected = false;
+    io.to(room.code).emit('room_updated', room);
+    const timer = setTimeout(() => { room.disconnectTimers?.delete(id); removeRoomPlayer(room, id); }, 60000);
+    timer.unref(); room.disconnectTimers.set(id, timer);
+  }
+  socket.roomCode = null;
+}
+
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -50,7 +84,9 @@ function generateRoomCode() {
 
 io.on('connection', (socket) => {
   // 1. Tạo phòng mới
-  socket.on('create_room', ({ hostName, token, customRules }, callback) => {
+  socket.on('create_room', (payload, callback) => {
+    const { hostName, token, customRules } = payload || {};
+    if (socket.roomCode) leaveRoom(socket, true);
     let roomCode = generateRoomCode();
     while (rooms.has(roomCode)) {
       roomCode = generateRoomCode();
@@ -58,8 +94,8 @@ io.on('connection', (socket) => {
 
     const hostPlayer = {
       id: socket.id,
-      name: hostName || 'Chủ Phòng',
-      token: token || 'car',
+      name: typeof hostName === 'string' ? hostName.slice(0, 40) || 'Chủ Phòng' : 'Chủ Phòng',
+      token: typeof token === 'string' ? token : 'car',
       isHost: true,
       isReady: true,
       color: '#ef4444'
@@ -72,19 +108,26 @@ io.on('connection', (socket) => {
       players: [hostPlayer],
       customRules: customRules || { freeParkingPool: true, quickMode: false },
       gameState: null,
-      chatMessages: []
+      chatMessages: [], resumeTokens: new Map(), connections: new Map(), disconnectTimers: new Map(),
     };
 
     rooms.set(roomCode, room);
     socket.join(roomCode);
     socket.roomCode = roomCode;
+    socket.playerId = socket.id;
+    socket.join('player:' + socket.playerId);
+    room.connections.set(socket.playerId, socket.id);
+    const resumeToken = randomUUID(); room.resumeTokens.set(resumeToken, socket.playerId);
 
-    if (callback) callback({ success: true, roomCode, room });
+    if (callback) callback({ success: true, roomCode, room, resumeToken, playerId: socket.playerId });
   });
 
   // 2. Vào phòng
-  socket.on('join_room', ({ roomCode, playerName, token }, callback) => {
+  socket.on('join_room', (payload, callback) => {
+    const { roomCode, playerName, token } = payload || {};
+    if (typeof roomCode !== 'string') return callback?.({ success: false, message: 'Mã phòng không hợp lệ.' });
     const code = (roomCode || '').toUpperCase().trim();
+    if (socket.roomCode === code) return callback?.({ success: false, message: 'Bạn đã ở trong phòng này.' });
     const room = rooms.get(code);
 
     if (!room) {
@@ -104,20 +147,40 @@ io.on('connection', (socket) => {
 
     const newPlayer = {
       id: socket.id,
-      name: playerName || `Người chơi ${room.players.length + 1}`,
-      token: token || 'jet',
+      name: typeof playerName === 'string' ? playerName.slice(0, 40) || 'Người chơi' : 'Người chơi',
+      token: typeof token === 'string' ? token : 'jet',
       isHost: false,
       isReady: false,
       color: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][room.players.length - 1] || '#06b6d4'
     };
 
+    if (socket.roomCode) leaveRoom(socket, true);
     room.players.push(newPlayer);
     socket.join(code);
     socket.roomCode = code;
+    socket.playerId = socket.id;
+    socket.join('player:' + socket.playerId);
+    room.connections.set(socket.playerId, socket.id);
+    const resumeToken = randomUUID(); room.resumeTokens.set(resumeToken, socket.playerId);
 
     io.to(code).emit('room_updated', room);
-    if (callback) callback({ success: true, roomCode: code, room });
+    if (callback) callback({ success: true, roomCode: code, room, resumeToken, playerId: socket.playerId });
   });
+
+  socket.on('resume_room', (payload, callback) => {
+    const room = rooms.get(payload?.roomCode);
+    const id = room?.resumeTokens?.get(payload?.resumeToken);
+    if (!room || !id || io.sockets.sockets.get(room.connections.get(id))?.connected) {
+      return callback?.({ success: false, message: 'Phiên chơi đã hết hạn hoặc đang mở ở kết nối khác.' });
+    }
+    clearTimeout(room.disconnectTimers.get(id)); room.disconnectTimers.delete(id);
+    socket.roomCode = room.code; socket.playerId = id;
+    socket.join(room.code); socket.join('player:' + id); room.connections.set(id, socket.id);
+    const player = room.players.find(p => p.id === id); if (player) player.connected = true;
+    io.to(room.code).emit('room_updated', room);
+    callback?.({ success: true, playerId: id, room, gameState: room.gameState });
+  });
+  socket.on('leave_room', (_payload, callback) => { leaveRoom(socket, true); callback?.({ success: true }); });
 
   // 3. Đổi trạng thái Sẵn Sàng
   socket.on('toggle_ready', () => {
@@ -125,7 +188,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return;
 
-    const player = room.players.find(p => p.id === socket.id);
+    const player = room.players.find(p => p.id === (socket.playerId || socket.id));
     if (player && !player.isHost) {
       player.isReady = !player.isReady;
       io.to(code).emit('room_updated', room);
@@ -136,7 +199,7 @@ io.on('connection', (socket) => {
   socket.on('start_game', (initialGameState, callback) => {
     const code = socket.roomCode;
     const room = rooms.get(code);
-    if (!room || room.hostId !== socket.id) return;
+    if (!room || room.hostId !== (socket.playerId || socket.id)) return;
 
     // F01: Kiểm tra tính sẵn sàng của tất cả người chơi trước khi bắt đầu
     const nonHostPlayers = room.players.filter((p) => !p.isHost);
@@ -146,180 +209,89 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.status !== 'waiting' || room.players.length < 2) {
+      callback?.({ success: false, message: 'Cần ít nhất hai người và phòng đang chờ.' });
+      return;
+    }
     room.status = 'playing';
-    room.gameState = initialGameState;
+    room.gameState = createGameSession(room);
 
     io.to(code).emit('game_started', {
       roomCode: code,
-      gameState: initialGameState
+      gameState: room.gameState
     });
     if (callback) callback({ success: true });
   });
 
-  // 5. Đồng bộ hành động trong ván cờ với kiểm tra an toàn dữ liệu nghiêm ngặt (R01, V3-01, V3-02, V3-03 Fix)
-  socket.on('sync_game_state', (updatedGameState) => {
-    const code = socket.roomCode;
-    const room = rooms.get(code);
-    if (!room || room.status !== 'playing') return;
-    if (!updatedGameState || typeof updatedGameState !== 'object') return;
+  // Clients submit intents. Only the server creates money, positions, ownership and winners.
+  socket.on('sync_game_state', (_payload, callback) => {
+    callback?.({ success: false, message: 'Không chấp nhận state từ client; hãy gửi game_action.' });
+  });
 
-    const currentGS = room.gameState || {};
-    const sanitized = {};
-
-    // 1. Kiểm tra propertiesState (V3-03 Fix: thay thế toàn bộ state, không lưu lại đất đã bị xóa/trả ngân hàng)
-    if (updatedGameState.propertiesState && typeof updatedGameState.propertiesState === 'object') {
-      const sanitizedProps = {};
-      for (const [tileIdStr, pData] of Object.entries(updatedGameState.propertiesState)) {
-        const tid = Number(tileIdStr);
-        if (Number.isNaN(tid) || tid < 0 || tid >= 40) continue;
-        if (pData && typeof pData === 'object' && pData.owner) {
-          sanitizedProps[tid] = {
-            ...pData,
-            houses: Math.min(4, Math.max(0, Number(pData.houses) || 0)), // Chặn triệt để cấp 99
-          };
-        }
-      }
-      sanitized.propertiesState = sanitizedProps;
-    } else {
-      sanitized.propertiesState = currentGS.propertiesState || {};
+  socket.on('game_action', (action, callback) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.status !== 'playing') return callback?.({ success: false, message: 'Phòng chưa bắt đầu.' });
+    try {
+      room.gameState = reduceGameAction(room.gameState, socket.playerId || socket.id, action);
+      io.to(room.code).emit('game_state_updated', room.gameState);
+      callback?.({ success: true, revision: room.gameState.revision });
+    } catch (error) {
+      socket.emit('game_state_updated', room.gameState);
+      callback?.({ success: false, message: error.message });
     }
+  });
 
-    // 2. Kiểm tra players: Chặn hack tiền vô lý (R01 & V3-02 Fix)
-    if (Array.isArray(updatedGameState.players)) {
-      const sanitizedPlayers = updatedGameState.players.map((p, idx) => {
-        const currentP = (currentGS.players || [])[idx] || {};
-        // Không cho phép tự ý bơm hàng chục/trăm triệu nếu không có căn cứ
-        const safeMoney = typeof p.money === 'number' && !Number.isNaN(p.money)
-          ? Math.min(100000000, p.money)
-          : currentP.money || 15000000;
-
-        return {
-          ...p,
-          money: safeMoney,
-          position: typeof p.position === 'number' ? Math.max(0, Math.min(39, p.position)) : 0,
-        };
-      });
-      sanitized.players = sanitizedPlayers;
-    } else {
-      sanitized.players = currentGS.players || [];
-    }
-
-    // 3. Kiểm tra xúc xắc (V3-02 Fix: Xúc xắc bắt buộc từ 1 đến 6)
-    if (Array.isArray(updatedGameState.dice) && updatedGameState.dice.length === 2) {
-      const d1 = Number(updatedGameState.dice[0]);
-      const d2 = Number(updatedGameState.dice[1]);
-      if (Number.isInteger(d1) && d1 >= 1 && d1 <= 6 && Number.isInteger(d2) && d2 >= 1 && d2 <= 6) {
-        sanitized.dice = [d1, d2];
-      } else {
-        sanitized.dice = currentGS.dice || [1, 1];
-      }
-    } else {
-      sanitized.dice = currentGS.dice || [1, 1];
-    }
-
-    // 4. Kiểm tra lượt chơi (V3-02 Fix: turnIndex không được vượt quá số người chơi, chặn 999)
-    const totalPlayers = (room.players && room.players.length) || (sanitized.players && sanitized.players.length) || 4;
-    if (typeof updatedGameState.turnIndex === 'number' && Number.isInteger(updatedGameState.turnIndex)) {
-      if (updatedGameState.turnIndex >= 0 && updatedGameState.turnIndex < totalPlayers) {
-        sanitized.turnIndex = updatedGameState.turnIndex;
-      } else {
-        sanitized.turnIndex = currentGS.turnIndex || 0;
-      }
-    } else {
-      sanitized.turnIndex = currentGS.turnIndex || 0;
-    }
-
-    // 5. Kiểm tra winner: Xác thực điều kiện thắng Business Tour thực tế từ propertiesState & players (V4 Fix)
-    if (updatedGameState.winner) {
-      const activePlayers = sanitized.players.filter((p) => !p.isBankrupt);
-      const isLegitSolitarySurvivor = activePlayers.length === 1 && activePlayers[0].id === updatedGameState.winner.id;
-      const verifiedVictory = checkBusinessTourVictory(sanitized.propertiesState || {}, sanitized.players || []);
-      const isLegitVictory = verifiedVictory && verifiedVictory.winner && verifiedVictory.winner.id === updatedGameState.winner.id;
-
-      if (isLegitSolitarySurvivor || isLegitVictory) {
-        sanitized.winner = {
-          ...updatedGameState.winner,
-          winReason: isLegitSolitarySurvivor ? 'Tất cả đối thủ đã phá sản! Người sống sót duy nhất!' : verifiedVictory.reason,
-        };
-      } else {
-        sanitized.winner = null; // Chặn client tự khai thắng giả mạo
-      }
-    } else {
-      sanitized.winner = null;
-    }
-
-    // 6. Bảo toàn gameLog (V3-01 Fix: gameLog luôn là mảng, không bao giờ bị undefined gây crash UI)
-    if (Array.isArray(updatedGameState.gameLog)) {
-      sanitized.gameLog = updatedGameState.gameLog;
-    } else if (Array.isArray(currentGS.gameLog)) {
-      sanitized.gameLog = currentGS.gameLog;
-    } else {
-      sanitized.gameLog = [];
-    }
-
-    // Các cờ điều khiển thông thường
-    if (typeof updatedGameState.hasRolled === 'boolean') sanitized.hasRolled = updatedGameState.hasRolled;
-    if (typeof updatedGameState.freeParkingPool === 'number') sanitized.freeParkingPool = updatedGameState.freeParkingPool;
-
-    // Cập nhật trạng thái phòng ván đấu
-    room.gameState = {
-      ...currentGS,
-      ...sanitized,
+  socket.on('send_trade_offer', (offer, callback) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.status !== 'playing' || !offer) return;
+    const verifiedOffer = {
+      id: randomUUID(), senderId: socket.playerId || socket.id, targetId: offer.targetId,
+      offerMoney: offer.offerMoney, demandMoney: offer.demandMoney,
+      offerTiles: offer.offerTiles, demandTiles: offer.demandTiles,
+      revision: room.gameState.revision, expiresAt: Date.now() + 60000,
     };
-
-    socket.to(code).emit('game_state_updated', sanitized);
+    const check = validateTradeOffer(verifiedOffer, room.gameState.players, room.gameState.propertiesState);
+    if (!check.valid) return callback?.({ success: false, message: check.reason });
+    if (!room.pendingOffers) room.pendingOffers = new Map();
+    for (const [id, item] of room.pendingOffers) {
+      if (item.expiresAt < Date.now() || item.senderId === (socket.playerId || socket.id)) room.pendingOffers.delete(id);
+    }
+    if (room.pendingOffers.size >= 20) return callback?.({ success: false, message: 'Có quá nhiều đề nghị đang chờ.' });
+    room.pendingOffers.set(verifiedOffer.id, verifiedOffer);
+    io.to('player:' + verifiedOffer.targetId).emit('trade_offer_received', verifiedOffer);
+    callback?.({ success: true, offerId: verifiedOffer.id });
   });
 
-  // R05, V3-04 & V4 Fix: Giao dịch trực tuyến qua Socket.IO có lưu và xác thực pending offer ID
-  socket.on('send_trade_offer', (offer) => {
-    const code = socket.roomCode;
-    const room = rooms.get(code);
-    if (!code || !room || !offer) return;
-
-    const offerId = offer.id || `offer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const verifiedOffer = { ...offer, id: offerId, senderId: socket.id };
-
-    if (!room.pendingOffers) room.pendingOffers = new Map();
-    room.pendingOffers.set(offerId, verifiedOffer);
-
-    socket.to(code).emit('trade_offer_received', verifiedOffer);
-  });
-
-  socket.on('respond_trade_offer', ({ offer, accept }) => {
-    const code = socket.roomCode;
-    const room = rooms.get(code);
-    if (!code || !room || !offer) return;
-
-    if (!room.pendingOffers) room.pendingOffers = new Map();
-    // V4 Fix: Chỉ chấp nhận đề nghị giao dịch đã tồn tại trong room.pendingOffers
-    const pendingOffer = offer.id ? room.pendingOffers.get(offer.id) : null;
-
-    if (!pendingOffer) {
-      console.warn(`[Trade Security] Từ chối: Đề nghị giao dịch ${offer?.id} không tồn tại hoặc đã hết hạn!`);
-      return;
+  socket.on('respond_trade_offer', (response, callback) => {
+    const room = rooms.get(socket.roomCode);
+    const pending = room?.pendingOffers?.get(response?.offer?.id);
+    if (!room || room.status !== 'playing' || !pending || (socket.playerId || socket.id) !== pending.targetId) {
+      return callback?.({ success: false, message: 'Đề nghị không hợp lệ hoặc đã hết hạn.' });
     }
-
-    if (socket.id !== pendingOffer.targetId) {
-      console.warn(`[Trade Security] Từ chối: Socket ${socket.id} không phải là target (${pendingOffer.targetId}) của giao dịch!`);
-      return;
+    room.pendingOffers.delete(pending.id);
+    if (pending.expiresAt < Date.now() || pending.revision !== room.gameState.revision || typeof response.accept !== 'boolean') {
+      return callback?.({ success: false, message: 'Ván đấu đã thay đổi; hãy gửi lại đề nghị.' });
     }
-
-    // Xóa offer sau khi đã phản hồi để không bị tái sử dụng
-    room.pendingOffers.delete(offer.id);
-
-    io.to(code).emit('trade_offer_responded', { offer: pendingOffer, accept });
+    try {
+      if (response.accept) room.gameState = applySessionTrade(room.gameState, pending);
+      io.to(room.code).emit('trade_offer_responded', { offer: pending, accept: response.accept });
+      if (response.accept) io.to(room.code).emit('game_state_updated', room.gameState);
+      callback?.({ success: true });
+    } catch (error) { callback?.({ success: false, message: error.message }); }
   });
 
   // 6. Chat & Biểu cảm
-  socket.on('send_chat', ({ message, senderName, token }) => {
+  socket.on('send_chat', (payload) => {
     const code = socket.roomCode;
-    if (!code) return;
+    const room = rooms.get(code);
+    const player = room?.players.find(p => p.id === (socket.playerId || socket.id));
+    if (!player || typeof payload?.message !== 'string' || !payload.message.trim()) return;
 
     const msgObj = {
       id: Date.now() + Math.random().toString(),
-      senderName,
-      token,
-      message,
+      senderName: player.name,
+      token: player.token,
+      message: payload.message.trim().slice(0, 500),
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -327,31 +299,12 @@ io.on('connection', (socket) => {
   });
 
   // 7. Rời phòng / Mất kết nối
-  socket.on('disconnect', () => {
-    const code = socket.roomCode;
-    if (!code) return;
+  socket.on('disconnect', () => leaveRoom(socket, false));
 
-    const room = rooms.get(code);
-    if (!room) return;
-
-    room.players = room.players.filter(p => p.id !== socket.id);
-
-    if (room.players.length === 0) {
-      rooms.delete(code);
-    } else {
-      if (room.hostId === socket.id) {
-        room.hostId = room.players[0].id;
-        room.players[0].isHost = true;
-        room.players[0].isReady = true;
-      }
-      io.to(code).emit('room_updated', room);
-      io.to(code).emit('player_left', { playerId: socket.id });
-    }
-  });
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', activeRooms: rooms.size, timestamp: new Date() });
+  res.json({ status: 'ok', protocol: 'actions-v1', activeRooms: rooms.size, timestamp: new Date() });
 });
 
 // Không fallback cho các file asset lỗi để tránh trả về HTML khi trình duyệt yêu cầu JS/CSS
@@ -370,6 +323,7 @@ app.use((req, res) => {
 });
 
 httpServer.listen(PORT, () => {
+  process.send?.({ port: httpServer.address().port });
   console.log(`===============================================`);
   console.log(`🎲 Máy chủ Cờ Tỷ Phú đã sẵn sàng!`);
   console.log(`🚀 Chạy tại cổng: http://localhost:${PORT}`);

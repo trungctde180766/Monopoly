@@ -64,7 +64,7 @@ export function calculateRent(tile, propertiesState, diceTotal = 7) {
 
 // Tính chi phí mua / nâng cấp theo 4 cấp bậc chuẩn Business Tour
 export function calculateBuildTierCost(tile, currentHouses = 0, targetTier = 1, isNewPurchase = false) {
-  if (!tile || targetTier < 1 || targetTier > 4) return 0;
+  if (!tile || !Number.isInteger(targetTier) || targetTier < 1 || targetTier > 4) return 0;
   const housePrice = tile.housePrice || 500000;
   if (isNewPurchase) {
     // Mua mới đất kèm xây dựng:
@@ -80,7 +80,58 @@ export function calculateBuildTierCost(tile, currentHouses = 0, targetTier = 1, 
   }
 }
 
-// Kiểm tra điều kiện có thể xây nhà & Landmark trên ô đất chuẩn Business Tour (H01 & H02 Fix)
+// A landing grants one decision. Buying/upgrading consumes it; reopening a modal cannot renew it.
+export function createBuildOpportunity(player, tileId, propertiesState, id = `${player.id}:${tileId}:${Date.now()}:${Math.random()}`) {
+  const tile = BOARD_TILES[tileId];
+  const prop = propertiesState[tileId];
+  if (!tile || !['property', 'railroad', 'utility'].includes(tile.type) ||
+      (prop?.owner && prop.owner !== player.id) || prop?.isMortgaged) return null;
+  if (prop?.owner && (tile.type !== 'property' || prop.houses >= 4)) return null;
+  return { id, tileId, tierAtLanding: prop?.houses || 0, ownerAtLanding: prop?.owner || null, consumed: false };
+}
+
+export function validateBuildAction(tileId, targetTier, propertiesState, players, playerId, opportunityId) {
+  const tile = BOARD_TILES[tileId];
+  const player = players.find(p => p.id === playerId);
+  const prop = propertiesState[tileId];
+  const fail = reason => ({ can: false, reason });
+  if (!tile || !['property', 'railroad', 'utility'].includes(tile.type)) return fail('Không phải tài sản có thể mua/xây');
+  if (!player || player.isBankrupt) return fail('Người chơi không hợp lệ');
+  if (player.position !== tileId) return fail('Chỉ được xây dựng/nâng cấp khi đang đứng tại chính ô đất này!');
+  if (prop?.owner && prop.owner !== playerId) return fail('Bạn không sở hữu ô đất này');
+  if (prop?.isMortgaged) return fail('Khu đất đang bị thế chấp');
+  const opportunity = player.buildOpportunity;
+  if (!opportunity || opportunity.consumed || opportunity.tileId !== tileId ||
+      (opportunityId !== undefined && opportunity.id !== opportunityId)) return fail('Lần ghé này đã dùng quyền xây hoặc chưa có quyền xây');
+  if (!Number.isInteger(targetTier) || targetTier < 1 || targetTier > 4) return fail('Cấp nhà phải là số nguyên từ 1 đến 4');
+  const isNew = !prop?.owner;
+  const currentHouses = prop?.houses || 0;
+  if (tile.type !== 'property') {
+    if (!isNew || targetTier !== 1) return fail('Ga tàu và tiện ích không thể nâng nhà');
+  } else {
+    if (targetTier <= currentHouses) return fail('Cấp mới phải cao hơn cấp hiện tại');
+    if (targetTier === 4 && (isNew || opportunity.ownerAtLanding !== playerId || opportunity.tierAtLanding !== 3 || currentHouses !== 3)) {
+      return fail('Landmark cần Biệt Thự cấp 3 từ trước lần ghé này; hãy quay lại ô đất');
+    }
+  }
+  const cost = tile.type === 'property' ? calculateBuildTierCost(tile, currentHouses, targetTier, isNew) : tile.price;
+  if (!Number.isFinite(player.money) || player.money < cost) return { can: false, cost, reasonCode: 'funds', reason: 'Không đủ tiền nâng cấp' };
+  return { can: true, cost, nextHouses: tile.type === 'property' ? targetTier : 0 };
+}
+
+export function applyBuildAction(tileId, targetTier, propertiesState, players, playerId, opportunityId) {
+  const check = validateBuildAction(tileId, targetTier, propertiesState, players, playerId, opportunityId);
+  if (!check.can) return check;
+  return {
+    ...check,
+    players: players.map(p => p.id === playerId ? {
+      ...p, money: p.money - check.cost, buildOpportunity: { ...p.buildOpportunity, consumed: true },
+    } : p),
+    propertiesState: { ...propertiesState, [tileId]: { ...propertiesState[tileId], owner: playerId, houses: check.nextHouses, isMortgaged: false } },
+  };
+}
+
+// Owned-property upgrade convenience wrapper, sharing the same validator as purchases and bots.
 export function canBuildHouse(tileId, propertiesState, players, playerId) {
   const tile = BOARD_TILES[tileId];
   if (!tile || tile.type !== 'property') return { can: false, reason: 'Không phải ô đất có thể xây dựng' };
@@ -92,19 +143,28 @@ export function canBuildHouse(tileId, propertiesState, players, playerId) {
   const player = players.find(p => p.id === playerId);
   if (!player) return { can: false, reason: 'Không tìm thấy thông tin người chơi' };
 
-  // H02 Fix: Chỉ cho phép xây dựng/nâng cấp khi đang đứng tại chính ô đất đó
-  if (player.position !== undefined && player.position !== tileId) {
-    return { can: false, reason: 'Chỉ được xây dựng/nâng cấp khi đang đứng tại chính ô đất này!' };
-  }
-
-  if (player.money < tile.housePrice) return { can: false, reason: 'Không đủ tiền nâng cấp' };
-
   const currentHouses = prop.houses || 0;
   if (currentHouses >= 4) {
     return { can: false, reason: 'Đã đạt cấp tối đa: Khách Sạn / Kỳ Quan (Bất khả xâm phạm, không thể bị phá hủy hay cướp)' };
   }
 
-  return { can: true, cost: tile.housePrice, nextHouses: currentHouses + 1 };
+  return validateBuildAction(tileId, currentHouses + 1, propertiesState, players, playerId);
+}
+
+export function validateTradeOffer(offer, players, propertiesState) {
+  if (!offer || offer.senderId === offer.targetId) return { valid: false, reason: 'Hai bên giao dịch phải khác nhau' };
+  const sender = players.find(p => p.id === offer.senderId && !p.isBankrupt);
+  const target = players.find(p => p.id === offer.targetId && !p.isBankrupt);
+  if (!sender || !target) return { valid: false, reason: 'Người giao dịch không hợp lệ' };
+  for (const [moneyKey, tilesKey, owner] of [['offerMoney', 'offerTiles', sender], ['demandMoney', 'demandTiles', target]]) {
+    const money = offer[moneyKey];
+    const tiles = offer[tilesKey];
+    if (!Number.isSafeInteger(money) || money < 0 || money > owner.money) return { valid: false, reason: 'Tiền giao dịch phải nguyên, không âm và trong số dư hiện có' };
+    if (!Array.isArray(tiles) || new Set(tiles).size !== tiles.length || tiles.some(id => !Number.isInteger(id) || !BOARD_TILES[id] || propertiesState[id]?.owner !== owner.id)) {
+      return { valid: false, reason: 'Tài sản giao dịch không hợp lệ hoặc đã đổi chủ' };
+    }
+  }
+  return { valid: true };
 }
 
 // Tính giá cướp đất (Buyout) chuẩn Business Tour: 2x giá đất + giá công trình hiện tại
@@ -159,7 +219,7 @@ export function checkBusinessTourVictory(propertiesState, players) {
   return null;
 }
 
-// Kiểm tra điều kiện bán nhà (quy tắc dỡ đồng đều)
+// Cities build independently in this ruleset, so liquidation is independent too.
 export function canSellHouse(tileId, propertiesState, playerId) {
   const tile = BOARD_TILES[tileId];
   if (!tile || tile.type !== 'property') return { can: false, reason: 'Không phải ô đất' };
@@ -169,15 +229,6 @@ export function canSellHouse(tileId, propertiesState, playerId) {
 
   const currentHouses = prop.houses || 0;
   if (currentHouses <= 0) return { can: false, reason: 'Không có nhà để bán' };
-
-  // Quy tắc dỡ đồng đều: số nhà ô này không được nhỏ hơn max các ô khác trong nhóm
-  const groupTiles = BOARD_TILES.filter(t => t.group === tile.group);
-  const houseCounts = groupTiles.map(t => propertiesState[t.id]?.houses || 0);
-  const maxHouses = Math.max(...houseCounts);
-
-  if (currentHouses < maxHouses) {
-    return { can: false, reason: 'Cần dỡ nhà đồng đều trên tất cả các ô trong nhóm màu' };
-  }
 
   // Bán lại cho ngân hàng với 50% giá mua
   return { can: true, refund: Math.floor(tile.housePrice / 2) };
@@ -194,13 +245,8 @@ export function canMortgage(tileId, propertiesState, playerId) {
   if (!prop || prop.owner !== playerId) return { can: false, reason: 'Bạn không sở hữu tài sản này' };
   if (prop.isMortgaged) return { can: false, reason: 'Tài sản đã được thế chấp' };
 
-  // Nếu là ô đất, tất cả nhà trong nhóm màu phải được bán hết trước khi thế chấp
-  if (tile.type === 'property') {
-    const groupTiles = BOARD_TILES.filter(t => t.group === tile.group);
-    const totalHouses = groupTiles.reduce((sum, t) => sum + (propertiesState[t.id]?.houses || 0), 0);
-    if (totalHouses > 0) {
-      return { can: false, reason: 'Phải bán hết toàn bộ nhà trong nhóm màu trước khi thế chấp' };
-    }
+  if (tile.type === 'property' && (prop.houses || 0) > 0) {
+    return { can: false, reason: 'Phải bán hết nhà trên chính ô đất này trước khi thế chấp' };
   }
 
   return { can: true, amount: tile.mortgageValue };

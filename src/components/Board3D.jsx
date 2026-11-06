@@ -1,57 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { BOARD_TILES, COLOR_GROUPS, TOKENS } from '../data/boardData.js';
-import { formatVND } from '../logic/gameEngine.js';
+import { formatVND, calculateRent } from '../logic/gameEngine.js';
 import { soundFX } from '../utils/soundFx.js';
 import { Eye, RotateCcw, Sparkles } from 'lucide-react';
 
-// Toạ độ 3D (X, Z) và góc quay của 40 ô
-export function getTile3DTransform(tileId) {
-  const halfSize = 10.5;
-  const edgeTileWidth = 1.9;
-
-  if (tileId === 0) {
-    return { x: halfSize, z: halfSize, rotY: -Math.PI / 4, isCorner: true, side: 'bottom' };
-  } else if (tileId > 0 && tileId < 10) {
-    const idx = tileId - 1;
-    const x = halfSize - 2.5 - idx * edgeTileWidth;
-    return { x, z: halfSize, rotY: 0, isCorner: false, side: 'bottom' };
-  } else if (tileId === 10) {
-    return { x: -halfSize, z: halfSize, rotY: Math.PI / 4, isCorner: true, side: 'left' };
-  } else if (tileId > 10 && tileId < 20) {
-    const idx = tileId - 11;
-    const z = halfSize - 2.5 - idx * edgeTileWidth;
-    return { x: -halfSize, z, rotY: Math.PI / 2, isCorner: false, side: 'left' };
-  } else if (tileId === 20) {
-    return { x: -halfSize, z: -halfSize, rotY: (3 * Math.PI) / 4, isCorner: true, side: 'top' };
-  } else if (tileId > 20 && tileId < 30) {
-    const idx = tileId - 21;
-    const x = -halfSize + 2.5 + idx * edgeTileWidth;
-    return { x, z: -halfSize, rotY: Math.PI, isCorner: false, side: 'top' };
-  } else if (tileId === 30) {
-    return { x: halfSize, z: -halfSize, rotY: -(3 * Math.PI) / 4, isCorner: true, side: 'right' };
-  } else {
-    const idx = tileId - 31;
-    const z = -halfSize + 2.5 + idx * edgeTileWidth;
-    return { x: halfSize, z, rotY: -Math.PI / 2, isCorner: false, side: 'right' };
-  }
-}
-
-// P01 & P02 Fix: Vector hướng quy hoạch ô bàn cờ (Inward hướng tâm bàn, Tangent tiếp tuyến cạnh)
-export function getTileLayoutVectors(side) {
-  switch (side) {
-    case 'bottom':
-      return { inward: { x: 0, z: -1 }, tangent: { x: 1, z: 0 } };
-    case 'left':
-      return { inward: { x: 1, z: 0 }, tangent: { x: 0, z: -1 } };
-    case 'top':
-      return { inward: { x: 0, z: 1 }, tangent: { x: -1, z: 0 } };
-    case 'right':
-      return { inward: { x: -1, z: 0 }, tangent: { x: 0, z: 1 } };
-    default:
-      return { inward: { x: 0, z: 0 }, tangent: { x: 1, z: 0 } };
-  }
-}
+import { getTile3DTransform, getTileLayoutVectors, getTokenLayout, sampleTokenHop } from '../logic/boardLayout.js';
+export { getTile3DTransform, getTileLayoutVectors } from '../logic/boardLayout.js';
 
 // Định dạng giá ngắn gọn chuẩn Business Tour (ví dụ: 200K, 495K, 2.4M)
 function formatShortPrice(num) {
@@ -67,7 +22,20 @@ function formatShortPrice(num) {
 }
 
 // Tạo texture chất lượng cao chuẩn Business Tour (G02: 512x760, chữ giá to 64px, tương phản cao)
-function createTileTexture(tile, isMortgaged, ownerColor) {
+function disposeObject(root) {
+  const resources = new Set();
+  root.traverse(obj => {
+    if (obj.geometry) resources.add(obj.geometry);
+    for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
+      if (!material) continue;
+      for (const value of Object.values(material)) if (value?.isTexture) resources.add(value);
+      resources.add(material);
+    }
+  });
+  resources.forEach(resource => resource.dispose());
+}
+
+function createTileTexture(tile, isMortgaged, ownerColor, displayPrice = tile.price) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = tile.id % 10 === 0 ? 512 : 760;
@@ -155,13 +123,8 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
     ctx.font = '900 48px sans-serif';
     ctx.textAlign = 'center';
 
-    const words = (tile.shortName || tile.name).split(' ');
-    if (words.length > 2) {
-      ctx.fillText(words.slice(0, 2).join(' '), canvas.width / 2, 235);
-      ctx.fillText(words.slice(2).join(' '), canvas.width / 2, 290);
-    } else {
-      ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 255);
-    }
+    // The inward zone belongs to buildings; the central strip keeps the city name clear.
+    ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 410, 460);
 
     if (tile.type === 'railroad') {
       ctx.font = '100px sans-serif';
@@ -181,10 +144,10 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
     }
 
     // Giá tiền ô đất ở mép ngoài (Chữ đen đậm cực lớn chuẩn Image 1: 200K, 495K, 2.4M)
-    if (tile.price) {
+    if (displayPrice !== undefined && displayPrice !== null) {
       ctx.fillStyle = '#000000';
-      ctx.font = '900 72px sans-serif';
-      ctx.fillText(formatShortPrice(tile.price), canvas.width / 2, 705);
+      ctx.font = '900 68px sans-serif';
+      ctx.fillText(displayPrice === 0 ? '0' : formatShortPrice(displayPrice), canvas.width / 2, 746);
     } else if (tile.taxAmount) {
       ctx.fillStyle = '#dc2626';
       ctx.font = '900 60px sans-serif';
@@ -699,9 +662,12 @@ export default function Board3D({
   const isDraggingRef = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
   const pointerDownPosition = useRef({ x: 0, y: 0 });
-  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 });
+  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 46 });
 
   // G05 Fix: Giữ ref isRolling thời gian thực cho vòng render loop
+  const activePlayerIdRef = useRef(activePlayerId);
+  activePlayerIdRef.current = activePlayerId;
+  const ownerColors = players.map(p => p.id + p.color).join('|');
   const isRollingRef = useRef(isRolling);
   useEffect(() => {
     isRollingRef.current = isRolling;
@@ -1006,60 +972,24 @@ export default function Board3D({
       }
 
       // HOẠT ẢNH QUÂN CỜ NHẢY TỪNG Ô (STEP-BY-STEP ARC HOPPING)
-      Object.entries(hoppingStateRef.current).forEach(([playerId, hopData]) => {
-        const tokenMesh = playerTokensRef.current[playerId];
-        if (!tokenMesh || hopData.currentStep >= hopData.totalSteps) return;
-
-        hopData.t += delta * 4.2; // Tốc độ bước nhảy
-
-        if (hopData.t >= 1) {
-          hopData.currentStep++;
-          hopData.t = 0;
-          soundFX.playStepHop(hopData.currentStep);
-
-          if (hopData.currentStep >= hopData.totalSteps) {
-            delete hoppingStateRef.current[playerId];
-            return;
-          }
+      Object.entries(hoppingStateRef.current).forEach(([playerId, hop]) => {
+        const token = playerTokensRef.current[playerId];
+        if (!token) { delete hoppingStateRef.current[playerId]; return; }
+        const frame = sampleTokenHop(hop, delta);
+        token.position.set(frame.x, frame.y, frame.z);
+        token.scale.setScalar(frame.scale);
+        if (frame.rotation !== undefined) token.rotation.y = frame.rotation;
+        if (frame.step !== undefined && frame.step !== hop.lastSoundStep) {
+          soundFX.playStepHop(frame.step + 1); hop.lastSoundStep = frame.step;
         }
-
-        const fromTileId = (hopData.fromPos + hopData.currentStep) % 40;
-        const toTileId = (hopData.fromPos + hopData.currentStep + 1) % 40;
-        const fromTransform = getTile3DTransform(fromTileId);
-        const toTransform = getTile3DTransform(toTileId);
-
-        const progress = Math.min(1, Math.max(0, hopData.t));
-        const offX = hopData.offX || 0;
-        const offZ = hopData.offZ || 0;
-        tokenMesh.position.x = THREE.MathUtils.lerp(fromTransform.x, toTransform.x, progress) + offX;
-        tokenMesh.position.z = THREE.MathUtils.lerp(fromTransform.z, toTransform.z, progress) + offZ;
-
-        // Xoay hướng mặt nhân vật theo chiều di chuyển
-        const dx = toTransform.x - fromTransform.x;
-        const dz = toTransform.z - fromTransform.z;
-        if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
-          tokenMesh.rotation.y = Math.atan2(dx, dz);
-        }
-
-        // Đường cung Parabol nảy lên cao
-        const arcHeight = 1.45;
-        tokenMesh.position.y = 0.25 + 4 * arcHeight * progress * (1 - progress);
-
-        // Hiệu ứng Squash & Stretch
-        if (progress < 0.2) {
-          tokenMesh.scale.set(0.82, 1.3, 0.82);
-        } else if (progress > 0.8) {
-          tokenMesh.scale.set(1.25, 0.72, 1.25);
-        } else {
-          tokenMesh.scale.set(1, 1, 1);
-        }
+        if (frame.done) delete hoppingStateRef.current[playerId];
       });
 
       // Nhịp đập phát sáng của quân cờ đang chờ đến lượt
       Object.entries(playerTokensRef.current).forEach(([playerId, tokenMesh]) => {
         if (!hoppingStateRef.current[playerId]) {
-          tokenMesh.scale.set(1, 1, 1);
-          if (playerId === activePlayerId) {
+          tokenMesh.scale.setScalar(tokenMesh.userData.layoutScale || 0.65);
+          if (playerId === activePlayerIdRef.current) {
             tokenMesh.position.y = 0.25 + Math.abs(Math.sin(elapsed * 6)) * 0.35;
             tokenMesh.rotation.y += delta * 2;
           } else {
@@ -1078,9 +1008,12 @@ export default function Board3D({
       const newHeight = container.clientHeight || window.innerHeight;
       camera.aspect = newWidth / newHeight;
       camera.updateProjectionMatrix();
+      updateCameraPosition();
       renderer.setSize(newWidth, newHeight);
     };
     window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
 
     return () => {
       cancelAnimationFrame(animationFrameRef.current);
@@ -1089,6 +1022,8 @@ export default function Board3D({
       window.removeEventListener('pointerup', handlePointerUp);
       container.removeEventListener('wheel', handleWheel);
       window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+      disposeObject(scene);
       renderer.dispose();
     };
   }, []);
@@ -1110,33 +1045,40 @@ export default function Board3D({
     if (die1MeshRef.current && dice[0]) {
       const oldMat = die1MeshRef.current.material;
       die1MeshRef.current.material = createDiceMaterials(dice[0]);
-      if (Array.isArray(oldMat)) oldMat.forEach((m) => m?.dispose());
+      if (Array.isArray(oldMat)) oldMat.forEach((m) => { m?.map?.dispose(); m?.dispose(); });
       else oldMat?.dispose();
     }
     if (die2MeshRef.current && dice[1]) {
       const oldMat = die2MeshRef.current.material;
       die2MeshRef.current.material = createDiceMaterials(dice[1]);
-      if (Array.isArray(oldMat)) oldMat.forEach((m) => m?.dispose());
+      if (Array.isArray(oldMat)) oldMat.forEach((m) => { m?.map?.dispose(); m?.dispose(); });
       else oldMat?.dispose();
     }
   }, [dice]);
+
+  // Repaint only tiles whose visible ownership, mortgage or rent has changed.
+  useEffect(() => {
+    for (const tile of BOARD_TILES) {
+      const mesh = tilesMeshesRef.current[tile.id];
+      if (!mesh) continue;
+      const prop = propertiesState[tile.id];
+      const ownerColor = players.find(p => p.id === prop?.owner)?.color || null;
+      const price = prop?.owner ? calculateRent(tile, propertiesState, dice[0] + dice[1]) : tile.price;
+      const key = JSON.stringify([ownerColor, !!prop?.isMortgaged, price]);
+      if (mesh.userData.textureKey === key) continue;
+      const material = mesh.material[2];
+      material.map?.dispose();
+      material.map = createTileTexture(tile, !!prop?.isMortgaged, ownerColor, price);
+      material.needsUpdate = true;
+      mesh.userData.textureKey = key;
+    }
+  }, [propertiesState, ownerColors, dice]);
 
   // Cập nhật Nhà và Khách Sạn 3D theo 4 cấp bậc chuẩn Business Tour (kèm giải phóng tài nguyên GPU)
   useEffect(() => {
     if (!buildingsGroupRef.current) return;
     const group = buildingsGroupRef.current;
-    group.traverse((obj) => {
-      if (obj.isMesh) {
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach((m) => m?.dispose());
-          } else {
-            obj.material?.dispose();
-          }
-        }
-      }
-    });
+    disposeObject(group);
     group.clear();
 
     BOARD_TILES.forEach((tile) => {
@@ -1186,89 +1128,39 @@ export default function Board3D({
         group.add(fest);
       }
     });
-  }, [propertiesState, players]);
+  }, [propertiesState, ownerColors]);
 
   // Cập nhật vị trí và kích hoạt bước nhảy Step-by-Step
   useEffect(() => {
     if (!sceneRef.current) return;
     const scene = sceneRef.current;
-
-    players.forEach((p) => {
+    for (const p of players) {
       if (p.isBankrupt) {
-        if (playerTokensRef.current[p.id]) {
-          scene.remove(playerTokensRef.current[p.id]);
-          delete playerTokensRef.current[p.id];
-        }
-        return;
+        const old = playerTokensRef.current[p.id];
+        if (old) { scene.remove(old); disposeObject(old); delete playerTokensRef.current[p.id]; }
+        delete hoppingStateRef.current[p.id];
+        continue;
       }
-
-      let tokenMesh = playerTokensRef.current[p.id];
-      if (!tokenMesh) {
-        tokenMesh = createTokenMesh(p.token, p.color);
-        scene.add(tokenMesh);
-        playerTokensRef.current[p.id] = tokenMesh;
-      }
-
-      const prevPos = lastRecordedPositionsRef.current[p.id];
-      const newPos = p.position || 0;
-
-      // P02 & P03 Fix: Chia slot riêng cho quân cờ (token lane) và hỗ trợ 1-6 người chơi không trùng tọa độ
-      const transform = getTile3DTransform(newPos);
-      let offX = 0;
-      let offZ = 0;
-
-      if (transform.isCorner) {
-        // Với ô góc 2.8x2.8: phân bố quân cờ xoay vòng theo số người thực tế đang đứng tại ô này
-        const occupants = players.filter((pl) => !pl.isBankrupt && (pl.position || 0) === newPos);
-        const occIdx = occupants.findIndex((pl) => pl.id === p.id);
-        const totalOcc = Math.max(1, occupants.length);
-        const angle = (occIdx * 2 * Math.PI) / totalOcc;
-        const radius = totalOcc > 1 ? 0.65 : 0;
-        offX = Math.cos(angle) * radius;
-        offZ = Math.sin(angle) * radius;
+      let token = playerTokensRef.current[p.id];
+      if (!token) { token = createTokenMesh(p.token, p.color); scene.add(token); playerTokensRef.current[p.id] = token; }
+      const newPos = p.position || 0, previous = lastRecordedPositionsRef.current[p.id];
+      const occupants = players.filter(x => !x.isBankrupt && (x.position || 0) === newPos);
+      const layout = getTokenLayout(newPos, occupants.findIndex(x => x.id === p.id), occupants.length);
+      token.userData.layoutScale = layout.scale;
+      const steps = previous === undefined ? 0 : (newPos - previous + 40) % 40;
+      if (previous !== undefined && previous !== newPos && steps > 0 && steps <= 12) {
+        hoppingStateRef.current[p.id] = {
+          fromPos: previous, totalSteps: steps, progress: 0,
+          fromPosition: { x: token.position.x, z: token.position.z }, targetLayout: layout,
+        };
+      } else if (hoppingStateRef.current[p.id] && previous === newPos) {
+        hoppingStateRef.current[p.id].targetLayout = layout;
       } else {
-        // Với ô cạnh 1.8x2.7: đặt tại lane quân cờ (lùi về phía ngoài 0.45 để tách biệt hoàn toàn với nhà 0.52)
-        const { inward, tangent } = getTileLayoutVectors(transform.side);
-        const occupants = players.filter((pl) => !pl.isBankrupt && (pl.position || 0) === newPos);
-        const occIdx = occupants.findIndex((pl) => pl.id === p.id);
-        const totalOcc = Math.max(1, occupants.length);
-
-        let tangentOffset = 0;
-        if (totalOcc === 2) {
-          tangentOffset = occIdx === 0 ? -0.32 : 0.32;
-        } else if (totalOcc === 3) {
-          tangentOffset = (occIdx - 1) * 0.40;
-        } else if (totalOcc >= 4) {
-          const spacing = 1.1 / (totalOcc - 1);
-          tangentOffset = -0.55 + occIdx * spacing;
-        }
-
-        const laneDist = 0.45;
-        offX = -inward.x * laneDist + tangent.x * tangentOffset;
-        offZ = -inward.z * laneDist + tangent.z * tangentOffset;
+        delete hoppingStateRef.current[p.id];
+        token.position.set(layout.x, 0.25, layout.z); token.scale.setScalar(layout.scale);
       }
-
-      if (prevPos !== undefined && prevPos !== newPos) {
-        let steps = (newPos - prevPos + 40) % 40;
-        if (steps > 0 && steps <= 12) {
-          hoppingStateRef.current[p.id] = {
-            fromPos: prevPos,
-            toPos: newPos,
-            currentStep: 0,
-            totalSteps: steps,
-            t: 0,
-            offX,
-            offZ,
-          };
-        } else {
-          tokenMesh.position.set(transform.x + offX, 0.25, transform.z + offZ);
-        }
-      } else if (prevPos === undefined) {
-        tokenMesh.position.set(transform.x + offX, 0.25, transform.z + offZ);
-      }
-
       lastRecordedPositionsRef.current[p.id] = newPos;
-    });
+    }
   }, [players, activePlayerId]);
 
   return (
@@ -1279,7 +1171,7 @@ export default function Board3D({
       <div className="absolute top-[125px] left-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300 shadow-lg">
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 };
+            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 46 };
             updateCameraPosition();
           }}
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
@@ -1289,7 +1181,7 @@ export default function Board3D({
         </button>
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: 0, phi: 0.05, radius: 36 };
+            cameraAnglesRef.current = { theta: 0, phi: 0.05, radius: 40 };
             updateCameraPosition();
           }}
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"

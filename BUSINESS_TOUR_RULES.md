@@ -1,6 +1,6 @@
-# BẢN ĐẶC TẢ LUẬT CHƠI CHUẨN BUSINESS TOUR & KẾ HOẠCH NÂNG CẤP
+# RULESET ARCADE LẤY CẢM HỨNG BUSINESS TOUR
 
-Tài liệu này tổng hợp chi tiết luật chơi thực tế của game **Business Tour (Steam / Mobile)** và ánh xạ vào hệ thống game Cờ Tỷ Phú Việt Nam:
+Tài liệu mô tả quy tắc của dự án Cờ Tỷ Phú Việt Nam, không chứng nhận khớp toàn bộ Business Tour hiện hành. Mốc tham chiếu và phần chưa xác minh nằm trong review V4/V5.
 
 ---
 
@@ -8,11 +8,11 @@ Tài liệu này tổng hợp chi tiết luật chơi thực tế của game **B
 Trong Business Tour, người chơi không bị gò bó bởi quy tắc Monopoly cổ điển (không cần gom đủ cả nhóm màu mới được xây, không cần xây đồng đều):
 
 1. **Nhà Cấp 1 (Cottage)**: Nhà 1 tầng mái dốc, tiền thuê khởi điểm.
-2. **Nhà Cấp 2 (House)**: Nhà 2 tầng, tiền thuê tăng gấp đôi.
+2. **Nhà Cấp 2 (House)**: Nhà 2 tầng, tiền thuê tăng theo bảng giá của ô đất.
 3. **Nhà Cấp 3 (Villa)**: Biệt thự sang trọng, tiền thuê cực lớn.
 4. **Khách Sạn / Kỳ Quan (Hotel / Landmark - Cấp 4)**:
    - **BẤT KHẢ XÂM PHẠM**: Khi ô đất đã lên Khách Sạn / Landmark, đối thủ **HOÀN TOÀN KHÔNG THỂ CƯỚP ĐẤT (BUYOUT)** hoặc phá hủy bằng bất kỳ cách nào!
-   - Người chơi có thể lựa chọn mua thẳng từ Cấp 1 đến Cấp 4 ngay khi mua đất hoặc khi đáp lại vào đất của mình, tùy thuộc vào số tiền trong ví.
+   - Mua mới chọn Cấp 1–3 nếu đủ tiền. Landmark cần đã sở hữu Cấp 3 từ trước lần đáp hiện tại, rồi ghé lại mới nâng. Mỗi lần đáp có một quyền xây, xác nhận hoặc bỏ qua sẽ dùng hết quyền đó. Sổ Đỏ không cấp quyền xây mới.
 
 ---
 
@@ -54,3 +54,7 @@ Trong Business Tour, người chơi không bị gò bó bởi quy tắc Monopoly
   - Lễ hội (Festival) cắm cờ và khán đài thể thao phát sáng.
 - **HUD 4 Góc**: Avatar hoạt hình vuông bo tròn sát viền màn hình, banner màu pastel, hộp tiền mặt và con dấu đóng đỏ `BANKRUPT` khi phá sản.
 
+
+## Thanh lý và online
+
+Bán nhà và thế chấp xét riêng từng thành phố: bán hết nhà trên chính ô định thế chấp, không khóa bởi công trình của đối thủ trong cùng nhóm màu. Online dùng game_action có revision; server tính xúc xắc, số dư, ownership và winner. Xem [hướng dẫn deploy](DEPLOY_ONLINE.md).

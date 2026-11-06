@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Volume2, VolumeX, ShieldAlert, Coins, History, ArrowRight, RotateCcw, Home, Gavel, DollarSign, Music } from 'lucide-react';
 import { BOARD_TILES, CHANCE_CARDS, COMMUNITY_CHEST_CARDS, INITIAL_MONEY, JAIL_FINE, GO_REWARD, TOKENS } from './data/boardData.js';
-import { calculateRent, canBuildHouse, canSellHouse, canMortgage, canUnmortgage, calculateNetWorth, formatVND, calculateMaxLiquidatable, calculateBuyoutPrice, checkBusinessTourVictory } from './logic/gameEngine.js';
+import { calculateRent, createBuildOpportunity, applyBuildAction, validateTradeOffer, canBuildHouse, canSellHouse, canMortgage, canUnmortgage, calculateNetWorth, formatVND, calculateMaxLiquidatable, calculateBuyoutPrice, checkBusinessTourVictory } from './logic/gameEngine.js';
 import { AIEngine } from './logic/aiEngine.js';
 import { soundFX } from './utils/soundFx.js';
 
@@ -103,6 +103,10 @@ export default function App() {
 
   // Online Multiplayer State
   const socketRef = useRef(null);
+  const onlineStateRef = useRef(null);
+  const onlinePlayerIdRef = useRef(null);
+  const [onlineActionPending, setOnlineActionPending] = useState(false);
+  const [onlineError, setOnlineError] = useState('');
   const [room, setRoom] = useState(null);
   const [socketId, setSocketId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
@@ -113,18 +117,36 @@ export default function App() {
   useEffect(() => {
     const socketServerUrl = import.meta.env.VITE_SOCKET_URL || undefined;
     const socket = io(socketServerUrl, {
+      path: import.meta.env.VITE_SOCKET_PATH || '/socket.io',
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       setSocketId(socket.id);
       setSocketConnected(true);
+      let saved;
+      try { saved = JSON.parse(sessionStorage.getItem('monopoly-session') || 'null'); } catch { /* No stored session. */ }
+      if (saved?.resumeToken) socket.emit('resume_room', saved, response => {
+        if (!response?.success) {
+          try { sessionStorage.removeItem('monopoly-session'); } catch { /* Storage can be disabled. */ }
+          onlineStateRef.current = null; onlinePlayerIdRef.current = null;
+          setRoom(null); setScreen('lobby'); setOnlineActionPending(false);
+          setOnlineError(response?.message || 'Không thể khôi phục phiên chơi.'); return;
+        }
+        onlinePlayerIdRef.current = response.playerId;
+        setSocketId(response.playerId); setRoom(response.room); setOnlineError('');
+        if (response.gameState) { applyOnlineState(response.gameState); setGameMode('online'); setScreen('playing'); }
+        else setScreen('online_waiting');
+      });
     });
 
     socket.on('disconnect', () => {
       setSocketConnected(false);
+      if (onlineStateRef.current) setOnlineError('Mất kết nối. Đang thử nối lại phiên chơi trong 60 giây.');
     });
 
     socket.on('connect_error', () => {
@@ -135,42 +157,55 @@ export default function App() {
       setRoom(updatedRoom);
     });
 
+    const applyOnlineState = (state) => {
+      if (!state || !Array.isArray(state.players)) return;
+      onlineStateRef.current = state;
+      setPlayers(state.players); setPropertiesState(state.propertiesState || {});
+      setTurnIndex(state.turnIndex); setDice(state.dice || [1, 1]);
+      setHasRolled(Boolean(state.hasRolled)); setDoublesCount(state.doublesCount || 0);
+      setFreeParkingPool(state.freeParkingPool || 0);
+      setGameLog(Array.isArray(state.gameLog) ? state.gameLog : []);
+      setWinner(state.winner || null); setTotalTurnsCount(state.totalTurnsCount || 0);
+      if (state.startedAt) setElapsedSeconds(Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000)));
+      setCustomRules(state.customRules || {});
+      setIsRolling(false); setIsHopping(false);
+      setBuildModalTile(null); setBuyoutState(null); setFestivalModal(null);
+      setActiveCard(null); setShowJailModal(false); setPendingTradeOffer(null);
+      const p = state.players[state.turnIndex];
+      const decision = p?.id === onlinePlayerIdRef.current ? state.pendingDecision : null;
+      if (decision?.type === 'build') {
+        setBuildModalTile({
+          tile: BOARD_TILES[decision.tileId], player: p,
+          propState: state.propertiesState[decision.tileId] || null,
+          isNewPurchase: !state.propertiesState[decision.tileId]?.owner,
+        });
+      } else if (decision?.type === 'buyout') {
+        const prop = state.propertiesState[decision.tileId];
+        const tile = BOARD_TILES[decision.tileId];
+        setBuyoutState({ tile, player: p, owner: state.players.find(x => x.id === prop.owner), buyoutPrice: calculateBuyoutPrice(tile, prop) });
+      } else if (decision?.type === 'card') {
+        setActiveCard({ card: decision.card, type: decision.deckType, player: p });
+      } else if (decision?.type === 'festival') {
+        setFestivalModal({ player: p, ownedTiles: BOARD_TILES.filter(t => t.type === 'property' && state.propertiesState[t.id]?.owner === p.id).map(t => ({ ...t, houses: state.propertiesState[t.id].houses })) });
+      } else if (decision?.type === 'jail') setShowJailModal(true);
+    };
     socket.on('game_started', ({ gameState }) => {
-      setPlayers(gameState.players);
-      setPropertiesState(gameState.propertiesState);
-      setTurnIndex(gameState.turnIndex);
-      setFreeParkingPool(gameState.freeParkingPool);
-      setScreen('playing');
-      setGameMode('online');
+      applyOnlineState(gameState); setScreen('playing'); setGameMode('online');
     });
-
-    socket.on('game_state_updated', (incomingState) => {
-      if (!incomingState || typeof incomingState !== 'object') return;
-      if (Array.isArray(incomingState.players)) setPlayers(incomingState.players);
-      if (incomingState.propertiesState && typeof incomingState.propertiesState === 'object') {
-        setPropertiesState(incomingState.propertiesState);
-      }
-      if (typeof incomingState.turnIndex === 'number') setTurnIndex(incomingState.turnIndex);
-      if (Array.isArray(incomingState.dice)) setDice(incomingState.dice);
-      if (typeof incomingState.hasRolled === 'boolean') setHasRolled(incomingState.hasRolled);
-      if (typeof incomingState.freeParkingPool === 'number') setFreeParkingPool(incomingState.freeParkingPool);
-      // V3-01 Fix: gameLog luôn cập nhật nếu có, không bao giờ gán undefined gây crash UI
-      if (Array.isArray(incomingState.gameLog)) setGameLog(incomingState.gameLog);
-      if (incomingState.winner !== undefined) setWinner(incomingState.winner);
-    });
+    socket.on('game_state_updated', applyOnlineState);
 
     // R05 Fix: Nhận lời đề nghị giao dịch trực tuyến từ người chơi khác
     socket.on('trade_offer_received', (offer) => {
-      if (offer && offer.targetId === socket.id) {
+      if (offer && offer.targetId === onlinePlayerIdRef.current) {
         setPendingTradeOffer(offer);
         soundFX.playCardDraw();
       }
     });
 
-    // R05 & V3-04 Fix: Nhận kết quả phản hồi giao dịch trực tuyến (dùng executeTradeRef để không bị closure cũ)
+    // Online trade results are committed by the server and delivered as snapshots.
     socket.on('trade_offer_responded', ({ offer, accept }) => {
       if (accept) {
-        if (executeTradeRef.current) executeTradeRef.current(offer);
+        // Server applies online trades once, then broadcasts the resulting state.
         addLog(`🤝 Giao dịch trực tuyến đã được chấp thuận và thực hiện thành công!`);
       } else {
         const target = (playersRef.current || players).find((p) => p.id === offer.targetId);
@@ -234,23 +269,43 @@ export default function App() {
   };
 
   // Đồng bộ trạng thái sang socket (nếu ở chế độ Online)
-  const syncOnlineState = (updated) => {
-    if (gameMode === 'online' && socketRef.current && room) {
-      socketRef.current.emit('sync_game_state', {
-        players: updated.players || players,
-        propertiesState: updated.propertiesState || propertiesState,
-        turnIndex: updated.turnIndex !== undefined ? updated.turnIndex : turnIndex,
-        dice: updated.dice || dice,
-        hasRolled: updated.hasRolled !== undefined ? updated.hasRolled : hasRolled,
-        freeParkingPool: updated.freeParkingPool !== undefined ? updated.freeParkingPool : freeParkingPool,
-        gameLog: updated.gameLog || gameLog,
-        winner: updated.winner || winner,
-      });
+  // Online snapshots are produced only by the server. Local modes need no network sync.
+  const syncOnlineState = () => {};
+  const isMyOnlineTurn = gameMode !== 'online' || currentPlayer?.id === socketId;
+  const rememberOnlineSession = response => {
+    onlinePlayerIdRef.current = response.playerId;
+    setSocketId(response.playerId);
+    try { sessionStorage.setItem('monopoly-session', JSON.stringify({ roomCode: response.room.code, resumeToken: response.resumeToken })); } catch { /* Storage can be disabled. */ }
+  };
+  const leaveOnlineRoom = () => {
+    socketRef.current?.emit('leave_room', {});
+    onlineStateRef.current = null; onlinePlayerIdRef.current = null;
+    try { sessionStorage.removeItem('monopoly-session'); } catch { /* Storage can be disabled. */ }
+    setRoom(null); setScreen('lobby'); setOnlineError('');
+  };
+  const sendOnlineAction = (type, data = {}) => {
+    if (!socketRef.current?.connected || !onlineStateRef.current) {
+      setOnlineError('Mất kết nối máy chủ. Vui lòng kết nối lại trước khi chơi.'); return;
     }
+    if (onlineActionPending) return;
+    setOnlineActionPending(true); setOnlineError('');
+    socketRef.current.timeout(5000).emit('game_action', {
+      ...data, type, revision: onlineStateRef.current.revision,
+    }, (error, response) => {
+      setOnlineActionPending(false);
+      if (error || !response?.success) setOnlineError(response?.message || 'Máy chủ chưa phản hồi. Hãy thử lại.');
+    });
+  };
+  const skipBuildDecision = () => {
+    if (gameMode === 'online') { sendOnlineAction('skip'); return; }
+    setPlayers(prev => prev.map(p => p.id === currentPlayer?.id && p.buildOpportunity
+      ? { ...p, buildOpportunity: { ...p.buildOpportunity, consumed: true } } : p));
+    setBuildModalTile(null); setBuyoutState(null); setFestivalModal(null); setHasRolled(true);
   };
 
   // 1. BẮT ĐẦU CHƠI PASS & PLAY
   const handleStartPassAndPlay = ({ players: activePlayers, customRules: rules }) => {
+    setElapsedSeconds(0); setTotalTurnsCount(0);
     setPlayers(activePlayers);
     setCustomRules(rules);
     setGameMode('pass_play');
@@ -266,6 +321,7 @@ export default function App() {
 
   // 2. BẮT ĐẦU CHƠI NHANH VỚI BOTS
   const handleStartQuickBot = ({ freeParkingJackpot }) => {
+    setElapsedSeconds(0); setTotalTurnsCount(0);
     const defaultPlayers = [
       {
         id: 'player_user',
@@ -342,6 +398,7 @@ export default function App() {
       { hostName, token: hostToken, customRules: { freeParkingJackpot } },
       (res) => {
         if (res.success) {
+          rememberOnlineSession(res);
           setRoom(res.room);
           setScreen('online_waiting');
         }
@@ -354,6 +411,7 @@ export default function App() {
     if (!socketRef.current) return;
     socketRef.current.emit('join_room', { roomCode, playerName, token }, (res) => {
       if (res.success) {
+        rememberOnlineSession(res);
         setRoom(res.room);
         setScreen('online_waiting');
       } else {
@@ -365,32 +423,14 @@ export default function App() {
   // 5. CHỦ PHÒNG BẮT ĐẦU GAME ONLINE
   const handleHostStartGame = () => {
     if (!socketRef.current || !room) return;
-    const initialPlayers = room.players.map((p, idx) => ({
-      id: p.id,
-      name: p.name,
-      token: p.token,
-      color: p.color,
-      isBot: false,
-      money: INITIAL_MONEY,
-      position: 0,
-      inJail: false,
-      jailTurns: 0,
-      outOfJailCards: 0,
-      isBankrupt: false,
-    }));
-
-    const initialGameState = {
-      players: initialPlayers,
-      propertiesState: {},
-      turnIndex: 0,
-      freeParkingPool: 0,
-    };
-
-    socketRef.current.emit('start_game', initialGameState);
+    socketRef.current.emit('start_game', {}, response => {
+      if (!response?.success) setOnlineError(response?.message || 'Chưa thể bắt đầu ván đấu.');
+    });
   };
 
   // HÀNH ĐỘNG: ĐỔ XÚC XẮC
   const handleRollDice = () => {
+    if (gameMode === 'online') { sendOnlineAction('roll'); return; }
     if (isRolling || isHopping || hasRolled || !currentPlayer || currentPlayer.isBankrupt) return;
 
     // Kiểm tra nếu đang ở trong tù
@@ -471,6 +511,9 @@ export default function App() {
   const handleTileLanding = (tileId, player, isDoubles, currentPlayersList) => {
     const tile = BOARD_TILES[tileId];
     if (!tile) return;
+    player = { ...player, buildOpportunity: createBuildOpportunity(player, tileId, propertiesState) };
+    currentPlayersList = currentPlayersList.map(p => p.id === player.id ? player : p);
+    setPlayers(currentPlayersList);
 
     addLog(`📍 ${player.name} đặt chân tới: ${tile.name}`);
 
@@ -664,47 +707,22 @@ export default function App() {
 
   // XÁC NHẬN XÂY DỰNG / NÂNG CẤP THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR (F03 & F12 FIX)
   const handleConfirmBuildTier = (tileId, targetTier, totalCost, activeP = currentPlayer, playersList = players) => {
+    if (gameMode === 'online') {
+      sendOnlineAction('build', { tileId, targetTier, opportunityId: activeP?.buildOpportunity?.id }); return;
+    }
     const tile = BOARD_TILES[tileId];
-    if (!tile || !activeP) return;
-
-    // F12 Fix: Ga tàu và Tiện ích mua đứt không xây nhà
-    if (tile.type !== 'property') {
-      buyProperty(activeP.id, tileId, tile.price, playersList);
+    if (!tile || !activeP || currentPlayer?.id !== activeP.id) return;
+    const built = applyBuildAction(tileId, targetTier, propertiesState, playersList, activeP.id, activeP.buildOpportunity?.id);
+    if (!built.can) {
+      addLog('🔒 ' + built.reason);
+      if (activeP.isBot) setHasRolled(true);
       return;
     }
-
-    const prop = propertiesState[tileId];
-    const isNew = !prop?.owner;
-    const currentHouses = prop?.houses || 0;
-
-    // F03 & H01 Fix: Không cho phép hạ cấp, vượt quá cấp 4, hoặc mua thẳng Landmark lần đầu
-    if (targetTier <= currentHouses || targetTier > 4) return;
-    if (isNew && targetTier > 3) return; // Mua mới lần đầu chỉ được tối đa cấp 3
-    if (!isNew && currentHouses < 3 && targetTier === 4) return; // Landmark bắt buộc phải từ cấp 3 nâng lên
-    if (prop?.isMortgaged) return; // Không thể xây trên đất đang thế chấp
-
-    // Tính lại chi phí chuẩn xác từ engine, không phụ thuộc giá do UI truyền
-    const hPrice = tile.housePrice || 500000;
-    const neededUpgrade = isNew ? targetTier - 1 : targetTier - currentHouses;
-    const calculatedCost = (isNew ? tile.price : 0) + Math.max(0, neededUpgrade) * hPrice;
-
-    if (activeP.money < calculatedCost) return;
-
-    const isLandmark = targetTier >= 4;
-
-    const updatedPlayers = playersList.map((p) =>
-      p.id === activeP.id ? { ...p, money: p.money - calculatedCost } : p
-    );
-
-    const updatedProps = {
-      ...propertiesState,
-      [tileId]: {
-        ...propertiesState[tileId],
-        owner: activeP.id,
-        houses: targetTier,
-        isMortgaged: false,
-      },
-    };
+    const isNew = !propertiesState[tileId]?.owner;
+    const calculatedCost = built.cost;
+    const isLandmark = built.nextHouses === 4;
+    const updatedPlayers = built.players;
+    const updatedProps = built.propertiesState;
 
     setPlayers(updatedPlayers);
     setPropertiesState(updatedProps);
@@ -739,6 +757,7 @@ export default function App() {
 
   // ĐĂNG CAI LỄ HỘI / WORLD CHAMPIONSHIP
   const handleSelectFestivalCity = (tileId) => {
+    if (gameMode === 'online') { sendOnlineAction('festival', { tileId }); return; }
     const tile = BOARD_TILES[tileId];
     const updatedProps = {
       ...propertiesState,
@@ -757,6 +776,7 @@ export default function App() {
 
   // CƯỚP ĐẤT (BUYOUT) CHUẨN BUSINESS TOUR
   const executeBuyout = (buyerId, ownerId, tileId, price, currentList = players) => {
+    if (gameMode === 'online') { sendOnlineAction('buyout'); return; }
     const buyer = currentList.find((p) => p.id === buyerId);
     const owner = currentList.find((p) => p.id === ownerId);
     const tile = BOARD_TILES[tileId];
@@ -920,6 +940,7 @@ export default function App() {
 
   // XỬ LÝ KHI XÁC NHẬN THẺ CƠ HỘI / KHÍ VẬN
   const handleConfirmCard = () => {
+    if (gameMode === 'online') { sendOnlineAction('confirm_card'); return; }
     if (!activeCard) return;
     const { card, player } = activeCard;
     setActiveCard(null);
@@ -1068,10 +1089,11 @@ export default function App() {
 
   // THỰC THI GIAO DỊCH SAU KHI ĐỒNG THUẬN (F02, F13 & V3-04 Fix)
   const executeTrade = (tradeOffer, playersList = players) => {
+    if (gameMode === 'online') return;
+    const validation = validateTradeOffer(tradeOffer, playersList, propertiesState);
+    if (!validation.valid) { addLog('❌ ' + validation.reason); return; }
     const { senderId, targetId, offerMoney = 0, offerTiles = [], demandMoney = 0, demandTiles = [] } = tradeOffer;
-    const baseList = playersList && playersList.length > 0
-      ? playersList
-      : (players && players.length > 0 ? players : [{ id: senderId, name: 'Người Gửi', money: 15000000 }, { id: targetId, name: 'Người Nhận', money: 15000000 }]);
+    const baseList = playersList;
     const sender = baseList.find((p) => p.id === senderId);
     const target = baseList.find((p) => p.id === targetId);
     if (!sender || !target) return;
@@ -1126,11 +1148,6 @@ export default function App() {
 
     syncOnlineState({ players: updatedPlayers, propertiesState: propsCopy });
   };
-
-  const executeTradeRef = useRef(executeTrade);
-  useEffect(() => {
-    executeTradeRef.current = executeTrade;
-  }, [executeTrade]);
 
   // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI (R03 Fix: Theo dõi shortfall để chủ nợ nhận đủ 100% tiền thuê sau thanh lý)
   const transferMoney = (fromId, toId, amount, currentPlayersList = players) => {
@@ -1283,6 +1300,7 @@ export default function App() {
 
   // KẾT THÚC LƯỢT ĐI
   const handleEndTurn = () => {
+    if (gameMode === 'online') { sendOnlineAction('end_turn'); return; }
     if (!currentPlayer) return;
 
     if (currentPlayer.money < 0) {
@@ -1307,6 +1325,7 @@ export default function App() {
       loopGuard++;
     }
 
+    setPlayers(prev => prev.map(p => ({ ...p, buildOpportunity: null })));
     setTurnIndex(nextIdx);
     setHasRolled(false);
     setDoublesCount(0);
@@ -1410,10 +1429,15 @@ export default function App() {
     }
   }, [currentPlayer, hasRolled, isRolling, buildModalTile, auctionState, activeCard, screen]);
 
+  const errorNotice = onlineError && (
+    <div role="alert" className="fixed top-24 left-1/2 -translate-x-1/2 z-[80] max-w-md rounded-xl bg-red-950 px-4 py-3 text-sm text-white shadow-xl">
+      {onlineError}<button className="ml-3 underline" onClick={() => setOnlineError('')}>Đóng</button>
+    </div>
+  );
   // NẾU ĐANG Ở MÀN HÌNH LOBBY
   if (screen === 'lobby') {
     return (
-      <Lobby
+      <><Lobby
         onStartPassAndPlay={handleStartPassAndPlay}
         onStartQuickBot={handleStartQuickBot}
         onStartOnlineHost={handleStartOnlineHost}
@@ -1421,22 +1445,19 @@ export default function App() {
         isMuted={isMuted}
         onToggleMute={toggleMute}
         isSocketConnected={socketConnected}
-      />
+      />{errorNotice}</>
     );
   }
 
   // NẾU ĐANG Ở PHÒNG CHỜ ONLINE
   if (screen === 'online_waiting') {
     return (
-      <OnlineRoom
+      <><OnlineRoom
         room={room}
         currentSocketId={socketId}
         onToggleReady={() => socketRef.current?.emit('toggle_ready')}
         onStartGame={handleHostStartGame}
-        onLeaveRoom={() => {
-          socketRef.current?.disconnect();
-          setScreen('lobby');
-        }}
+        onLeaveRoom={leaveOnlineRoom}
         onSendChat={(msg) => {
           socketRef.current?.emit('send_chat', {
             message: msg,
@@ -1445,7 +1466,7 @@ export default function App() {
           });
         }}
         chatMessages={chatMessages}
-      />
+      />{errorNotice}</>
     );
   }
 
@@ -1602,7 +1623,7 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setScreen('lobby')}
+          onClick={() => gameMode === 'online' ? leaveOnlineRoom() : setScreen('lobby')}
           className="w-11 h-11 rounded-full bg-white/95 text-slate-600 hover:text-red-600 border-2 border-white shadow-lg flex items-center justify-center hover:bg-slate-50 transition active:scale-95 text-sm font-black"
           title="Rời Bàn"
         >
@@ -1665,7 +1686,7 @@ export default function App() {
           ) : !hasRolled ? (
             <button
               type="button"
-              disabled={isRolling || isHopping}
+              disabled={isRolling || isHopping || !isMyOnlineTurn || onlineActionPending}
               onClick={handleRollDice}
               className={`px-4 sm:px-8 py-2 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 sm:gap-2 shadow-xl active:scale-95 ${
                 isRolling || isHopping
@@ -1679,7 +1700,7 @@ export default function App() {
           ) : (
             <button
               type="button"
-              disabled={isHopping}
+              disabled={isHopping || !isMyOnlineTurn || onlineActionPending}
               onClick={handleEndTurn}
               className="px-4 sm:px-8 py-2 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-105 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 border-2 border-white"
             >
@@ -1758,6 +1779,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {errorNotice}
       {/* MODALS */}
       {viewDeedTile && (
         <DeedModal
@@ -1780,8 +1802,7 @@ export default function App() {
             setHasRolled(true);
           }}
           onSkip={() => {
-            setBuyoutState(null);
-            setHasRolled(true);
+            skipBuildDecision();
           }}
         />
       )}
@@ -1798,9 +1819,7 @@ export default function App() {
             handleConfirmBuildTier(buildModalTile.tile.id, targetTier, cost, buildModalTile.player)
           }
           onClose={() => {
-            addLog(`⏩ ${buildModalTile.player.name} không mua/xây tại ${buildModalTile.tile.name}.`);
-            setBuildModalTile(null);
-            setHasRolled(true);
+            skipBuildDecision();
           }}
         />
       )}
@@ -1812,8 +1831,7 @@ export default function App() {
           ownedTiles={festivalModal.ownedTiles}
           onSelectCity={(tileId) => handleSelectFestivalCity(tileId)}
           onClose={() => {
-            setFestivalModal(null);
-            setHasRolled(true);
+            skipBuildDecision();
           }}
         />
       )}
@@ -1830,6 +1848,7 @@ export default function App() {
         <JailModal
           player={currentPlayer}
           onPayFine={() => {
+            if (gameMode === 'online') { sendOnlineAction('jail', { method: 'pay' }); return; }
             setShowJailModal(false);
             const updated = players.map((p) =>
               p.id === currentPlayer.id
@@ -1840,6 +1859,7 @@ export default function App() {
             addLog(`💰 ${currentPlayer.name} nộp bảo lãnh ${formatVND(JAIL_FINE)} ra tù!`);
           }}
           onUseCard={() => {
+            if (gameMode === 'online') { sendOnlineAction('jail', { method: 'card' }); return; }
             setShowJailModal(false);
             const updated = players.map((p) =>
               p.id === currentPlayer.id
@@ -1850,6 +1870,7 @@ export default function App() {
             addLog(`🎟️ ${currentPlayer.name} dùng Thẻ Miễn Vào Tù để được tự do!`);
           }}
           onRollDoubles={() => {
+            if (gameMode === 'online') { sendOnlineAction('jail', { method: 'roll' }); return; }
             setShowJailModal(false);
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
@@ -1887,34 +1908,18 @@ export default function App() {
         />
       )}
 
-      {showManageModal && currentPlayer && (
+      {showManageModal && currentPlayer && isMyOnlineTurn && (
         <ManagePropertiesModal
           player={currentPlayer}
           players={players}
           propertiesState={propertiesState}
           onBuildHouse={(tileId) => {
-            const tile = BOARD_TILES[tileId];
-            const nextHouses = Math.min(4, (propertiesState[tileId]?.houses || 0) + 1);
-            const newProps = {
-              ...propertiesState,
-              [tileId]: { ...propertiesState[tileId], houses: nextHouses },
-            };
-            const newPlayers = players.map((p) =>
-              p.id === currentPlayer.id ? { ...p, money: p.money - tile.housePrice } : p
-            );
-            setPropertiesState(newProps);
-            setPlayers(newPlayers);
-            soundFX.playBuildHouse();
-            addLog(`🏠 ${currentPlayer.name} xây thêm nhà tại ${tile.name}.`);
-            setConstructionAlert({
-              player: currentPlayer.name,
-              tileName: tile.name,
-              type: nextHouses >= 4 ? 'hotel' : 'house'
-            });
-            setTimeout(() => setConstructionAlert(null), 3500);
-            syncOnlineState({ players: newPlayers, propertiesState: newProps });
+            const next = (propertiesState[tileId]?.houses || 0) + 1;
+            handleConfirmBuildTier(tileId, next, 0);
           }}
           onSellHouse={(tileId) => {
+            if (gameMode === 'online') { sendOnlineAction('sell_house', { tileId }); return; }
+            if (!canSellHouse(tileId, propertiesState, currentPlayer.id).can) return;
             const tile = BOARD_TILES[tileId];
             const refund = Math.floor(tile.housePrice / 2);
             const newProps = {
@@ -1944,6 +1949,8 @@ export default function App() {
             syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onMortgage={(tileId) => {
+            if (gameMode === 'online') { sendOnlineAction('mortgage', { tileId }); return; }
+            if (!canMortgage(tileId, propertiesState, currentPlayer.id).can) return;
             const tile = BOARD_TILES[tileId];
             const newProps = {
               ...propertiesState,
@@ -1972,6 +1979,8 @@ export default function App() {
             syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onUnmortgage={(tileId) => {
+            if (gameMode === 'online') { sendOnlineAction('unmortgage', { tileId }); return; }
+            if (!canUnmortgage(tileId, propertiesState, players, currentPlayer.id).can) return;
             const tile = BOARD_TILES[tileId];
             const cost = Math.floor(tile.mortgageValue * 1.1);
             const newProps = {
@@ -1990,7 +1999,7 @@ export default function App() {
         />
       )}
 
-      {showTradeModal && currentPlayer && (
+      {showTradeModal && currentPlayer && isMyOnlineTurn && (
         <TradeModal
           activePlayer={currentPlayer}
           players={players}
@@ -2013,7 +2022,9 @@ export default function App() {
             } else {
               // R05 Fix: Gửi đề nghị giao dịch online qua socket hoặc mở modal nội bộ Pass & Play
               if (gameMode === 'online' && socketRef.current) {
-                socketRef.current.emit('send_trade_offer', offer);
+                socketRef.current.emit('send_trade_offer', offer, res => {
+                  if (!res?.success) setOnlineError(res?.message || 'Không gửi được đề nghị.');
+                });
                 addLog(`📜 Đã gửi đề nghị giao dịch tới ${target.name}! Đang chờ phản hồi...`);
               } else {
                 setPendingTradeOffer(offer);
@@ -2031,7 +2042,9 @@ export default function App() {
           propertiesState={propertiesState}
           onAccept={() => {
             if (gameMode === 'online' && socketRef.current) {
-              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: true });
+              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: true }, res => {
+                if (!res?.success) setOnlineError(res?.message || 'Giao dịch không thành công.');
+              });
             } else {
               executeTrade(pendingTradeOffer);
             }
@@ -2039,7 +2052,9 @@ export default function App() {
           }}
           onReject={() => {
             if (gameMode === 'online' && socketRef.current) {
-              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: false });
+              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: false }, res => {
+                if (!res?.success) setOnlineError(res?.message || 'Đề nghị đã hết hạn.');
+              });
             } else {
               const target = players.find((p) => p.id === pendingTradeOffer.targetId);
               addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch.`);
@@ -2052,7 +2067,7 @@ export default function App() {
       {winner && (
         <VictoryModal
           winner={winner}
-          onRestart={() => setScreen('lobby')}
+          onRestart={() => gameMode === 'online' ? leaveOnlineRoom() : setScreen('lobby')}
         />
       )}
     </div>

@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-11-06T07:58:27.755Z",
+  "endpoint": "http://localhost:3138",
+  "productionMutated": false,
+  "keywordOnlyWinnerBlocked": true,
+  "validRailWinner": {
+    "accepted": true,
+    "reason": "THẮNG ĐẬM: ĐỘC QUYỀN 4 BẾN XE / GA TÀU TOÀN BẢN ĐỒ!"
+  },
+  "nonCurrentPlayerCanWriteState": {
+    "money": 80000000,
+    "turnIndex": 1
+  },
+  "forgedOwnershipWins": {
+    "accepted": true,
+    "properties": {
+      "5": {
+        "owner": "4fXe8nwYcZDyfmsiAAAB",
+        "houses": 0
+      },
+      "15": {
+        "owner": "4fXe8nwYcZDyfmsiAAAB",
+        "houses": 0
+      },
+      "25": {
+        "owner": "4fXe8nwYcZDyfmsiAAAB",
+        "houses": 0
+      },
+      "35": {
+        "owner": "4fXe8nwYcZDyfmsiAAAB",
+        "houses": 0
+      }
+    },
+    "money": 15000000
+  },
+  "forgedRosterWins": {
+    "playerCount": 1,
+    "accepted": true
+  },
+  "inventedOfferBlocked": true,
+  "senderBoundToSocket": true,
+  "acceptUsesStoredTerms": true,
+  "replayBlocked": true,
+  "negativeMoneyTrade": {
+    "acceptedByServer": true,
+    "offerMoney": -1000000,
+    "actualClientHandlerBalances": [
+      {
+        "name": "Host",
+        "money": 16000000
+      },
+      {
+        "name": "Guest",
+        "money": 14000000
+      }
+    ]
+  }
+}

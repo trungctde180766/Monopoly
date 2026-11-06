@@ -1,27 +1,27 @@
 # 🎲 CỜ TỶ PHÚ PRO (VIETNAMESE MONOPOLY MASTER EDITION)
 
-Một tựa game **Cờ Tỷ Phú** hoàn chỉnh được thiết kế riêng cho người chơi Việt Nam với địa danh quen thuộc (Hà Nội, Sài Gòn, Đà Nẵng, Hạ Long...), giao diện sang trọng hiện đại phong cách Luxury Tycoon, âm thanh sống động và bám sát **100% logic luật cờ tỷ phú quốc tế**.
+Một tựa game **Cờ Tỷ Phú** hoàn chỉnh được thiết kế riêng cho người chơi Việt Nam với địa danh quen thuộc (Hà Nội, Sài Gòn, Đà Nẵng, Hạ Long...), giao diện sang trọng hiện đại phong cách Luxury Tycoon, âm thanh sống động và dùng ruleset Arcade lấy cảm hứng từ Monopoly và Business Tour.
 
 ---
 
 ## 🌟 TÍNH NĂNG NỔI BẬT
 
 ### 1. Đồ Họa & Trải Nghiệm Cao Cấp
-- **Bàn cờ 40 ô chuẩn quốc tế**: Tông màu tối sang trọng Slate 900 / Navy viền vàng ánh kim (Gold).
+- **Bàn cờ 40 ô chuẩn quốc tế**: Nền trời sáng, bàn trắng, công trình hướng tâm bàn và lane quân cờ riêng.
 - **Xúc xắc 3D sống động**: Hiệu ứng lắc, đổ đôi có thông báo và thưởng lượt.
 - **Quân cờ đại diện độc đáo**: Siêu xe 🏎️, Chuyên cơ ✈️, Du thuyền 🛥️, Mũ tỷ phú 🎩, Kim cương 💎, Corgi hoàng gia 🐕.
 - **Hệ thống âm thanh Web Audio tự động**: Không phụ thuộc file ngoài, tự sinh âm thanh xúc xắc, keng keng tiền vàng, còi cảnh sát, tiếng búa gõ đấu giá, tiếng nâng cấp nhà và nhạc khải hoàn chiến thắng.
 - **Hiệu ứng pháo hoa Confetti**: Bùng nổ khi tìm ra người chiến thắng cuối cùng.
 
-### 2. Chuẩn 100% Luật Cờ Tỷ Phú Thực Tế
+### 2. Ruleset Arcade của dự án
 - **Ô Khởi Hành (GO)**: Nhận lương 2.000.000₫ khi đi qua hoặc dừng lại.
 - **22 Ô Đất thuộc 8 Nhóm Màu**: Nhân đôi tiền thuê khi đủ bộ màu chưa xây nhà.
-- **Quy tắc xây nhà đồng đều**: Không được xây vượt cấp nếu các ô cùng màu chưa có nhà. Tối đa 4 Nhà -> Nâng cấp lên Khách Sạn (Hotel).
+- **Quyền xây theo lần ghé**: Mua mới cấp 1–3. Landmark cần đã có cấp 3 từ trước lần ghé hiện tại. Mỗi lần ghé chỉ xác nhận một lần; không cần đủ bộ màu.
 - **4 Bến Xe & Ga Tàu**: Tiền thuê tính theo số ga sở hữu: 250k (1 ga), 500k (2 ga), 1M (3 ga), 2M (4 ga).
 - **2 Công Ty Tiện Ích (Điện & Nước)**: Tiền thuê tính theo điểm xúc xắc x 40.000₫ (1 tiện ích) hoặc x 100.000₫ (2 tiện ích).
 - **Đổ Đôi (Doubles)**: Được đi tiếp thêm 1 lượt. Đổ đôi 3 lần liên tiếp bị bắt vào tù vì chạy quá tốc độ!
 - **Nhà Tù (Jail)**: Nộp 500k tiền bảo lãnh, dùng Thẻ Đặc Xá, hoặc thử vận may đổ đôi trong tối đa 3 lượt.
-- **Đấu Giá Tự Do (Auction)**: Khi người chơi bỏ qua không mua một khu đất, sàn đấu giá tự động mở ra cho tất cả người chơi trả giá từ mức khởi điểm hấp dẫn.
+- **Bỏ qua mua đất**: Kết thúc quyết định mua, không mở đấu giá trong ruleset hiện tại.
 - **Đàm Phán & Giao Dịch (Trade)**: Trao đổi sổ đỏ, các thêm tiền mặt giữa 2 người chơi.
 - **Thế Chấp (Mortgage)**: Thu về 50% giá trị đất khi thiếu tiền. Chuộc lại đất với 10% tiền lãi.
 - **Phá Sản (Bankruptcy)**: Tự động tính toán khả năng thanh khoản (bán nhà + thế chấp) trước khi tuyên bố vỡ nợ và chuyển giao tài sản cho chủ nợ.
@@ -33,7 +33,7 @@ Một tựa game **Cờ Tỷ Phú** hoàn chỉnh được thiết kế riêng c
    - Tạo phòng nhận mã Code 5 chữ cái (VD: `TYPHU`).
    - Bạn bè nhập mã Code để vào phòng từ máy tính hoặc điện thoại trên cùng mạng Wi-Fi/LAN hoặc qua Internet.
    - Hỗ trợ phòng chờ, trạng thái sẵn sàng, chat trò chuyện trực tiếp trong game.
-3. **Chơi Nhanh Với 3 AI Bots (Quick Solo)**: 1-click vào trận ngay với 3 Bot máy thông minh (biết mua đất, nâng cấp nhà, tham gia đấu giá).
+3. **Chơi Nhanh Với 3 AI Bots (Quick Solo)**: 1-click vào trận ngay với 3 Bot máy thông minh (biết mua đất và nâng cấp khi có quyền xây hợp lệ).
 
 ---
 
@@ -66,7 +66,7 @@ npm run dev
 
 ## 🌐 HƯỚNG DẪN DEPLOY LÊN VERCEL & RENDER
 
-### 1. Deploy Frontend Lên Vercel (Miễn phí 100%)
+### 1. Deploy Frontend Lên Vercel
 - **Hỗ trợ tuyệt vời**: Chơi Pass & Play (chung 1 máy) và Chơi với 3 AI Bots với đồ họa 3D Three.js mượt mà.
 - **Cách deploy**:
   1. Đẩy mã nguồn lên GitHub: `git push -u origin main`.
@@ -75,8 +75,8 @@ npm run dev
   4. Nhấn **Deploy** -> Sau 30 giây bạn sẽ có link web công khai `https://monopoly-xyz.vercel.app`!
 
 ### 2. Hỗ trợ Chế Độ Chơi Online Nhiều Máy (Multiplayer Socket.io)
-- Vì Vercel là kiến trúc Serverless (không duy trì kết nối WebSocket liên tục), để chơi phòng Online giữa nhiều máy qua Internet:
-  - Bạn có thể deploy thư mục backend lên [Render.com](https://render.com) hoặc [Railway.app](https://railway.app) (Web Service Node.js miễn phí, chạy lệnh `npm start`).
+- Hướng dẫn hiện hành: [DEPLOY_ONLINE.md](DEPLOY_ONLINE.md). Vercel Functions hiện có WebSocket; cấu hình SPA trong repo chưa tự chạy backend realtime. Với backend Node hiện tại:
+  - Bạn có thể deploy toàn bộ repository để backend import được src/logic và src/data; chạy dịch vụ Node lên [Render.com](https://render.com) hoặc [Railway.app](https://railway.app) (Web Service Node.js, chạy lệnh `npm start`; kiểm tra gói và giới hạn của nền tảng).
   - Sau đó vào Vercel Dashboard -> **Settings** -> **Environment Variables** -> Thêm biến:
     ```
     VITE_SOCKET_URL = https://your-server-on-render.onrender.com
@@ -90,8 +90,8 @@ Frontend chạy tại `http://localhost:5173` và Backend chạy tại `http://l
 ---
 
 ## 🧪 KIỂM THỬ HỆ THỐNG
-Dự án đi kèm bộ test tự động kiểm tra toàn bộ 9 bài test về logic cờ tỷ phú và máy chủ:
+Dự án có test hồi quy, engine xây nhà, layout, mô phỏng ván dài và Socket.IO thực tế:
 ```bash
-node test/gameRules.test.js
+npm test
 ```
-Kết quả kiểm thử: **100% Passed**.
+Kết quả và giới hạn của lần kiểm tra mới: [REVIEW_V5_VA_KET_QUA_KHAC_PHUC.md](REVIEW_V5_VA_KET_QUA_KHAC_PHUC.md).

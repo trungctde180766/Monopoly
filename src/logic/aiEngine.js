@@ -89,46 +89,10 @@ export class AIEngine {
 
   // Tự động xây nhà khi có cơ hội (H02 & H03 Fix: Bot chỉ có thể xây dựng khi đang đứng trên ô đất đó)
   static getBuildRecommendations(bot, propertiesState, players) {
-    const actions = [];
-    if (!bot || bot.money < 1000000) return actions; // Cần giữ tiền mặt tối thiểu
-
-    // Deep copy state để mô phỏng chính xác từng bước xây
-    const simProps = JSON.parse(JSON.stringify(propertiesState || {}));
-
-    // Tìm các nhóm màu bot sở hữu trọn bộ
-    const ownedGroups = new Set();
-    BOARD_TILES.forEach(tile => {
-      if (tile.type === 'property' && simProps[tile.id]?.owner === bot.id) {
-        if (bot.position === undefined || tile.id === bot.position) {
-          if (hasMonopoly(simProps, bot.id, tile.group)) {
-            ownedGroups.add(tile.group);
-          }
-        }
-      }
-    });
-
-    let currentCash = bot.money;
-    for (const group of ownedGroups) {
-      const groupTiles = BOARD_TILES.filter(t => t.group === group);
-      // Lặp qua để xây dựng (tối đa cấp 4 - Khách Sạn Landmark)
-      for (let level = 0; level < 4; level++) {
-        for (const tile of groupTiles) {
-          if (bot.position !== undefined && tile.id !== bot.position) continue;
-          const check = canBuildHouse(tile.id, simProps, [{ ...bot, money: currentCash }], bot.id);
-          if (check.can && currentCash - tile.housePrice >= 800000) {
-            actions.push(tile.id);
-            currentCash -= tile.housePrice;
-            // Cập nhật state mô phỏng để bước lặp tiếp theo thấy đúng cấp mới
-            simProps[tile.id] = {
-              ...simProps[tile.id],
-              houses: (simProps[tile.id]?.houses || 0) + 1,
-            };
-          }
-        }
-      }
-    }
-
-    return actions;
+    if (!bot || !Number.isInteger(bot.position) || bot.money < 1000000) return [];
+    const tile = BOARD_TILES[bot.position];
+    const check = canBuildHouse(bot.position, propertiesState, players, bot.id);
+    return check.can && bot.money - check.cost >= 800000 ? [tile.id] : [];
   }
 
   // Cứu nguy khẩn cấp khi thiếu tiền trả nợ (Mô phỏng chính xác, không bán lặp 1 nhà)

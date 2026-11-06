@@ -5,6 +5,7 @@ import {
   hasMonopoly,
   calculateRent,
   canBuildHouse,
+  createBuildOpportunity,
   canSellHouse,
   canMortgage,
   canUnmortgage,
@@ -111,29 +112,33 @@ runTest('Tiền thuê Tiện Ích: 40k x xúc xắc khi có 1 tiện ích, 100k 
 
 // 5. Kiểm tra Quy Tắc Xây Dựng Đồng Đều (Even Building Rule)
 // 5. Kiểm tra Nâng cấp Nhà & Khách Sạn chuẩn Business Tour (4 Cấp Độ)
-runTest('Luật Business Tour: Tự do nâng cấp nhà & Khách Sạn Landmark (Cấp 1 -> 4)', () => {
+runTest('Nâng nhà trên đất sở hữu ở các lần ghé riêng biệt, không cần đủ bộ màu', () => {
   const p1 = 'player_1';
-  const players = [{ id: p1, money: 10000000 }];
+  const players = [{ id: p1, money: 10000000, position: 6 }];
   let props = {
     6: { owner: p1, houses: 0, isMortgaged: false },
   };
 
   // Nâng lên Cấp 1
+  players[0].buildOpportunity = createBuildOpportunity(players[0], 6, props);
   let check1 = canBuildHouse(6, props, players, p1);
   assert.strictEqual(check1.can, true);
   props[6].houses = 1;
 
   // Nâng trực tiếp lên Cấp 2 mà không bị ràng buộc xây đồng đều
+  players[0].buildOpportunity = createBuildOpportunity(players[0], 6, props);
   let check2 = canBuildHouse(6, props, players, p1);
   assert.strictEqual(check2.can, true);
   props[6].houses = 2;
 
   // Nâng lên Cấp 3 (Biệt Thự)
+  players[0].buildOpportunity = createBuildOpportunity(players[0], 6, props);
   let check3 = canBuildHouse(6, props, players, p1);
   assert.strictEqual(check3.can, true);
   props[6].houses = 3;
 
   // Nâng lên Cấp 4 (Khách Sạn / Landmark)
+  players[0].buildOpportunity = createBuildOpportunity(players[0], 6, props);
   let check4 = canBuildHouse(6, props, players, p1);
   assert.strictEqual(check4.can, true);
   assert.strictEqual(check4.nextHouses, 4);
@@ -193,7 +198,7 @@ runTest('Luật Business Tour: Độc quyền 3 bộ màu / 1 hàng / 4 ga thắ
 });
 
 // 6. Kiểm tra Thế Chấp & Dỡ Nhà
-runTest('Không được thế chấp đất khi vẫn còn nhà trong nhóm màu', () => {
+runTest('Chỉ cần bán nhà trên chính ô đất định thế chấp, không khóa bởi ô lân cận', () => {
   const p1 = 'player_1';
   let props = {
     6: { owner: p1, houses: 1, isMortgaged: false },
@@ -201,17 +206,18 @@ runTest('Không được thế chấp đất khi vẫn còn nhà trong nhóm mà
     9: { owner: p1, houses: 0, isMortgaged: false },
   };
 
-  // Cố thế chấp tile 8 trong khi tile 6 còn 1 nhà -> BỊ TỪ CHỐI!
-  let checkMortgage = canMortgage(8, props, p1);
+  // Tile 6 còn nhà nên chưa thể thế chấp chính nó.
+  let checkMortgage = canMortgage(6, props, p1);
   assert.strictEqual(checkMortgage.can, false);
+  assert.strictEqual(canMortgage(8, props, p1).can, true);
 
   // Bán nhà trên tile 6
   let checkSell = canSellHouse(6, props, p1);
   assert.strictEqual(checkSell.can, true);
   props[6].houses = 0;
 
-  // Bây giờ thế chấp tile 8 -> HỢP LỆ!
-  let checkMortgageOk = canMortgage(8, props, p1);
+  // Bán hết nhà ở tile 6 thì được thế chấp tile 6.
+  let checkMortgageOk = canMortgage(6, props, p1);
   assert.strictEqual(checkMortgageOk.can, true);
 });
 
@@ -278,12 +284,13 @@ runTest('(F04) Xác định vỡ nợ chính xác: maxLiquid < 0 khi nợ vượ
 
 // 11. (F05) Bot xây nhà không vượt quá cấp 4 (Landmark) và cập nhật state mô phỏng
 runTest('(F05) Bot không thể xây vượt quá cấp 4 (Khách Sạn Landmark)', () => {
-  const bot = { id: 'bot_rich', money: 50000000, isBot: true };
+  const bot = { id: 'bot_rich', money: 50000000, isBot: true, position: 1 };
   const players = [bot];
   // Bot sở hữu tile 1 (Bến xe Miền Tây) đang có 3 nhà
   let props = {
     1: { owner: bot.id, houses: 3, isMortgaged: false },
   };
+  bot.buildOpportunity = createBuildOpportunity(bot, 1, props);
   const builds = AIEngine.getBuildRecommendations(bot, props, players);
   // Bot chỉ có thể xây tối đa 1 bước để lên cấp 4
   assert.strictEqual(builds.length <= 1, true);
@@ -446,97 +453,7 @@ runTest('(R03) Chủ đất nhận đủ 100% tiền thuê sau khi con nợ gi�
   assert.strictEqual(finalCreditorMoney + finalDebtorMoney, 400000 + mortgageValue);
 });
 
-// 19. (R01) Server data sanitization: Chặn cấp nhà > 4 và tiền ảo > 100M
-runTest('(R01) Server sanitization: Chặn triệt để houses > 4 và tiền bất thường', () => {
-  // Giả lập logic kiểm tra của server/index.js
-  const maliciousPayload = {
-    propertiesState: {
-      1: { owner: 'guest', houses: 99 },
-      2: { owner: 'guest', houses: 4 },
-      3: { owner: 'guest', houses: -5 },
-    },
-    players: [
-      { id: 'guest', money: 999999999, position: 50 },
-    ],
-  };
-
-  const sanitizedProps = {};
-  for (const [tid, pData] of Object.entries(maliciousPayload.propertiesState)) {
-    sanitizedProps[tid] = {
-      ...pData,
-      houses: Math.min(4, Math.max(0, Number(pData.houses) || 0)),
-    };
-  }
-
-  const sanitizedPlayers = maliciousPayload.players.map(p => ({
-    ...p,
-    money: Math.min(100000000, p.money),
-    position: Math.max(0, Math.min(39, p.position)),
-  }));
-
-  assert.strictEqual(sanitizedProps[1].houses, 4, 'Nhà cấp 99 phải bị giới hạn về tối đa cấp 4 (Landmark)');
-  assert.strictEqual(sanitizedProps[2].houses, 4);
-  assert.strictEqual(sanitizedProps[3].houses, 0, 'Nhà âm phải bị đưa về 0');
-  assert.strictEqual(sanitizedPlayers[0].money, 100000000, 'Tiền 999.999.999đ phải bị chặn trần');
-  assert.strictEqual(sanitizedPlayers[0].position, 39, 'Vị trí 50 phải bị giới hạn về tối đa 39');
-});
-
-// 20. (V3-01, V3-02, V3-03) Server snapshot sanitization & validation
-runTest('(V3-01..03) Server sanitization: Bảo toàn gameLog, xóa đất trả ngân hàng, chặn fake winner & dice & turnIndex', () => {
-  const currentGS = {
-    turnIndex: 0,
-    dice: [1, 2],
-    gameLog: ['Ván đấu bắt đầu'],
-    propertiesState: { 1: { owner: 'host', houses: 1 } },
-  };
-
-  const maliciousPayload = {
-    winner: { id: 'guest', winReason: 'arbitrary text' },
-    turnIndex: 999,
-    dice: [0, 99],
-    propertiesState: {}, // Trả đất về ngân hàng
-    gameLog: ['Log mới hợp lệ'],
-  };
-
-  // 1. Properties: thay thế toàn bộ state, không lưu lại đất cũ
-  const sanitizedProps = {};
-  for (const [tidStr, pData] of Object.entries(maliciousPayload.propertiesState)) {
-    if (pData && pData.owner) sanitizedProps[tidStr] = pData;
-  }
-  assert.strictEqual(sanitizedProps[1], undefined, 'Đất đã xóa khỏi snapshot phải biến mất hoàn toàn');
-
-  // 2. Dice: Bắt buộc từ 1 đến 6
-  let sanitizedDice;
-  const [d1, d2] = maliciousPayload.dice;
-  if (Number.isInteger(d1) && d1 >= 1 && d1 <= 6 && Number.isInteger(d2) && d2 >= 1 && d2 <= 6) {
-    sanitizedDice = [d1, d2];
-  } else {
-    sanitizedDice = currentGS.dice;
-  }
-  assert.deepStrictEqual(sanitizedDice, [1, 2], 'Xúc xắc [0, 99] phải bị từ chối và fallback về [1, 2]');
-
-  // 3. TurnIndex: Không được vượt quá số người chơi
-  const totalPlayers = 4;
-  let sanitizedTurnIndex;
-  if (typeof maliciousPayload.turnIndex === 'number' && maliciousPayload.turnIndex >= 0 && maliciousPayload.turnIndex < totalPlayers) {
-    sanitizedTurnIndex = maliciousPayload.turnIndex;
-  } else {
-    sanitizedTurnIndex = currentGS.turnIndex;
-  }
-  assert.strictEqual(sanitizedTurnIndex, 0, 'turnIndex 999 phải bị từ chối');
-
-  // 4. Winner: Chặn lý do thắng tùy ý
-  const validReasons = ['ĐỘC QUYỀN MỘT HÀNG', 'ĐỘC QUYỀN 3 BỘ MÀU', 'ĐỘC QUYỀN 4 GA TÀU', 'sống sót duy nhất'];
-  const hasLegitReason = typeof maliciousPayload.winner.winReason === 'string' &&
-    validReasons.some(r => maliciousPayload.winner.winReason.includes(r));
-  const sanitizedWinner = hasLegitReason ? maliciousPayload.winner : null;
-  assert.strictEqual(sanitizedWinner, null, 'Fake winner với arbitrary text phải bị từ chối');
-
-  // 5. gameLog: Luôn là mảng, bảo toàn dữ liệu
-  const sanitizedGameLog = Array.isArray(maliciousPayload.gameLog) ? maliciousPayload.gameLog : (currentGS.gameLog || []);
-  assert.strictEqual(sanitizedGameLog.length, 1);
-  assert.strictEqual(sanitizedGameLog[0], 'Log mới hợp lệ');
-});
+// Server behavior is covered by onlineActions.test.js against real Socket.IO connections.
 
 // 21. (V3-05) Giải quyết nợ cho người thật: Trả đủ 100% tiền thuê cho chủ đất sau khi thế chấp
 runTest('(V3-05) Human debt shortfall: Người chơi thật thế chấp trả đủ 100% tiền thuê cho chủ nợ', () => {
@@ -583,6 +500,7 @@ runTest('(V4-01 & 02) Quy tắc nâng nhà Business Tour: Chặn xây từ xa v�
   const props = {
     1: { owner: p1, houses: 3, isMortgaged: false },
   };
+  playerAtTile1.buildOpportunity = createBuildOpportunity(playerAtTile1, 1, props);
 
   // Người chơi đang đứng ở ô 20, cố gắng nâng cấp ô 1 qua Sổ Đỏ
   const remoteCheck = canBuildHouse(1, props, [playerAtTile20], p1);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Home, Hotel, ShieldAlert, Sparkles, Gavel, DollarSign, ArrowLeftRight, Check, X, AlertTriangle, Trophy } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { BOARD_TILES, COLOR_GROUPS, JAIL_FINE } from '../data/boardData.js';
-import { formatVND, canBuildHouse, canSellHouse, canMortgage, canUnmortgage, calculateNetWorth } from '../logic/gameEngine.js';
+import { formatVND, calculateBuildTierCost, validateBuildAction, canBuildHouse, canSellHouse, canMortgage, canUnmortgage, calculateNetWorth } from '../logic/gameEngine.js';
 import { soundFX } from '../utils/soundFx.js';
 
 // 1. MODAL XÂY DỰNG 4 CẤP ĐỘ NHÀ CHUẨN BUSINESS TOUR (MULTI-TIER BUILD MODAL)
@@ -102,7 +102,8 @@ export function BusinessTourBuildModal({
   }
 
   // H01 Fix: Gate Landmark - Chỉ mở khi đã sở hữu đất ở cấp 3 và ghé lại ô
-  const isLandmarkLocked = isNewPurchase || currentHouses < 3;
+  const landmarkCheck = validateBuildAction(tile.id, 4, { [tile.id]: propState }, [player], player.id);
+  const isLandmarkLocked = !landmarkCheck.can && landmarkCheck.reasonCode !== 'funds';
 
   // 4 Cấp độ công trình Business Tour
   const tiers = [
@@ -139,7 +140,7 @@ export function BusinessTourBuildModal({
     {
       level: 4,
       title: 'Khách Sạn (Landmark)',
-      subtitle: isLandmarkLocked ? 'Khóa: Cần đạt Cấp 3 trước' : 'Kỳ quan bất khả xâm phạm',
+      subtitle: isLandmarkLocked ? landmarkCheck.reason : 'Kỳ quan bất khả xâm phạm',
       icon: isLandmarkLocked ? '🔒' : '🏰',
       isLandmark: true,
       isLocked: isLandmarkLocked,
@@ -149,7 +150,15 @@ export function BusinessTourBuildModal({
         ? tile.price + tile.housePrice * 3
         : (4 - currentHouses > 0 ? (4 - currentHouses) * tile.housePrice : 0),
     },
-  ];
+  ].map(tier => {
+    const check = validateBuildAction(tile.id, tier.level, { [tile.id]: propState }, [player], player.id);
+    return {
+      ...tier,
+      cost: calculateBuildTierCost(tile, currentHouses, tier.level, isNewPurchase),
+      isLocked: !check.can && check.reasonCode !== 'funds',
+      lockReason: check.reason,
+    };
+  });
 
   // Lựa chọn các cấp độ khả dụng: không thể chọn cấp đã xây hoặc bị khóa (H01 Fix)
   const availableTiers = tiers.filter((t) => t.level > currentHouses && !t.isLocked);
