@@ -136,15 +136,15 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
 
     // Tên đường / thành phố (Chữ đen đậm rõ nét kích thước lớn)
     ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 42px sans-serif';
+    ctx.font = '900 48px sans-serif';
     ctx.textAlign = 'center';
 
     const words = (tile.shortName || tile.name).split(' ');
     if (words.length > 2) {
-      ctx.fillText(words.slice(0, 2).join(' '), canvas.width / 2, 240);
-      ctx.fillText(words.slice(2).join(' '), canvas.width / 2, 295);
+      ctx.fillText(words.slice(0, 2).join(' '), canvas.width / 2, 235);
+      ctx.fillText(words.slice(2).join(' '), canvas.width / 2, 290);
     } else {
-      ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 260);
+      ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 255);
     }
 
     if (tile.type === 'railroad') {
@@ -167,12 +167,12 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
     // Giá tiền ô đất ở mép ngoài (Chữ đen đậm cực lớn chuẩn Image 1: 200K, 495K, 2.4M)
     if (tile.price) {
       ctx.fillStyle = '#000000';
-      ctx.font = '900 64px sans-serif';
-      ctx.fillText(formatShortPrice(tile.price), canvas.width / 2, 700);
+      ctx.font = '900 72px sans-serif';
+      ctx.fillText(formatShortPrice(tile.price), canvas.width / 2, 705);
     } else if (tile.taxAmount) {
       ctx.fillStyle = '#dc2626';
-      ctx.font = '900 56px sans-serif';
-      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 700);
+      ctx.font = '900 60px sans-serif';
+      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 705);
     }
 
     if (isMortgaged) {
@@ -681,6 +681,7 @@ export default function Board3D({
   // Camera Orbit (G01 Fix: góc chuẩn radius 36, phi Math.PI/3.4 bao quát trọn vẹn 4 góc bàn cờ)
   const isDraggingRef = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
+  const pointerDownPosition = useRef({ x: 0, y: 0 });
   const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 });
 
   // G05 Fix: Giữ ref isRolling thời gian thực cho vòng render loop
@@ -887,6 +888,7 @@ export default function Board3D({
 
     const handlePointerDown = (e) => {
       isDraggingRef.current = true;
+      pointerDownPosition.current = { x: e.clientX, y: e.clientY };
       previousMousePosition.current = { x: e.clientX, y: e.clientY };
     };
 
@@ -906,13 +908,16 @@ export default function Board3D({
     };
 
     const handlePointerUp = (e) => {
-      const movedX = Math.abs(e.clientX - previousMousePosition.current.x);
-      const movedY = Math.abs(e.clientY - previousMousePosition.current.y);
+      // Phân biệt chính xác giữa kéo xoay camera và bấm click ô cờ theo vị trí ban đầu
+      const movedX = Math.abs(e.clientX - pointerDownPosition.current.x);
+      const movedY = Math.abs(e.clientY - pointerDownPosition.current.y);
 
-      if (movedX < 5 && movedY < 5) {
+      if (movedX < 8 && movedY < 8) {
         const rect = container.getBoundingClientRect();
-        mouse.x = ((e.clientX - rect.left) / width) * 2 - 1;
-        mouse.y = -((e.clientY - rect.top) / height) * 2 + 1;
+        const currentW = rect.width || width;
+        const currentH = rect.height || height;
+        mouse.x = ((e.clientX - rect.left) / currentW) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / currentH) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
         const tileMeshesArray = Object.values(tilesMeshesRef.current);
@@ -1074,26 +1079,47 @@ export default function Board3D({
   function updateCameraPosition() {
     if (!cameraRef.current) return;
     const { theta, phi, radius } = cameraAnglesRef.current;
-    cameraRef.current.position.x = radius * Math.sin(phi) * Math.sin(theta);
-    cameraRef.current.position.y = radius * Math.cos(phi);
-    cameraRef.current.position.z = radius * Math.sin(phi) * Math.cos(theta);
+    const aspect = cameraRef.current.aspect || 1;
+    // Tự động điều chỉnh bán kính camera theo tỷ lệ khung hình (đặc biệt cho màn hình điện thoại 390x844 dạng dọc)
+    const effectiveRadius = aspect < 1 ? radius * (0.92 / aspect) : radius;
+    cameraRef.current.position.x = effectiveRadius * Math.sin(phi) * Math.sin(theta);
+    cameraRef.current.position.y = effectiveRadius * Math.cos(phi);
+    cameraRef.current.position.z = effectiveRadius * Math.sin(phi) * Math.cos(theta);
     cameraRef.current.lookAt(0, 0, 0);
   }
 
-  // Cập nhật mặt xúc xắc khi đổ xong
+  // Cập nhật mặt xúc xắc khi đổ xong (kèm giải phóng material cũ)
   useEffect(() => {
     if (die1MeshRef.current && dice[0]) {
+      const oldMat = die1MeshRef.current.material;
       die1MeshRef.current.material = createDiceMaterials(dice[0]);
+      if (Array.isArray(oldMat)) oldMat.forEach((m) => m?.dispose());
+      else oldMat?.dispose();
     }
     if (die2MeshRef.current && dice[1]) {
+      const oldMat = die2MeshRef.current.material;
       die2MeshRef.current.material = createDiceMaterials(dice[1]);
+      if (Array.isArray(oldMat)) oldMat.forEach((m) => m?.dispose());
+      else oldMat?.dispose();
     }
   }, [dice]);
 
-  // Cập nhật Nhà và Khách Sạn 3D theo 4 cấp bậc chuẩn Business Tour
+  // Cập nhật Nhà và Khách Sạn 3D theo 4 cấp bậc chuẩn Business Tour (kèm giải phóng tài nguyên GPU)
   useEffect(() => {
     if (!buildingsGroupRef.current) return;
     const group = buildingsGroupRef.current;
+    group.traverse((obj) => {
+      if (obj.isMesh) {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach((m) => m?.dispose());
+          } else {
+            obj.material?.dispose();
+          }
+        }
+      }
+    });
     group.clear();
 
     BOARD_TILES.forEach((tile) => {

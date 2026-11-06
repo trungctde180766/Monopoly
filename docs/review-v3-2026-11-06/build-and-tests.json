@@ -1,0 +1,22 @@
+{
+  "tests": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "a1e8b3",
+      "wall_time_seconds": 2.7567,
+      "exit_code": 0,
+      "original_token_count": 573,
+      "output": "> node test/gameRules.test.js\n--- BẮT ĐẦU KIỂM THỬ TOÀN BỘ HỆ THỐNG CỜ TỶ PHÚ VIỆT NAM ---\n  [PASS] Bàn cờ có đúng 40 ô chuẩn, có đầy đủ 8 nhóm màu, 4 ga tàu, 2 tiện ích, ô tù, bãi đỗ xe\n  [PASS] Sở hữu trọn bộ màu: Tiền thuê đất trống tự động x2\n  [PASS] Tiền thuê Ga Tàu luỹ tiến chuẩn xác theo số lượng ga sở hữu\n  [PASS] Tiền thuê Tiện Ích: 40k x xúc xắc khi có 1 tiện ích, 100k x xúc xắc khi có cả 2\n  [PASS] Luật Business Tour: Tự do nâng cấp nhà & Khách Sạn Landmark (Cấp 1 -> 4)\n  [PASS] Luật Business Tour: Cướp Đất (2x) và Miễn nhiễm cướp khi là Landmark\n  [PASS] Luật Business Tour: Độc quyền 3 bộ màu / 1 hàng / 4 ga thắng ngay lập tức\n  [PASS] Không được thế chấp đất khi vẫn còn nhà trong nhóm màu\n  [PASS] Giải chấp (chuộc đất): Đúng 110% giá trị thế chấp\n  [PASS] AI Bot ưu tiên mua đất giúp hoàn thành hoặc chặn Monopoly\n  [PASS] Tính toán chính xác tài sản ròng và năng lực thanh khoản khẩn cấp\n  [PASS] (F04) Xác định vỡ nợ chính xác: maxLiquid < 0 khi nợ vượt quá toàn bộ tài sản thanh lý\n  [PASS] (F05) Bot không thể xây vượt quá cấp 4 (Khách Sạn Landmark)\n  [PASS] (F05) Bot thanh lý nợ tuần tự: Giảm số nhà trong mô phỏng, không bán lặp\n  [PASS] (F02) Bot đánh giá giao dịch thông minh: Từ chối trao Monopoly cho đối thủ\n  [PASS] (F09) Thẻ Cơ Hội: Tính đúng Ga tàu gần nhất và chi phí bảo trì\n  [PASS] (F12) Ga Tàu và Tiện Ích là tài sản không thể xây dựng nhà/khách sạn\n  [PASS] (F13) checkBusinessTourVictory phát hiện ngay khi đạt Độc Quyền 1 Hàng hoặc 3 Bộ Màu\n  [PASS] (R02) Bot qua ô GO và mua đất: tiền và vị trí cập nhật chuẩn xác, không dùng state cũ\n  [PASS] (R03) Chủ đất nhận đủ 100% tiền thuê sau khi con nợ giải quyết nợ shortfall\n  [PASS] (R01) Server sanitization: Chặn triệt để houses > 4 và tiền bất thường\n========================================\n🎉 TẤT CẢ 21 BÀI TEST ĐỀU VƯỢT QUA 100%!\n========================================\n"
+    }
+  },
+  "build": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "c35d01",
+      "wall_time_seconds": 6.4475247,
+      "exit_code": 0,
+      "original_token_count": 286,
+      "output": "> vite build\nvite v8.3.6 building client environment for production...\ntransforming...\n✓ 2099 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                   1.14 kB │ gzip:   0.68 kB\ndist/assets/index-Cb19RxNC.css   53.48 kB │ gzip:   9.21 kB\ndist/assets/index-DXw7lr0k.js   974.73 kB │ gzip: 263.31 kB\n✓ built in 3.08s\n[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n\u001b[33m[PLUGIN_TIMINGS] \u001b[0mJavaScript callbacks ran for 2.6s of this 3.1s build (87%).\nThe slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):\n  - plugin vite:build-html transform (56%, 1.7s, 1 call)\nAdditional callback time came from callbacks under 1s.\nSee https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.\n"
+    }
+  }
+}

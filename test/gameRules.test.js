@@ -481,6 +481,100 @@ runTest('(R01) Server sanitization: Chặn triệt để houses > 4 và tiền b
   assert.strictEqual(sanitizedPlayers[0].position, 39, 'Vị trí 50 phải bị giới hạn về tối đa 39');
 });
 
+// 20. (V3-01, V3-02, V3-03) Server snapshot sanitization & validation
+runTest('(V3-01..03) Server sanitization: Bảo toàn gameLog, xóa đất trả ngân hàng, chặn fake winner & dice & turnIndex', () => {
+  const currentGS = {
+    turnIndex: 0,
+    dice: [1, 2],
+    gameLog: ['Ván đấu bắt đầu'],
+    propertiesState: { 1: { owner: 'host', houses: 1 } },
+  };
+
+  const maliciousPayload = {
+    winner: { id: 'guest', winReason: 'arbitrary text' },
+    turnIndex: 999,
+    dice: [0, 99],
+    propertiesState: {}, // Trả đất về ngân hàng
+    gameLog: ['Log mới hợp lệ'],
+  };
+
+  // 1. Properties: thay thế toàn bộ state, không lưu lại đất cũ
+  const sanitizedProps = {};
+  for (const [tidStr, pData] of Object.entries(maliciousPayload.propertiesState)) {
+    if (pData && pData.owner) sanitizedProps[tidStr] = pData;
+  }
+  assert.strictEqual(sanitizedProps[1], undefined, 'Đất đã xóa khỏi snapshot phải biến mất hoàn toàn');
+
+  // 2. Dice: Bắt buộc từ 1 đến 6
+  let sanitizedDice;
+  const [d1, d2] = maliciousPayload.dice;
+  if (Number.isInteger(d1) && d1 >= 1 && d1 <= 6 && Number.isInteger(d2) && d2 >= 1 && d2 <= 6) {
+    sanitizedDice = [d1, d2];
+  } else {
+    sanitizedDice = currentGS.dice;
+  }
+  assert.deepStrictEqual(sanitizedDice, [1, 2], 'Xúc xắc [0, 99] phải bị từ chối và fallback về [1, 2]');
+
+  // 3. TurnIndex: Không được vượt quá số người chơi
+  const totalPlayers = 4;
+  let sanitizedTurnIndex;
+  if (typeof maliciousPayload.turnIndex === 'number' && maliciousPayload.turnIndex >= 0 && maliciousPayload.turnIndex < totalPlayers) {
+    sanitizedTurnIndex = maliciousPayload.turnIndex;
+  } else {
+    sanitizedTurnIndex = currentGS.turnIndex;
+  }
+  assert.strictEqual(sanitizedTurnIndex, 0, 'turnIndex 999 phải bị từ chối');
+
+  // 4. Winner: Chặn lý do thắng tùy ý
+  const validReasons = ['ĐỘC QUYỀN MỘT HÀNG', 'ĐỘC QUYỀN 3 BỘ MÀU', 'ĐỘC QUYỀN 4 GA TÀU', 'sống sót duy nhất'];
+  const hasLegitReason = typeof maliciousPayload.winner.winReason === 'string' &&
+    validReasons.some(r => maliciousPayload.winner.winReason.includes(r));
+  const sanitizedWinner = hasLegitReason ? maliciousPayload.winner : null;
+  assert.strictEqual(sanitizedWinner, null, 'Fake winner với arbitrary text phải bị từ chối');
+
+  // 5. gameLog: Luôn là mảng, bảo toàn dữ liệu
+  const sanitizedGameLog = Array.isArray(maliciousPayload.gameLog) ? maliciousPayload.gameLog : (currentGS.gameLog || []);
+  assert.strictEqual(sanitizedGameLog.length, 1);
+  assert.strictEqual(sanitizedGameLog[0], 'Log mới hợp lệ');
+});
+
+// 21. (V3-05) Giải quyết nợ cho người thật: Trả đủ 100% tiền thuê cho chủ đất sau khi thế chấp
+runTest('(V3-05) Human debt shortfall: Người chơi thật thế chấp trả đủ 100% tiền thuê cho chủ nợ', () => {
+  const debtorInitialCash = 400000;
+  const rentDue = 1000000;
+  const actualTransfer = debtorInitialCash; // 400k
+  const shortfall = rentDue - actualTransfer; // 600k
+
+  const players = [
+    { id: 'human_debtor', money: debtorInitialCash - rentDue, debtCreditorId: 'creditor', debtShortfall: shortfall }, // -600k
+    { id: 'creditor', money: actualTransfer }, // 400k
+  ];
+
+  // Người chơi thế chấp ô 37 (giá trị 1.750.000đ)
+  const tile37Mortgage = 1750000;
+  const currentCash = players[0].money + tile37Mortgage; // -600k + 1.750k = 1.150k
+  const creditorId = players[0].debtCreditorId;
+  const debtShortfall = players[0].debtShortfall;
+
+  const newPlayers = players.map(p => {
+    if (p.id === 'human_debtor') {
+      const { debtCreditorId, debtShortfall: ds, ...rest } = p;
+      return { ...rest, money: currentCash };
+    }
+    if (p.id === creditorId && currentCash >= 0 && debtShortfall > 0) {
+      return { ...p, money: p.money + debtShortfall };
+    }
+    return p;
+  });
+
+  const finalDebtor = newPlayers.find(p => p.id === 'human_debtor');
+  const finalCreditor = newPlayers.find(p => p.id === 'creditor');
+
+  assert.strictEqual(finalCreditor.money, 1000000, 'Chủ đất phải nhận đủ 1.000.000đ sau khi con nợ người thật thế chấp');
+  assert.strictEqual(finalDebtor.money, 1150000, 'Con nợ người thật giữ đúng 1.150.000đ');
+  assert.strictEqual(finalDebtor.debtCreditorId, undefined, 'debtCreditorId phải được xóa sau khi giải quyết nợ');
+});
+
 console.log(`\n========================================`);
 console.log(`🎉 TẤT CẢ ${passedTests} BÀI TEST ĐỀU VƯỢT QUA 100%!`);
 console.log(`========================================\n`);

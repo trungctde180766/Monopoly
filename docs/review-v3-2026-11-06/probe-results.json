@@ -1,0 +1,87 @@
+{
+  "checkedAt": "2026-11-06T06:39:46.100Z",
+  "gameplay": {
+    "goPurchase": {
+      "actual": [
+        {
+          "id": "bot",
+          "name": "Bot",
+          "isBot": true,
+          "money": 900000,
+          "position": 1
+        }
+      ],
+      "expectedMoney": 900000,
+      "expectedPosition": 1,
+      "tierPurchased": 4
+    },
+    "botDebt": {
+      "players": [
+        {
+          "id": "debtor",
+          "money": 1150000,
+          "isBot": true
+        },
+        {
+          "id": "creditor",
+          "money": 1000000
+        }
+      ],
+      "expectedCreditorMoney": 1000000
+    },
+    "humanDebtAfterMortgage": {
+      "players": [
+        {
+          "id": "debtor",
+          "money": 1150000,
+          "isBot": false
+        },
+        {
+          "id": "creditor",
+          "money": 1000000
+        }
+      ],
+      "expectedCreditorMoney": 1000000
+    },
+    "tradeListenerInitialRender": {
+      "stateWritten": true,
+      "note": "Socket effect is registered once and retains executeTrade from the initial render with players=[]"
+    }
+  },
+  "network": {
+    "normalUpdate": {
+      "keys": [
+        "propertiesState",
+        "players",
+        "dice",
+        "turnIndex",
+        "winner",
+        "gameLog",
+        "hasRolled",
+        "freeParkingPool"
+      ],
+      "gameLogPresent": true
+    },
+    "removeBankOwnedProperty": {
+      "tile1StillPresent": false
+    },
+    "forgedState": {
+      "guestMoney": 80000000,
+      "tile39": {
+        "owner": "kPXTECtnmut6Yc7VAAAC",
+        "houses": 4
+      },
+      "winner": null,
+      "turnIndex": 0,
+      "dice": [
+        1,
+        2
+      ]
+    },
+    "wrongPlayerAcceptTrade": {
+      "broadcast": false,
+      "blocked": true,
+      "note": "Server securely rejected trade response from unauthorized socket"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-11-06T06:09:16.376Z",
+  "baseUrl": "https://monopoly-silk-ten.vercel.app",
+  "socketUrl": "https://monopoly-silk-ten.vercel.app",
+  "socketPath": "/socket.io",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "isHtml": true,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "isHtml": true,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/socket.io/?EIO=4&transport=polling",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "isHtml": true,
+      "engineOpenPacket": false
+    }
+  ],
+  "socket": [
+    {
+      "transport": "polling",
+      "connected": false,
+      "error": "server error"
+    },
+    {
+      "transport": "websocket",
+      "connected": false,
+      "error": "websocket error"
+    }
+  ],
+  "productionAsset": "/assets/index-DXw7lr0k.js",
+  "productionSocketSnippet": "[Fe,Ie]=(0,v.useState)(!1);(0,v.useEffect)(()=>{let e=vt(void 0,{transports:[`websocket`,`polling`],reconnectionAttempts:5});return Oe.",
+  "passed": false
+}

@@ -1,0 +1,8 @@
+[
+  {
+    "level": "error",
+    "message": "TypeError: Cannot read properties of undefined (reading 'map')\n    at Sp (http://localhost:3127/assets/index-DXw7lr0k.js:4236:71172)\n    at Wo (http://localhost:3127/assets/index-DXw7lr0k.js:8:49205)\n    at Lc (http://localhost:3127/assets/index-DXw7lr0k.js:8:71976)\n    at il (http://localhost:3127/assets/index-DXw7lr0k.js:8:82888)\n    at Yd (http://localhost:3127/assets/index-DXw7lr0k.js:8:128256)\n    at Kd (http://localhost:3127/assets/index-DXw7lr0k.js:8:127304)\n    at Gd (http://localhost:3127/assets/index-DXw7lr0k.js:8:127137)\n    at Nd (http://localhost:3127/assets/index-DXw7lr0k.js:8:123833)\n    at jf (http://localhost:3127/assets/index-DXw7lr0k.js:8:136391)\n    at Ef (http://localhost:3127/assets/index-DXw7lr0k.js:8:134947)",
+    "timestamp": "2026-11-06T06:14:11.847Z",
+    "url": "http://localhost:3127/assets/index-DXw7lr0k.js"
+  }
+]

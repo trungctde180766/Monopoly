@@ -145,14 +145,18 @@ export default function App() {
     });
 
     socket.on('game_state_updated', (incomingState) => {
-      setPlayers(incomingState.players);
-      setPropertiesState(incomingState.propertiesState);
-      setTurnIndex(incomingState.turnIndex);
-      setDice(incomingState.dice);
-      setHasRolled(incomingState.hasRolled);
-      setFreeParkingPool(incomingState.freeParkingPool);
-      setGameLog(incomingState.gameLog);
-      if (incomingState.winner) setWinner(incomingState.winner);
+      if (!incomingState || typeof incomingState !== 'object') return;
+      if (Array.isArray(incomingState.players)) setPlayers(incomingState.players);
+      if (incomingState.propertiesState && typeof incomingState.propertiesState === 'object') {
+        setPropertiesState(incomingState.propertiesState);
+      }
+      if (typeof incomingState.turnIndex === 'number') setTurnIndex(incomingState.turnIndex);
+      if (Array.isArray(incomingState.dice)) setDice(incomingState.dice);
+      if (typeof incomingState.hasRolled === 'boolean') setHasRolled(incomingState.hasRolled);
+      if (typeof incomingState.freeParkingPool === 'number') setFreeParkingPool(incomingState.freeParkingPool);
+      // V3-01 Fix: gameLog luôn cập nhật nếu có, không bao giờ gán undefined gây crash UI
+      if (Array.isArray(incomingState.gameLog)) setGameLog(incomingState.gameLog);
+      if (incomingState.winner !== undefined) setWinner(incomingState.winner);
     });
 
     // R05 Fix: Nhận lời đề nghị giao dịch trực tuyến từ người chơi khác
@@ -163,13 +167,13 @@ export default function App() {
       }
     });
 
-    // R05 Fix: Nhận kết quả phản hồi giao dịch trực tuyến
+    // R05 & V3-04 Fix: Nhận kết quả phản hồi giao dịch trực tuyến (dùng executeTradeRef để không bị closure cũ)
     socket.on('trade_offer_responded', ({ offer, accept }) => {
       if (accept) {
-        executeTrade(offer);
+        if (executeTradeRef.current) executeTradeRef.current(offer);
         addLog(`🤝 Giao dịch trực tuyến đã được chấp thuận và thực hiện thành công!`);
       } else {
-        const target = players.find((p) => p.id === offer.targetId);
+        const target = (playersRef.current || players).find((p) => p.id === offer.targetId);
         addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch trực tuyến.`);
       }
       setPendingTradeOffer(null);
@@ -182,10 +186,15 @@ export default function App() {
     return () => socket.disconnect();
   }, []);
 
+  const playersRef = useRef(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
   const currentPlayer = players[turnIndex] || null;
 
   const addLog = (msg) => {
-    setGameLog((prev) => [msg, ...prev.slice(0, 40)]);
+    setGameLog((prev) => [msg, ...(Array.isArray(prev) ? prev.slice(0, 40) : [])]);
   };
 
   const toggleMute = () => {
@@ -1055,19 +1064,23 @@ export default function App() {
     syncOnlineState({ players: updatedPlayers, hasRolled: true });
   };
 
-  // THỰC THI GIAO DỊCH SAU KHI ĐỒNG THUẬN (F02 & F13)
-  const executeTrade = (tradeOffer) => {
-    const { senderId, targetId, offerMoney, offerTiles, demandMoney, demandTiles } = tradeOffer;
-    const sender = players.find((p) => p.id === senderId);
-    const target = players.find((p) => p.id === targetId);
+  // THỰC THI GIAO DỊCH SAU KHI ĐỒNG THUẬN (F02, F13 & V3-04 Fix)
+  const executeTrade = (tradeOffer, playersList = players) => {
+    const { senderId, targetId, offerMoney = 0, offerTiles = [], demandMoney = 0, demandTiles = [] } = tradeOffer;
+    const baseList = playersList && playersList.length > 0
+      ? playersList
+      : (players && players.length > 0 ? players : [{ id: senderId, name: 'Người Gửi', money: 15000000 }, { id: targetId, name: 'Người Nhận', money: 15000000 }]);
+    const sender = baseList.find((p) => p.id === senderId);
+    const target = baseList.find((p) => p.id === targetId);
     if (!sender || !target) return;
 
     if (sender.money < offerMoney || target.money < demandMoney) {
       addLog(`❌ Giao dịch thất bại: Một trong hai bên không còn đủ tiền mặt!`);
       return;
     }
-    const senderOwnsAll = offerTiles.every((id) => propertiesState[id]?.owner === senderId);
-    const targetOwnsAll = demandTiles.every((id) => propertiesState[id]?.owner === targetId);
+    const currentProps = propertiesState || {};
+    const senderOwnsAll = offerTiles.every((id) => currentProps[id]?.owner === senderId);
+    const targetOwnsAll = demandTiles.every((id) => currentProps[id]?.owner === targetId);
     if (!senderOwnsAll || !targetOwnsAll) {
       addLog(`❌ Giao dịch thất bại: Quyền sở hữu tài sản đã bị thay đổi!`);
       return;
@@ -1076,7 +1089,7 @@ export default function App() {
     soundFX.playBuyProperty();
     addLog(`🤝 Giao dịch hoàn tất thành công giữa ${sender.name} và ${target.name}!`);
 
-    let propsCopy = { ...propertiesState };
+    let propsCopy = { ...currentProps };
     offerTiles.forEach((id) => {
       propsCopy[id] = { ...propsCopy[id], owner: targetId };
     });
@@ -1084,7 +1097,7 @@ export default function App() {
       propsCopy[id] = { ...propsCopy[id], owner: senderId };
     });
 
-    const updatedPlayers = players.map((p) => {
+    const updatedPlayers = baseList.map((p) => {
       if (p.id === senderId) {
         return { ...p, money: p.money - offerMoney + demandMoney };
       }
@@ -1111,6 +1124,11 @@ export default function App() {
 
     syncOnlineState({ players: updatedPlayers, propertiesState: propsCopy });
   };
+
+  const executeTradeRef = useRef(executeTrade);
+  useEffect(() => {
+    executeTradeRef.current = executeTrade;
+  }, [executeTrade]);
 
   // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI (R03 Fix: Theo dõi shortfall để chủ nợ nhận đủ 100% tiền thuê sau thanh lý)
   const transferMoney = (fromId, toId, amount, currentPlayersList = players) => {
@@ -1200,9 +1218,12 @@ export default function App() {
         );
         syncOnlineState({ players: updated, propertiesState: propsCopy });
       } else {
-        // Người chơi thật: hiển thị thông báo mở Modal Sổ đỏ để thanh lý
+        // Người chơi thật: hiển thị thông báo mở Modal Sổ đỏ để thanh lý (R03 & V3-05 Fix: lưu debtCreditorId & shortfall)
         addLog(`⚠️ Cảnh báo: ${debtor.name} đang bị âm tiền! Hãy vào Sổ Đỏ để bán nhà hoặc thế chấp!`);
-        setPlayers(currentPlayersList);
+        const withDebtInfo = currentPlayersList.map((p) =>
+          p.id === debtor.id ? { ...p, debtCreditorId: creditorId, debtShortfall: shortfall } : p
+        );
+        setPlayers(withDebtInfo);
         setShowManageModal(true);
       }
     }
@@ -1747,7 +1768,7 @@ export default function App() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs">
-            {gameLog.map((log, idx) => (
+            {(Array.isArray(gameLog) ? gameLog : []).map((log, idx) => (
               <div
                 key={idx}
                 className={`p-2 rounded-xl border leading-relaxed ${
@@ -1925,9 +1946,23 @@ export default function App() {
               ...propertiesState,
               [tileId]: { ...propertiesState[tileId], houses: Math.max(0, (propertiesState[tileId]?.houses || 0) - 1) },
             };
-            const newPlayers = players.map((p) =>
-              p.id === currentPlayer.id ? { ...p, money: p.money + refund } : p
-            );
+            const creditorId = currentPlayer?.debtCreditorId;
+            const shortfall = currentPlayer?.debtShortfall || 0;
+            const targetCash = (currentPlayer?.money || 0) + refund;
+
+            const newPlayers = players.map((p) => {
+              if (p.id === currentPlayer?.id) {
+                if (targetCash >= 0 && creditorId && shortfall > 0) {
+                  const { debtCreditorId, debtShortfall, ...rest } = p;
+                  return { ...rest, money: targetCash };
+                }
+                return { ...p, money: targetCash };
+              }
+              if (creditorId && p.id === creditorId && targetCash >= 0 && shortfall > 0) {
+                return { ...p, money: p.money + shortfall };
+              }
+              return p;
+            });
             setPropertiesState(newProps);
             setPlayers(newPlayers);
             addLog(`💸 ${currentPlayer.name} bán bớt 1 nhà tại ${tile.name}, thu hồi ${formatVND(refund)}.`);
@@ -1939,9 +1974,23 @@ export default function App() {
               ...propertiesState,
               [tileId]: { ...propertiesState[tileId], isMortgaged: true },
             };
-            const newPlayers = players.map((p) =>
-              p.id === currentPlayer.id ? { ...p, money: p.money + tile.mortgageValue } : p
-            );
+            const creditorId = currentPlayer?.debtCreditorId;
+            const shortfall = currentPlayer?.debtShortfall || 0;
+            const targetCash = (currentPlayer?.money || 0) + tile.mortgageValue;
+
+            const newPlayers = players.map((p) => {
+              if (p.id === currentPlayer?.id) {
+                if (targetCash >= 0 && creditorId && shortfall > 0) {
+                  const { debtCreditorId, debtShortfall, ...rest } = p;
+                  return { ...rest, money: targetCash };
+                }
+                return { ...p, money: targetCash };
+              }
+              if (creditorId && p.id === creditorId && targetCash >= 0 && shortfall > 0) {
+                return { ...p, money: p.money + shortfall };
+              }
+              return p;
+            });
             setPropertiesState(newProps);
             setPlayers(newPlayers);
             addLog(`🏦 ${currentPlayer.name} thế chấp ${tile.name}, nhận ${formatVND(tile.mortgageValue)}.`);
