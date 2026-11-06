@@ -708,7 +708,7 @@ export default function App() {
 
     setPlayers(updatedPlayers);
     setPropertiesState(updatedProps);
-    setPendingBuyTile(null);
+    setBuildModalTile(null);
     setHasRolled(true);
 
     // Kiểm tra điều kiện thắng nhanh Business Tour
@@ -723,7 +723,7 @@ export default function App() {
 
   // KHỞI ĐỘNG ĐẤU GIÁ (AUCTION)
   const startAuction = (tile, currentPlayersList = players) => {
-    setPendingBuyTile(null);
+    setBuildModalTile(null);
     const eligibleBidders = currentPlayersList.filter((p) => !p.isBankrupt);
     if (eligibleBidders.length === 0) return;
 
@@ -1093,7 +1093,7 @@ export default function App() {
     }
 
     // 2. Bot tự động đổ xúc xắc
-    if (!hasRolled && !isRolling && !isHopping && !pendingBuyTile && !auctionState && !activeCard) {
+    if (!hasRolled && !isRolling && !isHopping && !buildModalTile && !auctionState && !activeCard) {
       const timer = setTimeout(() => {
         handleRollDice();
       }, 1200);
@@ -1101,7 +1101,7 @@ export default function App() {
     }
 
     // 3. Bot tự động kết thúc lượt
-    if (hasRolled && !isRolling && !isHopping && !pendingBuyTile && !auctionState && !activeCard) {
+    if (hasRolled && !isRolling && !isHopping && !buildModalTile && !auctionState && !activeCard) {
       const timer = setTimeout(() => {
         // Tự động xem xét xây nhà
         const builds = AIEngine.getBuildRecommendations(currentPlayer, propertiesState, players);
@@ -1134,7 +1134,7 @@ export default function App() {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [currentPlayer, hasRolled, isRolling, pendingBuyTile, auctionState, activeCard, screen]);
+  }, [currentPlayer, hasRolled, isRolling, buildModalTile, auctionState, activeCard, screen]);
 
   // NẾU ĐANG Ở MÀN HÌNH LOBBY
   if (screen === 'lobby') {
@@ -1174,10 +1174,10 @@ export default function App() {
     );
   }
 
-  // MÀN HÌNH CHƠI GAME CHÍNH (FULL SCREEN 3D BUSINESS TOUR - VIP DARK SLATE LUXURY)
+  // MÀN HÌNH CHƠI GAME CHÍNH (FULL SCREEN 3D BUSINESS TOUR CLONE 1:1)
   return (
     <div
-      className={`fixed inset-0 w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 select-none transition-all ${
+      className={`fixed inset-0 w-screen h-screen overflow-hidden bg-[#c2e2fa] text-slate-800 select-none transition-all ${
         screenShake ? 'animate-screen-shake' : ''
       }`}
     >
@@ -1188,8 +1188,8 @@ export default function App() {
             key={fn.id}
             className={`text-2xl md:text-4xl font-black px-5 py-2.5 rounded-2xl shadow-2xl border-2 animate-float-number backdrop-blur-md ${
               fn.isGain
-                ? 'bg-emerald-950/95 text-emerald-300 border-emerald-400 shadow-glow-emerald'
-                : 'bg-red-950/95 text-red-300 border-red-500 shadow-glow-crimson'
+                ? 'bg-emerald-600/95 text-white border-white shadow-lg'
+                : 'bg-rose-600/95 text-white border-white shadow-lg'
             }`}
           >
             {fn.isGain ? `+${formatVND(fn.amount)}` : `-${formatVND(fn.amount)}`}
@@ -1199,10 +1199,10 @@ export default function App() {
 
       {/* Thông báo công trình 3D vừa hoàn thành */}
       {constructionAlert && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 px-6 py-2 rounded-2xl shadow-2xl border-2 border-white font-black text-xs sm:text-sm flex items-center gap-2 animate-bounce">
-          <span className="text-xl">{constructionAlert.type === 'hotel' ? '🏨' : '🏡'}</span>
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 px-6 py-2 rounded-2xl shadow-2xl border-2 border-white font-black text-xs sm:text-sm flex items-center gap-2 animate-bounce">
+          <span className="text-xl">{constructionAlert.type === 'hotel' ? '🏰' : '🏡'}</span>
           <span>
-            {constructionAlert.player} vừa xây dựng {constructionAlert.type === 'hotel' ? 'KHÁCH SẠN 3D' : 'NGÔI NHÀ 3D'} tại {constructionAlert.tileName}!
+            {constructionAlert.player} vừa xây dựng {constructionAlert.type === 'hotel' ? 'KHÁCH SẠN (LANDMARK)' : 'CÔNG TRÌNH 3D'} tại {constructionAlert.tileName}!
           </span>
         </div>
       )}
@@ -1212,7 +1212,7 @@ export default function App() {
         {viewMode === '3d' ? (
           <BoardErrorBoundary
             fallback={
-              <div className="w-full h-full flex items-center justify-center bg-slate-950 p-4">
+              <div className="w-full h-full flex items-center justify-center bg-[#c2e2fa] p-4">
                 <div className="w-full max-w-[700px]">
                   <Board
                     propertiesState={propertiesState}
@@ -1236,7 +1236,7 @@ export default function App() {
             />
           </BoardErrorBoundary>
         ) : (
-          <div className="w-full h-full flex items-center justify-center p-4 bg-slate-950 overflow-auto">
+          <div className="w-full h-full flex items-center justify-center p-4 bg-[#c2e2fa] overflow-auto">
             <div className="w-full max-w-[700px]">
               <Board
                 propertiesState={propertiesState}
@@ -1251,21 +1251,35 @@ export default function App() {
       </div>
 
       {/* BẢNG ĐIỂM / LƯỢT ĐI TRÊN KHÔNG GIAN BÀN CỜ (ROUND CAPSULE CHUẨN BUSINESS TOUR) */}
-      <div className="fixed top-[18%] sm:top-[22%] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-        <div className="bg-slate-900/90 text-white border-2 border-slate-700/80 px-4 py-1 rounded-full text-xs font-black tracking-widest shadow-2xl flex items-center gap-2 backdrop-blur-md">
-          <span className="text-amber-400">VÒNG {Math.floor(turnIndex / Math.max(1, players.length)) + 1}</span>
-          <span className="text-slate-600">•</span>
-          <span className="text-emerald-400">LƯỢT #{turnIndex + 1}</span>
+      <div className="fixed top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+        <div className="bg-white/95 text-slate-800 border-2 border-slate-200 px-4 py-1 rounded-full text-xs font-black tracking-widest shadow-md flex items-center gap-2 backdrop-blur-md">
+          <span className="text-amber-600">VÒNG {Math.floor(turnIndex / Math.max(1, players.length)) + 1}</span>
+          <span className="text-slate-400">•</span>
+          <span className="text-emerald-600">LƯỢT #{turnIndex + 1}</span>
         </div>
       </div>
 
-      {/* BÓNG THOẠI HOẠT HÌNH TRÊN XÚC XẮC CHUẨN BUSINESS TOUR */}
-      {(isRolling || isHopping) && (
-        <div className="fixed top-[38%] left-[54%] transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none animate-bounce">
-          <div className="bg-slate-900/95 text-amber-300 border-2 border-amber-500/50 px-4 py-1.5 rounded-2xl text-xs font-black shadow-2xl relative flex items-center gap-1.5 backdrop-blur-md">
-            <span>🎲</span>
-            <span>{isRolling ? 'Đang lắc xúc xắc...' : 'Đang di chuyển...'}</span>
-            <div className="w-3 h-3 bg-slate-900 border-r-2 border-b-2 border-amber-500/50 transform rotate-45 absolute -bottom-1.5 left-4" />
+      {/* DIGITAL TIMER & JACKPOT CỦA SÂN CỎ CHUẨN BUSINESS TOUR */}
+      <div className="fixed top-[24%] sm:top-[26%] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
+        {/* Hộp đồng hồ kỹ thuật số LED màu đen 2 chân đế */}
+        <div className="bg-[#2b3543] text-white font-mono text-xs sm:text-sm font-black px-4 py-1 rounded border border-[#1b222c] shadow-xl tracking-widest flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>07:18</span>
+        </div>
+        {/* Số tiền Jackpot trắng phát sáng trên thảm cỏ */}
+        <div className="mt-1.5 text-white font-black text-xl sm:text-2xl tracking-wider drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
+          {freeParkingPool > 0 ? formatVND(freeParkingPool) : '440 000 ₫'}
+        </div>
+      </div>
+
+      {/* BÓNG THOẠI HOẠT HÌNH TRÊN BÀN CỜ CHUẨN BUSINESS TOUR */}
+      {(isRolling || isHopping || buildModalTile) && (
+        <div className="fixed top-[32%] left-[45%] transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none animate-bounce">
+          <div className="bg-white text-slate-800 border-2 border-slate-300 px-4 py-1.5 rounded-2xl text-xs font-bold shadow-xl relative flex items-center gap-1.5">
+            <span>
+              {isRolling ? 'Rolling dice...' : isHopping ? 'Moving...' : 'Buying...'}
+            </span>
+            <div className="w-3 h-3 bg-white border-r-2 border-b-2 border-slate-300 transform rotate-45 absolute -bottom-1.5 left-4" />
           </div>
         </div>
       )}
@@ -1283,13 +1297,13 @@ export default function App() {
       />
 
       {/* NÚT TIỆN ÍCH TRÒN BÊN CẠNH PHẢI MÀN HÌNH CHUẨN BUSINESS TOUR */}
-      <div className="fixed right-3 top-1/2 transform -translate-y-1/2 z-30 flex flex-col gap-2.5 pointer-events-auto">
+      <div className="fixed right-3.5 top-1/2 transform -translate-y-1/2 z-30 flex flex-col gap-3 pointer-events-auto">
         <button
           onClick={toggleBGM}
-          className={`w-10 h-10 rounded-full border-2 shadow-2xl flex items-center justify-center transition active:scale-95 ${
+          className={`w-11 h-11 rounded-full border-2 shadow-lg flex items-center justify-center transition active:scale-95 ${
             isBGMPlaying
-              ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-glow-gold'
-              : 'bg-slate-900/90 text-slate-300 border-slate-700/80 hover:bg-slate-800 hover:text-white backdrop-blur-md'
+              ? 'bg-amber-400 text-slate-900 border-amber-300 shadow-glow-gold'
+              : 'bg-white/95 text-slate-700 border-white hover:bg-slate-50 hover:text-slate-900'
           }`}
           title="Nhạc Nền Jazz Tycoon"
         >
@@ -1298,15 +1312,15 @@ export default function App() {
 
         <button
           onClick={toggleMute}
-          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-300 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white backdrop-blur-md transition active:scale-95"
+          className="w-11 h-11 rounded-full bg-white/95 text-slate-700 border-2 border-white shadow-lg flex items-center justify-center hover:bg-slate-50 hover:text-slate-900 transition active:scale-95"
           title={isMuted ? 'Bật âm thanh SFX' : 'Tắt âm thanh SFX'}
         >
-          {isMuted ? <VolumeX size={18} className="text-red-400" /> : <Volume2 size={18} className="text-emerald-400" />}
+          {isMuted ? <VolumeX size={18} className="text-red-500" /> : <Volume2 size={18} className="text-emerald-600" />}
         </button>
 
         <button
           onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
-          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-200 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white backdrop-blur-md text-xs font-black transition active:scale-95"
+          className="w-11 h-11 rounded-full bg-sky-500 text-white border-2 border-sky-300 shadow-lg flex items-center justify-center hover:bg-sky-600 transition active:scale-95 text-xs font-black"
           title="Đổi góc 3D / 2D"
         >
           {viewMode === '3d' ? '2D' : '3D'}
@@ -1314,7 +1328,7 @@ export default function App() {
 
         <button
           onClick={() => setScreen('lobby')}
-          className="w-10 h-10 rounded-full bg-slate-900/90 text-slate-300 hover:text-red-400 border-2 border-slate-700/80 shadow-2xl flex items-center justify-center hover:bg-slate-800 backdrop-blur-md transition active:scale-95 text-xs font-black"
+          className="w-11 h-11 rounded-full bg-white/95 text-slate-600 hover:text-red-600 border-2 border-white shadow-lg flex items-center justify-center hover:bg-slate-50 transition active:scale-95 text-sm font-black"
           title="Rời Bàn"
         >
           🚪
@@ -1323,44 +1337,44 @@ export default function App() {
 
       {/* THÔNG TIN BÀN & CƯỢC Ở ĐÁY MÀN HÌNH CHUẨN BUSINESS TOUR */}
       <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none text-center">
-        <span className="text-[12px] font-bold text-slate-400 tracking-wide drop-shadow">
+        <span className="text-[12px] font-bold text-slate-600 tracking-wide drop-shadow-sm">
           Cờ Tỷ Phú Việt Nam • Bàn #VN-2026 • Hũ Jackpot: {formatVND(freeParkingPool)}
         </span>
       </div>
 
       {/* FLOATING ACTION DOCK Ở ĐÁY MÀN HÌNH (BOTTOM-CENTER) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 sm:gap-3 bg-slate-900/90 backdrop-blur-xl border-2 border-slate-700/80 p-2 sm:p-2.5 rounded-3xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] max-w-[95vw]">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 sm:gap-3 bg-white/95 backdrop-blur-xl border-2 border-white/90 p-2 sm:p-2.5 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.15)] text-slate-800 max-w-[95vw]">
         {/* Thông tin người đang đến lượt */}
-        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-800/90 rounded-2xl border border-slate-700/80 shrink-0">
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-md shrink-0 border border-white/80"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-md shrink-0 border border-white"
             style={{ backgroundColor: currentPlayer?.color || '#ef4444' }}
           >
             {TOKENS.find(t => t.id === currentPlayer?.token)?.emoji || '🏎️'}
           </div>
           <div className="hidden sm:block">
-            <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block leading-tight">
+            <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 block leading-tight">
               Đang Đến Lượt
             </span>
-            <span className="text-xs font-black text-white truncate max-w-[90px] block leading-tight">
+            <span className="text-xs font-black text-slate-800 truncate max-w-[90px] block leading-tight">
               {currentPlayer?.name}
             </span>
           </div>
         </div>
 
         {/* Xúc xắc & Tổng điểm */}
-        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-800/90 rounded-2xl border border-slate-700/80 shrink-0">
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
           <div className="flex items-center gap-1.5">
-            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-500 ${isRolling ? 'animate-spin' : ''}`}>
+            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
               {dice[0]}
             </div>
-            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-500 ${isRolling ? 'animate-spin' : ''}`}>
+            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
               {dice[1]}
             </div>
           </div>
           <div className="text-left hidden xs:block">
-            <span className="text-[9px] text-slate-400 block font-semibold leading-tight">Tổng điểm</span>
-            <span className="text-xs font-black text-white block leading-tight">
+            <span className="text-[9px] text-slate-500 block font-semibold leading-tight">Điểm</span>
+            <span className="text-xs font-black text-slate-800 block leading-tight">
               {dice[0] + dice[1]} {dice[0] === dice[1] ? '🔥 ĐÔI!' : ''}
             </span>
           </div>
@@ -1369,7 +1383,7 @@ export default function App() {
         {/* Nút hành động chính: Lắc Xúc Xắc hoặc Kết Thúc Lượt */}
         <div className="shrink-0">
           {currentPlayer?.isBot ? (
-            <div className="px-4 py-2.5 rounded-2xl bg-slate-800 border border-sky-500/40 text-sky-300 text-xs font-black flex items-center gap-2 animate-pulse">
+            <div className="px-4 py-2.5 rounded-2xl bg-sky-50 border border-sky-300 text-sky-800 text-xs font-black flex items-center gap-2 animate-pulse shadow-sm">
               <span className="animate-spin">🤖</span>
               <span>{isHopping ? 'Bot đang di chuyển...' : isRolling ? 'Bot đang lắc...' : 'Bot đang xử lý...'}</span>
             </div>
@@ -1380,8 +1394,8 @@ export default function App() {
               onClick={handleRollDice}
               className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-2 shadow-xl active:scale-95 ${
                 isRolling || isHopping
-                  ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 shadow-[0_4px_15px_rgba(245,158,11,0.5)] hover:brightness-110 hover:scale-105 border-2 border-white animate-pulse'
+                  ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 text-slate-950 shadow-[0_4px_15px_rgba(245,158,11,0.4)] hover:brightness-105 hover:scale-105 border-2 border-white animate-pulse'
               }`}
             >
               <span className="text-base sm:text-lg">🎲</span>
@@ -1392,7 +1406,7 @@ export default function App() {
               type="button"
               disabled={isHopping}
               onClick={handleEndTurn}
-              className="px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-110 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
+              className="px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-105 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
             >
               <span>Xong Lượt</span>
               <ArrowRight size={16} />
@@ -1406,8 +1420,8 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowManageModal(true)}
-              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 transition shadow-sm"
-              title="Quản lý bất động sản & xây nhà"
+              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-amber-700 border border-amber-300 transition shadow-sm"
+              title="Quản lý bất động sản & thế chấp"
             >
               <Home size={14} className="inline mr-1" />
               <span className="hidden sm:inline">Sổ Đỏ</span>
@@ -1415,7 +1429,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowTradeModal(true)}
-              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 transition shadow-sm"
+              className="py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-sky-700 border border-sky-300 transition shadow-sm"
               title="Thương lượng đổi đất với đối thủ"
             >
               <Gavel size={14} className="inline mr-1" />
@@ -1430,8 +1444,8 @@ export default function App() {
           onClick={() => setIsLogOpen(!isLogOpen)}
           className={`p-2 rounded-xl text-xs font-bold border transition ${
             isLogOpen
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+              ? 'bg-amber-100 text-amber-800 border-amber-400'
+              : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
           }`}
           title="Bật/Tắt Nhật Ký Trận Đấu"
         >
@@ -1441,14 +1455,14 @@ export default function App() {
 
       {/* KHUNG NHẬT KÝ CHI TIẾT TRẬN ĐẤU KHI MỞ RỘNG */}
       {isLogOpen && (
-        <div className="fixed bottom-20 right-4 z-40 w-80 sm:w-96 max-h-80 bg-slate-900/95 backdrop-blur-xl border-2 border-slate-700/80 rounded-2xl shadow-2xl p-3 flex flex-col text-slate-100">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+        <div className="fixed bottom-20 right-4 z-40 w-80 sm:w-96 max-h-80 bg-white/95 backdrop-blur-xl border-2 border-slate-300 rounded-2xl shadow-2xl p-3 flex flex-col text-slate-800">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+            <span className="text-xs font-black text-amber-600 flex items-center gap-1.5 uppercase tracking-wide">
               <History size={14} /> Nhật Ký Trận Đấu
             </span>
             <button
               onClick={() => setIsLogOpen(false)}
-              className="text-xs text-slate-400 hover:text-white px-2 py-0.5 rounded-lg bg-slate-800"
+              className="text-xs text-slate-400 hover:text-slate-700 px-2 py-0.5 rounded-lg bg-slate-100"
             >
               ✕
             </button>
@@ -1459,8 +1473,8 @@ export default function App() {
                 key={idx}
                 className={`p-2 rounded-xl border leading-relaxed ${
                   idx === 0
-                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-200 font-bold shadow-sm'
-                    : 'bg-slate-950/80 border-slate-800 text-slate-300'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
                 }`}
               >
                 {log}
@@ -1469,7 +1483,6 @@ export default function App() {
           </div>
         </div>
       )}
-
       {/* MODALS */}
       {viewDeedTile && (
         <DeedModal
@@ -1498,25 +1511,38 @@ export default function App() {
         />
       )}
 
-      {upgradePropertyTile && (
-        <UpgradePropertyModal
-          tile={upgradePropertyTile.tile}
-          player={upgradePropertyTile.player}
-          propState={upgradePropertyTile.propState}
-          onUpgrade={() => executeUpgrade(upgradePropertyTile.tile.id)}
-          onSkip={() => {
-            setUpgradePropertyTile(null);
+      {/* MODAL MUA & NÂNG CẤP NHÀ 4 CẤP BẬC CHUẨN BUSINESS TOUR */}
+      {buildModalTile && (
+        <BusinessTourBuildModal
+          tile={buildModalTile.tile}
+          player={buildModalTile.player}
+          currentHouses={buildModalTile.propState ? buildModalTile.propState.houses || 0 : 0}
+          isNewPurchase={buildModalTile.isNewPurchase}
+          onConfirmBuild={(targetTier, cost) =>
+            handleConfirmBuildTier(buildModalTile.tile.id, targetTier, cost, buildModalTile.player)
+          }
+          onAuction={() => {
+            const tile = buildModalTile.tile;
+            setBuildModalTile(null);
+            startAuction(tile);
+          }}
+          onClose={() => {
+            setBuildModalTile(null);
             setHasRolled(true);
           }}
         />
       )}
 
-      {pendingBuyTile && currentPlayer && (
-        <BuyPropertyModal
-          tile={pendingBuyTile}
-          player={currentPlayer}
-          onBuy={() => buyProperty(currentPlayer.id, pendingBuyTile.id, pendingBuyTile.price)}
-          onAuction={() => startAuction(pendingBuyTile)}
+      {/* MODAL ĐĂNG CAI LỄ HỘI THẾ GIỚI CHUẨN BUSINESS TOUR */}
+      {festivalModal && (
+        <FestivalModal
+          player={festivalModal.player}
+          ownedTiles={festivalModal.ownedTiles}
+          onSelectCity={(tileId) => handleSelectFestivalCity(tileId)}
+          onClose={() => {
+            setFestivalModal(null);
+            setHasRolled(true);
+          }}
         />
       )}
 

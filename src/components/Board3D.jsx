@@ -192,30 +192,30 @@ function createGrassLawnTexture() {
   const ctx = canvas.getContext('2d');
 
   // Nền cỏ xanh mượt sân vận động
-  ctx.fillStyle = '#7cb342';
+  ctx.fillStyle = '#6fa828';
   ctx.fillRect(0, 0, 512, 512);
 
   // Sọc cỏ sáng tối cắt tỉa chuẩn golf/bóng đá
-  ctx.fillStyle = '#8bc34a';
+  ctx.fillStyle = '#7dbb34';
   const stripeWidth = 64;
   for (let i = 0; i < 512; i += stripeWidth * 2) {
     ctx.fillRect(i, 0, stripeWidth, 512);
   }
 
   // Vạch kẻ sân thể thao màu trắng phấn
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(28, 28, 456, 456);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(24, 24, 464, 464);
 
   // Vòng tròn trung tâm
   ctx.beginPath();
-  ctx.arc(256, 256, 110, 0, Math.PI * 2);
+  ctx.arc(256, 256, 115, 0, Math.PI * 2);
   ctx.stroke();
 
   // Chấm phát bóng trung tâm
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
   ctx.beginPath();
-  ctx.arc(256, 256, 10, 0, Math.PI * 2);
+  ctx.arc(256, 256, 12, 0, Math.PI * 2);
   ctx.fill();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -665,14 +665,14 @@ export default function Board3D({
     scene.add(border);
 
     // Thảm Cỏ Xanh Sân Thể Thao Trung Tâm chuẩn Business Tour
-    const centerGeo = new THREE.PlaneGeometry(16.5, 16.5);
+    const centerGeo = new THREE.PlaneGeometry(18.5, 18.5);
     const centerMat = new THREE.MeshStandardMaterial({
       map: createGrassLawnTexture(),
       roughness: 0.65,
     });
     const centerFelt = new THREE.Mesh(centerGeo, centerMat);
     centerFelt.rotation.x = -Math.PI / 2;
-    centerFelt.position.y = 0.02;
+    centerFelt.position.y = 0.07;
     centerFelt.receiveShadow = true;
     scene.add(centerFelt);
 
