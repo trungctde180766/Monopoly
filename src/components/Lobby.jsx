@@ -10,6 +10,7 @@ export default function Lobby({
   onStartQuickBot,
   isMuted,
   onToggleMute,
+  isSocketConnected = false,
 }) {
   const [tab, setTab] = useState('pass_play'); // pass_play, online, quick
 
@@ -256,6 +257,14 @@ export default function Lobby({
         {/* TAB 2: ONLINE MULTIPLAYER */}
         {tab === 'online' && (
           <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 md:p-8 backdrop-blur-sm shadow-2xl">
+            {/* Trạng thái kết nối máy chủ Socket.IO */}
+            <div className="flex items-center justify-center gap-2 mb-6 py-2 px-4 rounded-xl bg-slate-950/80 border border-slate-800 max-w-sm mx-auto">
+              <span className={`w-2.5 h-2.5 rounded-full ${isSocketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className={`text-xs font-bold ${isSocketConnected ? 'text-emerald-400' : 'text-red-400'}`}>
+                {isSocketConnected ? 'Đã kết nối máy chủ online (Sẵn sàng chơi)' : 'Chưa kết nối máy chủ (Kiểm tra backend/mạng)'}
+              </span>
+            </div>
+
             <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 max-w-xs mx-auto mb-6">
               <button
                 type="button"
@@ -311,8 +320,18 @@ export default function Lobby({
 
                 <button
                   type="button"
-                  onClick={() => onStartOnlineHost({ hostName, hostToken, freeParkingJackpot })}
-                  className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 shadow-glow-cyan active:scale-95 transition mt-4"
+                  onClick={() => {
+                    if (!isSocketConnected) {
+                      alert('Không thể tạo phòng vì chưa kết nối được tới máy chủ Socket.IO!\nHãy đảm bảo máy chủ backend đang chạy.');
+                      return;
+                    }
+                    onStartOnlineHost({ hostName, hostToken, freeParkingJackpot });
+                  }}
+                  className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition mt-4 ${
+                    isSocketConnected
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 shadow-glow-cyan active:scale-95 cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                  }`}
                 >
                   Tạo Phòng & Lấy Mã Mời
                 </button>
@@ -363,8 +382,18 @@ export default function Lobby({
 
                 <button
                   type="button"
-                  onClick={() => onStartOnlineJoin({ roomCode: joinCode, playerName: joinName, token: joinToken })}
-                  className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 shadow-glow-cyan active:scale-95 transition mt-4"
+                  onClick={() => {
+                    if (!isSocketConnected) {
+                      alert('Không thể tham gia phòng vì chưa kết nối được tới máy chủ Socket.IO!\nHãy đảm bảo máy chủ backend đang chạy.');
+                      return;
+                    }
+                    onStartOnlineJoin({ roomCode: joinCode, playerName: joinName, token: joinToken });
+                  }}
+                  className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition mt-4 ${
+                    isSocketConnected
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 hover:brightness-110 shadow-glow-cyan active:scale-95 cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                  }`}
                 >
                   Tham Gia Phòng
                 </button>

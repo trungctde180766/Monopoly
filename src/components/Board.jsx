@@ -70,13 +70,13 @@ export default function Board({
               {/* Thông tin nhà / khách sạn */}
               {prop.houses > 0 && (
                 <div className="absolute top-1 left-0 right-0 flex items-center justify-center gap-0.5 z-10">
-                  {prop.houses === 5 ? (
-                    <span className="p-0.5 rounded bg-red-600 text-white shadow-sm animate-pulse" title="Khách Sạn">
+                  {prop.houses >= 4 ? (
+                    <span className="p-0.5 rounded bg-amber-500 text-slate-950 shadow-sm animate-pulse" title="Khách Sạn (Landmark)">
                       <Hotel size={10} />
                     </span>
                   ) : (
                     Array.from({ length: prop.houses }).map((_, i) => (
-                      <span key={i} className="p-0.5 rounded bg-emerald-500 text-slate-950 shadow-sm" title="Nhà">
+                      <span key={i} className="p-0.5 rounded bg-emerald-500 text-slate-950 shadow-sm" title={`Nhà Cấp ${prop.houses}`}>
                         <Home size={8} />
                       </span>
                     ))

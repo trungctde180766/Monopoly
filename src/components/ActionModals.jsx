@@ -734,7 +734,7 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
                       <div className="text-xs text-slate-400">
                         {tile.type === 'property' ? (
                           <span>
-                            {houses === 5 ? '🔴 1 Khách Sạn' : houses > 0 ? `🟢 ${houses} Ngôi Nhà` : 'Đất Trống'}
+                            {houses >= 4 ? '🏰 1 Khách Sạn (Landmark)' : houses > 0 ? `🟢 Nhà Cấp ${houses}` : 'Đất Trống'}
                           </span>
                         ) : (
                           <span>Tài sản tiện ích/bến bãi</span>

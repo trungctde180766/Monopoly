@@ -50,27 +50,27 @@ function formatShortPrice(num) {
   return `${num}`;
 }
 
-// Tạo texture chất lượng cao chuẩn Business Tour (Trắng sứ bóng bẩy, viền tinh tế, giá ngoài rìa)
+// Tạo texture chất lượng cao chuẩn Business Tour (G02: 512x760, chữ giá to 64px, tương phản cao)
 function createTileTexture(tile, isMortgaged, ownerColor) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = tile.id % 10 === 0 ? 256 : 380;
+  canvas.width = 512;
+  canvas.height = tile.id % 10 === 0 ? 512 : 760;
   const ctx = canvas.getContext('2d');
 
   // Nền đá cẩm thạch trắng sứ đặc trưng Business Tour
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Viền ô đất: Viền người sở hữu hoặc viền vi kim loại sáng
+  // Viền ô đất: Viền người sở hữu hoặc viền kim loại sáng
   ctx.strokeStyle = ownerColor || (isMortgaged ? '#ef4444' : '#cbd5e1');
-  ctx.lineWidth = 10;
-  ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+  ctx.lineWidth = 16;
+  ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
 
   const groupInfo = tile.group ? COLOR_GROUPS[tile.group.toUpperCase()] : null;
 
   if (tile.id % 10 === 0) {
     ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(10, 10, canvas.width - 20, canvas.height - 20);
+    ctx.fillRect(16, 16, canvas.width - 32, canvas.height - 32);
 
     let title = (tile.shortName || tile.name).toUpperCase();
     let icon = '🏁';
@@ -81,7 +81,7 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
       icon = '🏁';
       bannerColor = '#16a34a';
     } else if (tile.id === 10) {
-      title = 'ĐẢO HOANG';
+      title = 'ĐẢO HOANG (TÙ)';
       icon = '🏝️';
       bannerColor = '#f59e0b';
     } else if (tile.id === 20) {
@@ -89,98 +89,104 @@ function createTileTexture(tile, isMortgaged, ownerColor) {
       icon = '🎪';
       bannerColor = '#e11d48';
     } else if (tile.id === 30) {
-      title = 'DU LỊCH (TOUR)';
-      icon = '✈️';
-      bannerColor = '#0284c7';
+      // R07 Fix: Ô 30 là Vào Tù theo đúng logic boardData & App.jsx
+      title = 'VÀO TÙ (BỊ BẮT)';
+      icon = '🚨';
+      bannerColor = '#dc2626';
     }
 
     ctx.fillStyle = bannerColor;
-    ctx.fillRect(10, 10, canvas.width - 20, 55);
+    ctx.fillRect(16, 16, canvas.width - 32, 95);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 22px sans-serif';
+    ctx.font = '900 36px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(title, canvas.width / 2, 45);
+    ctx.fillText(title, canvas.width / 2, 75);
 
-    ctx.font = '76px sans-serif';
-    ctx.fillText(icon, canvas.width / 2, 160);
+    ctx.font = '140px sans-serif';
+    ctx.fillText(icon, canvas.width / 2, 300);
 
     if (tile.salary) {
       ctx.fillStyle = '#16a34a';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText(`+${formatShortPrice(tile.salary)}₫`, canvas.width / 2, 225);
+      ctx.font = 'bold 44px sans-serif';
+      ctx.fillText(`+${formatShortPrice(tile.salary)}₫`, canvas.width / 2, 450);
+    } else if (tile.id === 30) {
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('BỊ BẮT GIAM', canvas.width / 2, 450);
     }
   } else {
     // Dải màu nhóm đất ở trên cùng chuẩn Business Tour
     if (groupInfo) {
       ctx.fillStyle = groupInfo.color;
-      ctx.fillRect(10, 10, canvas.width - 20, 85);
+      ctx.fillRect(16, 16, canvas.width - 32, 140);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = '900 22px sans-serif';
+      ctx.font = '900 36px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(groupInfo.name.toUpperCase(), canvas.width / 2, 55);
+      ctx.fillText(groupInfo.name.toUpperCase(), canvas.width / 2, 98);
     } else {
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(10, 10, canvas.width - 20, 85);
+      ctx.fillRect(16, 16, canvas.width - 32, 140);
 
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 22px sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 34px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tile.type.toUpperCase(), canvas.width / 2, 55);
+      ctx.fillText(tile.type.toUpperCase(), canvas.width / 2, 98);
     }
 
-    // Tên đường / thành phố (Chữ đen đậm rõ nét chuẩn Business Tour)
+    // Tên đường / thành phố (Chữ đen đậm rõ nét kích thước lớn)
     ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 24px sans-serif';
+    ctx.font = 'bold 42px sans-serif';
     ctx.textAlign = 'center';
 
     const words = (tile.shortName || tile.name).split(' ');
     if (words.length > 2) {
-      ctx.fillText(words.slice(0, 2).join(' '), canvas.width / 2, 145);
-      ctx.fillText(words.slice(2).join(' '), canvas.width / 2, 180);
+      ctx.fillText(words.slice(0, 2).join(' '), canvas.width / 2, 240);
+      ctx.fillText(words.slice(2).join(' '), canvas.width / 2, 295);
     } else {
-      ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 155);
+      ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 260);
     }
 
     if (tile.type === 'railroad') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText('🚂', canvas.width / 2, 250);
+      ctx.font = '100px sans-serif';
+      ctx.fillText('🚂', canvas.width / 2, 470);
     } else if (tile.type === 'utility') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText(tile.id === 12 ? '⚡' : '💧', canvas.width / 2, 250);
+      ctx.font = '100px sans-serif';
+      ctx.fillText(tile.id === 12 ? '⚡' : '💧', canvas.width / 2, 470);
     } else if (tile.type === 'chance') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText('❓', canvas.width / 2, 250);
+      ctx.font = '100px sans-serif';
+      ctx.fillText('❓', canvas.width / 2, 470);
     } else if (tile.type === 'community_chest') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText('🎁', canvas.width / 2, 250);
+      ctx.font = '100px sans-serif';
+      ctx.fillText('🎁', canvas.width / 2, 470);
     } else if (tile.type === 'tax') {
-      ctx.font = '54px sans-serif';
-      ctx.fillText('💸', canvas.width / 2, 250);
+      ctx.font = '100px sans-serif';
+      ctx.fillText('💸', canvas.width / 2, 470);
     }
 
-    // Giá tiền ô đất ở mép ngoài (Chữ đen đậm lớn chuẩn Image 1: 200K, 495K, 2.4M)
+    // Giá tiền ô đất ở mép ngoài (Chữ đen đậm cực lớn chuẩn Image 1: 200K, 495K, 2.4M)
     if (tile.price) {
-      ctx.fillStyle = '#0f172a';
-      ctx.font = '900 30px sans-serif';
-      ctx.fillText(formatShortPrice(tile.price), canvas.width / 2, 345);
+      ctx.fillStyle = '#000000';
+      ctx.font = '900 64px sans-serif';
+      ctx.fillText(formatShortPrice(tile.price), canvas.width / 2, 700);
     } else if (tile.taxAmount) {
       ctx.fillStyle = '#dc2626';
-      ctx.font = '900 26px sans-serif';
-      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 345);
+      ctx.font = '900 56px sans-serif';
+      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 700);
     }
 
     if (isMortgaged) {
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
-      ctx.fillRect(10, 160, canvas.width - 20, 60);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.92)';
+      ctx.fillRect(16, 280, canvas.width - 32, 120);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('THẾ CHẤP', canvas.width / 2, 202);
+      ctx.font = 'bold 48px sans-serif';
+      ctx.fillText('THẾ CHẤP', canvas.width / 2, 355);
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
-  texture.anisotropy = 4;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
   return texture;
 }
 
@@ -219,6 +225,7 @@ function createGrassLawnTexture() {
   ctx.fill();
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
 }
@@ -248,6 +255,7 @@ function createCashStackMesh() {
   ctx.fillText('$', 64, 42);
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   const billGeo = new THREE.BoxGeometry(2.2, 0.26, 1.2);
   const billMat = new THREE.MeshStandardMaterial({
     map: tex,
@@ -316,6 +324,7 @@ function createDiceFaceTexture(value) {
   });
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
 }
@@ -331,28 +340,122 @@ function createDiceMaterials(topValue) {
   }));
 }
 
-// Mô hình Nhà Cấp 1, 2, 3 (Cottage mái dốc phong cách Business Tour)
-function createHouseMesh(roofColor = 0xef4444) {
+// G04: MÔ HÌNH NHÀ CẤP 1 (Cottage 1 tầng mái dốc ấm cúng + ống khói gạch)
+function createTier1CottageMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  const bodyGeo = new THREE.BoxGeometry(0.38, 0.32, 0.38);
+  const bodyGeo = new THREE.BoxGeometry(0.48, 0.36, 0.44);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xf8fafc,
+    roughness: 0.3,
+    metalness: 0.05,
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.18;
+  body.castShadow = true;
+  group.add(body);
+
+  const roofGeo = new THREE.ConeGeometry(0.42, 0.3, 4);
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: roofColor,
+    roughness: 0.25,
+  });
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.y = 0.36 + 0.15;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  group.add(roof);
+
+  const chimneyGeo = new THREE.BoxGeometry(0.09, 0.22, 0.09);
+  const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
+  const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+  chimney.position.set(0.14, 0.44, 0.12);
+  chimney.castShadow = true;
+  group.add(chimney);
+
+  return group;
+}
+
+// G04: MÔ HÌNH NHÀ CẤP 2 (Nhà Phố 2 Tầng cao ráo + ban công phía trước)
+function createTier2TownhouseMesh(roofColor = 0xef4444) {
+  const group = new THREE.Group();
+
+  const bodyGeo = new THREE.BoxGeometry(0.56, 0.68, 0.5);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
     roughness: 0.25,
     metalness: 0.1,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.16;
+  body.position.y = 0.34;
   body.castShadow = true;
   group.add(body);
 
-  const roofGeo = new THREE.ConeGeometry(0.34, 0.25, 4);
+  // Ban công tầng 2
+  const balconyGeo = new THREE.BoxGeometry(0.44, 0.07, 0.12);
+  const balconyMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3 });
+  const balcony = new THREE.Mesh(balconyGeo, balconyMat);
+  balcony.position.set(0, 0.42, 0.28);
+  balcony.castShadow = true;
+  group.add(balcony);
+
+  // Mái dốc cao phong cách nhà phố
+  const roofGeo = new THREE.ConeGeometry(0.48, 0.35, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
-    roughness: 0.3,
+    roughness: 0.2,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.32 + 0.125;
+  roof.position.y = 0.68 + 0.175;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  group.add(roof);
+
+  return group;
+}
+
+// G04: MÔ HÌNH NHÀ CẤP 3 (Biệt Thự Sang Trọng + Cặp cột sảnh hiên đá cẩm thạch)
+function createTier3VillaMesh(roofColor = 0xef4444) {
+  const group = new THREE.Group();
+
+  // Khối nhà biệt thự bề thế
+  const bodyGeo = new THREE.BoxGeometry(0.82, 0.55, 0.65);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.2,
+    metalness: 0.08,
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.275;
+  body.castShadow = true;
+  group.add(body);
+
+  // 2 Cột trụ sảnh hiên đá cẩm thạch
+  [-0.28, 0.28].forEach(x => {
+    const colGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.52, 12);
+    const colMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2 });
+    const col = new THREE.Mesh(colGeo, colMat);
+    col.position.set(x, 0.26, 0.35);
+    col.castShadow = true;
+    group.add(col);
+  });
+
+  // Mái hiên sảnh
+  const porchGeo = new THREE.BoxGeometry(0.72, 0.06, 0.22);
+  const porchMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.25 });
+  const porch = new THREE.Mesh(porchGeo, porchMat);
+  porch.position.set(0, 0.54, 0.35);
+  porch.castShadow = true;
+  group.add(porch);
+
+  // Mái chính biệt thự
+  const roofGeo = new THREE.ConeGeometry(0.68, 0.42, 4);
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: roofColor,
+    roughness: 0.2,
+  });
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.y = 0.55 + 0.21;
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
   group.add(roof);
@@ -575,10 +678,16 @@ export default function Board3D({
   const hoppingStateRef = useRef({});
   const lastRecordedPositionsRef = useRef({});
 
-  // Camera Orbit
+  // Camera Orbit (G01 Fix: góc chuẩn radius 36, phi Math.PI/3.4 bao quát trọn vẹn 4 góc bàn cờ)
   const isDraggingRef = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
-  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.2, radius: 29 });
+  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 });
+
+  // G05 Fix: Giữ ref isRolling thời gian thực cho vòng render loop
+  const isRollingRef = useRef(isRolling);
+  useEffect(() => {
+    isRollingRef.current = isRolling;
+  }, [isRolling]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -590,10 +699,11 @@ export default function Board3D({
     const scene = new THREE.Scene();
     // Bầu không gian trời xanh tươi sáng chuẩn Business Tour (Image 1)
     scene.background = new THREE.Color(0xc2e2fa);
-    scene.fog = new THREE.Fog(0xc2e2fa, 32, 95);
+    // G03 Fix: Tắt hoàn toàn fog trên bàn cờ để chữ và màu sắc không bị mờ nhạt
+    scene.fog = null;
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 120);
     cameraRef.current = camera;
     updateCameraPosition();
 
@@ -604,12 +714,14 @@ export default function Board3D({
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
+    // G03 Fix: Khai báo sRGB color space cho renderer
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     rendererRef.current = renderer;
 
     container.replaceChildren(renderer.domElement);
 
     // Ánh sáng ban ngày tươi tắn chuẩn Business Tour
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
@@ -618,6 +730,13 @@ export default function Board3D({
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.bias = -0.0005;
+    // G03 Fix: Cấu hình shadow frustum [-20, 20] bao phủ toàn bộ 40 ô bàn cờ 26x26
+    sunLight.shadow.camera.left = -20;
+    sunLight.shadow.camera.right = 20;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -20;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 90;
     scene.add(sunLight);
 
     // Các khối đa diện lập phương / bát diện 3D bán trong suốt lơ lửng trên bầu trời (chuẩn Image 1)
@@ -814,8 +933,8 @@ export default function Board3D({
     const handleWheel = (e) => {
       e.preventDefault();
       cameraAnglesRef.current.radius = Math.max(
-        14,
-        Math.min(42, cameraAnglesRef.current.radius + e.deltaY * 0.02)
+        22,
+        Math.min(48, cameraAnglesRef.current.radius + e.deltaY * 0.02)
       );
       updateCameraPosition();
     };
@@ -837,9 +956,9 @@ export default function Board3D({
         particleSystemRef.current.rotation.y = elapsed * 0.03;
       }
 
-      // XÚC XẮC XOAY XOAY XOAY VẬT LÝ
+      // XÚC XẮC XOAY XOAY XOAY VẬT LÝ (G05 Fix: đọc từ isRollingRef)
       if (die1MeshRef.current && die2MeshRef.current) {
-        if (isRolling) {
+        if (isRollingRef.current) {
           // Xoay tít mù nhiều trục & nảy lên cao
           die1MeshRef.current.rotation.x += delta * 24;
           die1MeshRef.current.rotation.y += delta * 32;
@@ -987,28 +1106,29 @@ export default function Board3D({
       const roofColor = owner?.color || '#ef4444';
 
       if (houses >= 4) {
-        // Cấp 4: Khách Sạn / Kỳ Quan Landmark Bất Khả Xâm Phạm
+        // G04 Cấp 4: Khách Sạn / Kỳ Quan Landmark Bất Khả Xâm Phạm
         const landmark = createLandmarkMesh(roofColor);
         landmark.position.set(transform.x, 0.16, transform.z);
         landmark.rotation.y = transform.rotY;
         group.add(landmark);
-      } else if (houses > 0) {
-        // Cấp 1, 2, 3: Các ngôi nhà mái dốc Business Tour
-        const spacing = 0.45;
-        const startOffset = -((houses - 1) * spacing) / 2;
-
-        for (let i = 0; i < houses; i++) {
-          const house = createHouseMesh(roofColor);
-          const offset = startOffset + i * spacing;
-
-          if (transform.side === 'bottom' || transform.side === 'top') {
-            house.position.set(transform.x + offset, 0.16, transform.z);
-          } else {
-            house.position.set(transform.x, 0.16, transform.z + offset);
-          }
-          house.rotation.y = transform.rotY;
-          group.add(house);
-        }
+      } else if (houses === 3) {
+        // G04 Cấp 3: Biệt Thự Sang Trọng
+        const villa = createTier3VillaMesh(roofColor);
+        villa.position.set(transform.x, 0.16, transform.z);
+        villa.rotation.y = transform.rotY;
+        group.add(villa);
+      } else if (houses === 2) {
+        // G04 Cấp 2: Nhà Phố 2 Tầng
+        const townhouse = createTier2TownhouseMesh(roofColor);
+        townhouse.position.set(transform.x, 0.16, transform.z);
+        townhouse.rotation.y = transform.rotY;
+        group.add(townhouse);
+      } else if (houses === 1) {
+        // G04 Cấp 1: Nhà Mái Dốc Ấm Cúng
+        const cottage = createTier1CottageMesh(roofColor);
+        cottage.position.set(transform.x, 0.16, transform.z);
+        cottage.rotation.y = transform.rotY;
+        group.add(cottage);
       }
 
       // Nếu ô đất đang đăng cai LỄ HỘI (World Championship / Joust): Cắm cờ Lễ Hội
@@ -1080,23 +1200,25 @@ export default function Board3D({
     <div className="w-full h-full relative overflow-hidden bg-[#c2e2fa]">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Floating Controls */}
-      <div className="absolute top-20 left-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300 shadow-lg">
+      {/* Floating Controls (Đặt dưới Card người chơi góc trên bên trái, tránh chồng lấn G01) */}
+      <div className="absolute top-[125px] left-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300 shadow-lg">
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.2, radius: 29 };
+            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 };
             updateCameraPosition();
           }}
-          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95"
+          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+          title="Về góc nhìn chuẩn bao quát 4 góc bàn cờ"
         >
-          <RotateCcw size={14} /> Góc 3D
+          <RotateCcw size={14} /> Góc Chuẩn (3D)
         </button>
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: 0, phi: 0.1, radius: 32 };
+            cameraAnglesRef.current = { theta: 0, phi: 0.05, radius: 36 };
             updateCameraPosition();
           }}
-          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95"
+          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+          title="Góc nhìn thẳng từ trên xuống"
         >
           <Eye size={14} /> Nhìn Thẳng
         </button>

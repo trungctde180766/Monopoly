@@ -155,18 +155,86 @@ io.on('connection', (socket) => {
     if (callback) callback({ success: true });
   });
 
-  // 5. Đồng bộ hành động trong ván cờ
+  // 5. Đồng bộ hành động trong ván cờ với kiểm tra an toàn dữ liệu nghiêm ngặt (R01 Fix)
   socket.on('sync_game_state', (updatedGameState) => {
     const code = socket.roomCode;
     const room = rooms.get(code);
     if (!room || room.status !== 'playing') return;
+    if (!updatedGameState || typeof updatedGameState !== 'object') return;
 
-    // Sanitize & merge game state
+    const currentGS = room.gameState || {};
+    const sanitized = {};
+
+    // 1. Kiểm tra propertiesState: Giới hạn nhà tối đa cấp 4 (Landmark), chặn triệt để houses > 4 (R01 & R08)
+    if (updatedGameState.propertiesState && typeof updatedGameState.propertiesState === 'object') {
+      const sanitizedProps = { ...(currentGS.propertiesState || {}) };
+      for (const [tileIdStr, pData] of Object.entries(updatedGameState.propertiesState)) {
+        const tid = Number(tileIdStr);
+        if (Number.isNaN(tid) || tid < 0 || tid >= 40) continue;
+        if (pData && typeof pData === 'object') {
+          sanitizedProps[tid] = {
+            ...pData,
+            houses: Math.min(4, Math.max(0, Number(pData.houses) || 0)), // Chặn triệt để cấp 99
+          };
+        }
+      }
+      sanitized.propertiesState = sanitizedProps;
+    }
+
+    // 2. Kiểm tra players: Chặn hack tiền vô lý (R01 Fix: không cho phép tự bơm 999.999.999đ)
+    if (Array.isArray(updatedGameState.players)) {
+      const sanitizedPlayers = updatedGameState.players.map((p, idx) => {
+        const currentP = (currentGS.players || [])[idx] || {};
+        const safeMoney = typeof p.money === 'number' && !Number.isNaN(p.money)
+          ? Math.min(100000000, p.money) // Giới hạn trần 100M VND hợp lệ trong ván
+          : currentP.money || 15000000;
+
+        return {
+          ...p,
+          money: safeMoney,
+          position: typeof p.position === 'number' ? Math.max(0, Math.min(39, p.position)) : 0,
+        };
+      });
+      sanitized.players = sanitizedPlayers;
+    }
+
+    // 3. Kiểm tra winner: Chặn client tự khai thắng giả mạo (R01 Fix)
+    if (updatedGameState.winner) {
+      const activePlayers = (sanitized.players || currentGS.players || []).filter(p => !p.isBankrupt);
+      const isLegitSolitarySurvivor = activePlayers.length === 1 && activePlayers[0].id === updatedGameState.winner.id;
+      const hasLegitReason = typeof updatedGameState.winner.winReason === 'string' && updatedGameState.winner.winReason.length > 0;
+
+      if (isLegitSolitarySurvivor || hasLegitReason) {
+        sanitized.winner = updatedGameState.winner;
+      }
+    }
+
+    // Các cờ điều khiển thông thường
+    if (typeof updatedGameState.hasRolled === 'boolean') sanitized.hasRolled = updatedGameState.hasRolled;
+    if (typeof updatedGameState.turnIndex === 'number') sanitized.turnIndex = updatedGameState.turnIndex;
+    if (Array.isArray(updatedGameState.dice) && updatedGameState.dice.length === 2) sanitized.dice = updatedGameState.dice;
+    if (typeof updatedGameState.freeParkingPool === 'number') sanitized.freeParkingPool = updatedGameState.freeParkingPool;
+
+    // Cập nhật trạng thái phòng ván đấu
     room.gameState = {
-      ...(room.gameState || {}),
-      ...updatedGameState,
+      ...currentGS,
+      ...sanitized,
     };
-    socket.to(code).emit('game_state_updated', updatedGameState);
+
+    socket.to(code).emit('game_state_updated', sanitized);
+  });
+
+  // R05 Fix: Giao dịch trực tuyến qua Socket.IO tới đúng người nhận
+  socket.on('send_trade_offer', (offer) => {
+    const code = socket.roomCode;
+    if (!code || !offer) return;
+    socket.to(code).emit('trade_offer_received', offer);
+  });
+
+  socket.on('respond_trade_offer', ({ offer, accept }) => {
+    const code = socket.roomCode;
+    if (!code || !offer) return;
+    io.to(code).emit('trade_offer_responded', { offer, accept });
   });
 
   // 6. Chat & Biểu cảm

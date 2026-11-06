@@ -163,7 +163,7 @@ export default function DeedModal({ tile, propertyState, owner, onClose }) {
                   </span>
                 ) : houses > 0 ? (
                   <span className="text-amber-400 font-bold">
-                    {houses === 5 ? '1 Khách sạn' : `${houses} Nhà`}
+                    {houses >= 4 ? '🏰 Khách Sạn (Landmark)' : `Nhà Cấp ${houses}`}
                   </span>
                 ) : (
                   <span className="text-emerald-400 flex items-center gap-1">

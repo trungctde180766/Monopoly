@@ -107,6 +107,8 @@ export default function App() {
   const [socketId, setSocketId] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
 
+  const [socketConnected, setSocketConnected] = useState(false);
+
   // Khởi tạo Socket.io
   useEffect(() => {
     const socketServerUrl = import.meta.env.VITE_SOCKET_URL || undefined;
@@ -118,6 +120,15 @@ export default function App() {
 
     socket.on('connect', () => {
       setSocketId(socket.id);
+      setSocketConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', () => {
+      setSocketConnected(false);
     });
 
     socket.on('room_updated', (updatedRoom) => {
@@ -142,6 +153,26 @@ export default function App() {
       setFreeParkingPool(incomingState.freeParkingPool);
       setGameLog(incomingState.gameLog);
       if (incomingState.winner) setWinner(incomingState.winner);
+    });
+
+    // R05 Fix: Nhận lời đề nghị giao dịch trực tuyến từ người chơi khác
+    socket.on('trade_offer_received', (offer) => {
+      if (offer && offer.targetId === socket.id) {
+        setPendingTradeOffer(offer);
+        soundFX.playCardDraw();
+      }
+    });
+
+    // R05 Fix: Nhận kết quả phản hồi giao dịch trực tuyến
+    socket.on('trade_offer_responded', ({ offer, accept }) => {
+      if (accept) {
+        executeTrade(offer);
+        addLog(`🤝 Giao dịch trực tuyến đã được chấp thuận và thực hiện thành công!`);
+      } else {
+        const target = players.find((p) => p.id === offer.targetId);
+        addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch trực tuyến.`);
+      }
+      setPendingTradeOffer(null);
     });
 
     socket.on('chat_received', (msg) => {
@@ -521,7 +552,7 @@ export default function App() {
           if (player.isBot) {
             const wantBuy = AIEngine.shouldBuyProperty(player, tile, propertiesState, currentPlayersList);
             if (wantBuy && player.money >= tile.price) {
-              buyProperty(player.id, tile.id, tile.price);
+              buyProperty(player.id, tile.id, tile.price, currentPlayersList);
             } else {
               addLog(`⏩ ${player.name} quyết định không mua ${tile.name}.`);
               setHasRolled(true);
@@ -542,7 +573,7 @@ export default function App() {
             else if (player.money >= tile.price + hPrice) bestTier = 2;
 
             const cost = tile.price + (bestTier - 1) * hPrice;
-            handleConfirmBuildTier(tile.id, bestTier, cost, player);
+            handleConfirmBuildTier(tile.id, bestTier, cost, player, currentPlayersList);
           } else {
             addLog(`⏩ ${player.name} quyết định không mua ${tile.name}.`);
             setHasRolled(true);
@@ -606,7 +637,7 @@ export default function App() {
             const nextTier = Math.min(4, (prop.houses || 0) + 1);
             const cost = (nextTier - (prop.houses || 0)) * (tile.housePrice || 500000);
             if (player.money >= cost) {
-              handleConfirmBuildTier(tile.id, nextTier, cost, player);
+              handleConfirmBuildTier(tile.id, nextTier, cost, player, currentPlayersList);
             } else {
               setHasRolled(true);
             }
@@ -629,7 +660,7 @@ export default function App() {
 
     // F12 Fix: Ga tàu và Tiện ích mua đứt không xây nhà
     if (tile.type !== 'property') {
-      buyProperty(activeP.id, tileId, tile.price);
+      buyProperty(activeP.id, tileId, tile.price, playersList);
       return;
     }
 
@@ -752,16 +783,16 @@ export default function App() {
     }
   };
 
-  // MUA ĐẤT
-  const buyProperty = (playerId, tileId, price) => {
-    const p = players.find((x) => x.id === playerId);
+  // MUA ĐẤT (R02 Fix: nhận currentList để không dùng closure cũ sau GO)
+  const buyProperty = (playerId, tileId, price, currentList = players) => {
+    const p = currentList.find((x) => x.id === playerId);
     const tile = BOARD_TILES[tileId];
     if (!p || !tile || p.money < price) return;
 
     soundFX.playBuyProperty();
     addLog(`📜 ${p.name} đã mua thành công: ${tile.name} với giá ${formatVND(price)}!`);
 
-    const updatedPlayers = players.map((x) =>
+    const updatedPlayers = currentList.map((x) =>
       x.id === playerId ? { ...x, money: x.money - price } : x
     );
     const updatedProps = {
@@ -1081,7 +1112,7 @@ export default function App() {
     syncOnlineState({ players: updatedPlayers, propertiesState: propsCopy });
   };
 
-  // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI
+  // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI (R03 Fix: Theo dõi shortfall để chủ nợ nhận đủ 100% tiền thuê sau thanh lý)
   const transferMoney = (fromId, toId, amount, currentPlayersList = players) => {
     const fromPlayer = currentPlayersList.find((p) => p.id === fromId);
     if (!fromPlayer) return currentPlayersList;
@@ -1089,6 +1120,7 @@ export default function App() {
     // F07: Con nợ chỉ có thể trả tối đa số tiền mặt đang có nếu phá sản (hoặc đủ trả amount)
     const canPayFull = fromPlayer.money >= amount;
     const actualTransfer = canPayFull ? amount : Math.max(0, fromPlayer.money);
+    const shortfall = amount - actualTransfer;
 
     let updated = currentPlayersList.map((p) => {
       if (p.id === fromId) return { ...p, money: p.money - amount };
@@ -1098,7 +1130,7 @@ export default function App() {
 
     const debtor = updated.find((p) => p.id === fromId);
     if (debtor && debtor.money < 0) {
-      handleDebtCrisis(debtor, toId, updated);
+      handleDebtCrisis(debtor, toId, updated, shortfall);
       return updated;
     }
 
@@ -1115,7 +1147,8 @@ export default function App() {
 
     const debtor = updated.find((p) => p.id === playerId);
     if (debtor && debtor.money < 0) {
-      handleDebtCrisis(debtor, creditorId, updated);
+      const shortfall = Math.abs(debtor.money);
+      handleDebtCrisis(debtor, creditorId, updated, shortfall);
       return;
     }
 
@@ -1124,8 +1157,8 @@ export default function App() {
     syncOnlineState({ players: updated, freeParkingPool: poolVal, hasRolled: true });
   };
 
-  // XỬ LÝ KHỦNG HOẢNG NỢ / PHÁ SẢN (BANKRUPTCY CHECK)
-  const handleDebtCrisis = (debtor, creditorId, currentPlayersList) => {
+  // XỬ LÝ KHỦNG HOẢNG NỢ / PHÁ SẢN (BANKRUPTCY CHECK - R03 Fix)
+  const handleDebtCrisis = (debtor, creditorId, currentPlayersList, shortfall = 0) => {
     const maxLiquid = calculateMaxLiquidatable(debtor, propertiesState);
 
     // F04: calculateMaxLiquidatable đã bao gồm tiền mặt hiện có.
@@ -1150,12 +1183,21 @@ export default function App() {
           }
         });
 
-        const updated = currentPlayersList.map((p) =>
-          p.id === debtor.id ? { ...p, money: currentCash } : p
-        );
+        // R03 Fix: Sau khi bot thanh lý xong, chuyển nốt phần nợ shortfall còn thiếu cho chủ nợ
+        const updated = currentPlayersList.map((p) => {
+          if (p.id === debtor.id) return { ...p, money: currentCash };
+          if (creditorId && p.id === creditorId && shortfall > 0) return { ...p, money: p.money + shortfall };
+          return p;
+        });
+
         setPlayers(updated);
         setPropertiesState(propsCopy);
-        addLog(`⚠️ ${debtor.name} đã thế chấp tài sản để trả nợ xong!`);
+        const creditor = currentPlayersList.find((p) => p.id === creditorId);
+        addLog(
+          `⚠️ ${debtor.name} đã thế chấp tài sản trả xong nợ${
+            creditor && shortfall > 0 ? ` (Thanh toán đủ ${formatVND(shortfall)} còn thiếu cho ${creditor.name})` : ''
+          }!`
+        );
         syncOnlineState({ players: updated, propertiesState: propsCopy });
       } else {
         // Người chơi thật: hiển thị thông báo mở Modal Sổ đỏ để thanh lý
@@ -1382,6 +1424,7 @@ export default function App() {
         onStartOnlineJoin={handleStartOnlineJoin}
         isMuted={isMuted}
         onToggleMute={toggleMute}
+        isSocketConnected={socketConnected}
       />
     );
   }
@@ -1578,12 +1621,12 @@ export default function App() {
         </span>
       </div>
 
-      {/* FLOATING ACTION DOCK Ở ĐÁY MÀN HÌNH (BOTTOM-CENTER) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 sm:gap-3 bg-white/95 backdrop-blur-xl border-2 border-white/90 p-2 sm:p-2.5 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.15)] text-slate-800 max-w-[95vw]">
+      {/* FLOATING ACTION DOCK Ở ĐÁY MÀN HÌNH (G06 Fix: max-w-[calc(100vw-16px)], ẩn nút phụ trên mobile để không tràn 390px) */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-1.5 sm:gap-3 bg-white/95 backdrop-blur-xl border-2 border-white/90 p-1.5 sm:p-2.5 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.15)] text-slate-800 max-w-[calc(100vw-16px)]">
         {/* Thông tin người đang đến lượt */}
-        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-md shrink-0 border border-white"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-base sm:text-lg shadow-md shrink-0 border border-white"
             style={{ backgroundColor: currentPlayer?.color || '#ef4444' }}
           >
             {TOKENS.find(t => t.id === currentPlayer?.token)?.emoji || '🏎️'}
@@ -1599,12 +1642,12 @@ export default function App() {
         </div>
 
         {/* Xúc xắc & Tổng điểm */}
-        <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 bg-slate-100/90 rounded-2xl border border-slate-200 shrink-0">
+          <div className="flex items-center gap-1">
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-red-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
               {dice[0]}
             </div>
-            <div className={`w-8 h-8 rounded-xl bg-red-600 text-white font-black text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-red-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow border-2 border-red-400 ${isRolling ? 'animate-spin' : ''}`}>
               {dice[1]}
             </div>
           </div>
@@ -1619,22 +1662,22 @@ export default function App() {
         {/* Nút hành động chính: Lắc Xúc Xắc hoặc Kết Thúc Lượt */}
         <div className="shrink-0">
           {currentPlayer?.isBot ? (
-            <div className="px-4 py-2.5 rounded-2xl bg-sky-50 border border-sky-300 text-sky-800 text-xs font-black flex items-center gap-2 animate-pulse shadow-sm">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-sky-50 border border-sky-300 text-sky-800 text-xs font-black flex items-center gap-1.5 sm:gap-2 animate-pulse shadow-sm">
               <span className="animate-spin">🤖</span>
-              <span>{isHopping ? 'Bot đang di chuyển...' : isRolling ? 'Bot đang lắc...' : 'Bot đang xử lý...'}</span>
+              <span>{isHopping ? 'Đang đi...' : isRolling ? 'Đang lắc...' : 'Xử lý...'}</span>
             </div>
           ) : !hasRolled ? (
             <button
               type="button"
               disabled={isRolling || isHopping}
               onClick={handleRollDice}
-              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-2 shadow-xl active:scale-95 ${
+              className={`px-4 sm:px-8 py-2 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 sm:gap-2 shadow-xl active:scale-95 ${
                 isRolling || isHopping
                   ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
                   : 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 text-slate-950 shadow-[0_4px_15px_rgba(245,158,11,0.4)] hover:brightness-105 hover:scale-105 border-2 border-white animate-pulse'
               }`}
             >
-              <span className="text-base sm:text-lg">🎲</span>
+              <span className="text-sm sm:text-lg">🎲</span>
               <span>{isRolling ? 'Đang Lắc...' : isHopping ? 'Đang Đi...' : 'Lắc Xúc Xắc'}</span>
             </button>
           ) : (
@@ -1642,7 +1685,7 @@ export default function App() {
               type="button"
               disabled={isHopping}
               onClick={handleEndTurn}
-              className="px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-105 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
+              className="px-4 sm:px-8 py-2 sm:py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-xl hover:brightness-105 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 border-2 border-white"
             >
               <span>Xong Lượt</span>
               <ArrowRight size={16} />
@@ -1650,9 +1693,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Nút thao tác nhanh */}
+        {/* Nút thao tác nhanh - chỉ hiện trên desktop/tablet để dock mobile không tràn (trên mobile bấm qua CornerHUD) */}
         {!currentPlayer?.isBot && (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setShowManageModal(true)}
@@ -1660,7 +1703,7 @@ export default function App() {
               title="Quản lý bất động sản & thế chấp"
             >
               <Home size={14} className="inline mr-1" />
-              <span className="hidden sm:inline">Sổ Đỏ</span>
+              <span>Sổ Đỏ</span>
             </button>
             <button
               type="button"
@@ -1669,7 +1712,7 @@ export default function App() {
               title="Thương lượng đổi đất với đối thủ"
             >
               <Gavel size={14} className="inline mr-1" />
-              <span className="hidden sm:inline">Đổi Đất</span>
+              <span>Đổi Đất</span>
             </button>
           </div>
         )}
@@ -1822,7 +1865,7 @@ export default function App() {
                 p.id === currentPlayer.id ? { ...p, inJail: false, jailTurns: 0 } : p
               );
               setPlayers(updated);
-              movePlayer(currentPlayer.id, d1 + d2, false);
+              movePlayer(currentPlayer.id, d1 + d2, false, updated);
             } else {
               soundFX.playPayRent();
               const turns = (currentPlayer.jailTurns || 0) + 1;
@@ -1834,7 +1877,7 @@ export default function App() {
                     : p
                 );
                 setPlayers(updated);
-                movePlayer(currentPlayer.id, d1 + d2, false);
+                movePlayer(currentPlayer.id, d1 + d2, false, updated);
               } else {
                 addLog(`🔒 ${currentPlayer.name} đổ thất bại [${d1}-${d2}], tiếp tục ngồi tù (Lượt ${turns}/3).`);
                 const updated = players.map((p) =>
@@ -1855,65 +1898,69 @@ export default function App() {
           propertiesState={propertiesState}
           onBuildHouse={(tileId) => {
             const tile = BOARD_TILES[tileId];
-            const nextHouses = (propertiesState[tileId]?.houses || 0) + 1;
-            setPropertiesState((prev) => ({
-              ...prev,
-              [tileId]: { ...prev[tileId], houses: nextHouses },
-            }));
-            setPlayers((prev) =>
-              prev.map((p) =>
-                p.id === currentPlayer.id ? { ...p, money: p.money - tile.housePrice } : p
-              )
+            const nextHouses = Math.min(4, (propertiesState[tileId]?.houses || 0) + 1);
+            const newProps = {
+              ...propertiesState,
+              [tileId]: { ...propertiesState[tileId], houses: nextHouses },
+            };
+            const newPlayers = players.map((p) =>
+              p.id === currentPlayer.id ? { ...p, money: p.money - tile.housePrice } : p
             );
+            setPropertiesState(newProps);
+            setPlayers(newPlayers);
             soundFX.playBuildHouse();
             addLog(`🏠 ${currentPlayer.name} xây thêm nhà tại ${tile.name}.`);
             setConstructionAlert({
               player: currentPlayer.name,
               tileName: tile.name,
-              type: nextHouses === 5 ? 'hotel' : 'house'
+              type: nextHouses >= 4 ? 'hotel' : 'house'
             });
             setTimeout(() => setConstructionAlert(null), 3500);
+            syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onSellHouse={(tileId) => {
             const tile = BOARD_TILES[tileId];
             const refund = Math.floor(tile.housePrice / 2);
-            setPropertiesState((prev) => ({
-              ...prev,
-              [tileId]: { ...prev[tileId], houses: Math.max(0, (prev[tileId]?.houses || 0) - 1) },
-            }));
-            setPlayers((prev) =>
-              prev.map((p) =>
-                p.id === currentPlayer.id ? { ...p, money: p.money + refund } : p
-              )
+            const newProps = {
+              ...propertiesState,
+              [tileId]: { ...propertiesState[tileId], houses: Math.max(0, (propertiesState[tileId]?.houses || 0) - 1) },
+            };
+            const newPlayers = players.map((p) =>
+              p.id === currentPlayer.id ? { ...p, money: p.money + refund } : p
             );
+            setPropertiesState(newProps);
+            setPlayers(newPlayers);
             addLog(`💸 ${currentPlayer.name} bán bớt 1 nhà tại ${tile.name}, thu hồi ${formatVND(refund)}.`);
+            syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onMortgage={(tileId) => {
             const tile = BOARD_TILES[tileId];
-            setPropertiesState((prev) => ({
-              ...prev,
-              [tileId]: { ...prev[tileId], isMortgaged: true },
-            }));
-            setPlayers((prev) =>
-              prev.map((p) =>
-                p.id === currentPlayer.id ? { ...p, money: p.money + tile.mortgageValue } : p
-              )
+            const newProps = {
+              ...propertiesState,
+              [tileId]: { ...propertiesState[tileId], isMortgaged: true },
+            };
+            const newPlayers = players.map((p) =>
+              p.id === currentPlayer.id ? { ...p, money: p.money + tile.mortgageValue } : p
             );
+            setPropertiesState(newProps);
+            setPlayers(newPlayers);
             addLog(`🏦 ${currentPlayer.name} thế chấp ${tile.name}, nhận ${formatVND(tile.mortgageValue)}.`);
+            syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onUnmortgage={(tileId) => {
             const tile = BOARD_TILES[tileId];
             const cost = Math.floor(tile.mortgageValue * 1.1);
-            setPropertiesState((prev) => ({
-              ...prev,
-              [tileId]: { ...prev[tileId], isMortgaged: false },
-            }));
-            setPlayers((prev) =>
-              prev.map((p) =>
-                p.id === currentPlayer.id ? { ...p, money: p.money - cost } : p
-              )
+            const newProps = {
+              ...propertiesState,
+              [tileId]: { ...propertiesState[tileId], isMortgaged: false },
+            };
+            const newPlayers = players.map((p) =>
+              p.id === currentPlayer.id ? { ...p, money: p.money - cost } : p
             );
+            setPropertiesState(newProps);
+            setPlayers(newPlayers);
             addLog(`🔓 ${currentPlayer.name} chuộc lại ${tile.name} với chi phí ${formatVND(cost)}.`);
+            syncOnlineState({ players: newPlayers, propertiesState: newProps });
           }}
           onClose={() => setShowManageModal(false)}
         />
@@ -1940,8 +1987,13 @@ export default function App() {
                 addLog(`🤖 ${target.name} từ chối giao dịch: "${decision.reason}"`);
               }
             } else {
-              // Đối thủ là người chơi: Mở modal xác nhận
-              setPendingTradeOffer(offer);
+              // R05 Fix: Gửi đề nghị giao dịch online qua socket hoặc mở modal nội bộ Pass & Play
+              if (gameMode === 'online' && socketRef.current) {
+                socketRef.current.emit('send_trade_offer', offer);
+                addLog(`📜 Đã gửi đề nghị giao dịch tới ${target.name}! Đang chờ phản hồi...`);
+              } else {
+                setPendingTradeOffer(offer);
+              }
             }
           }}
           onClose={() => setShowTradeModal(false)}
@@ -1954,12 +2006,20 @@ export default function App() {
           players={players}
           propertiesState={propertiesState}
           onAccept={() => {
-            executeTrade(pendingTradeOffer);
+            if (gameMode === 'online' && socketRef.current) {
+              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: true });
+            } else {
+              executeTrade(pendingTradeOffer);
+            }
             setPendingTradeOffer(null);
           }}
           onReject={() => {
-            const target = players.find((p) => p.id === pendingTradeOffer.targetId);
-            addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch.`);
+            if (gameMode === 'online' && socketRef.current) {
+              socketRef.current.emit('respond_trade_offer', { offer: pendingTradeOffer, accept: false });
+            } else {
+              const target = players.find((p) => p.id === pendingTradeOffer.targetId);
+              addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch.`);
+            }
             setPendingTradeOffer(null);
           }}
         />

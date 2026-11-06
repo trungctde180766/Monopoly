@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-06T06:02:51.516Z",
+  "baseUrl": "http://localhost:3001",
+  "socketUrl": "http://localhost:3001",
+  "socketPath": "/socket.io",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "isHtml": true,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "isHtml": false,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/socket.io/?EIO=4&transport=polling",
+      "status": 200,
+      "contentType": "text/plain; charset=UTF-8",
+      "isHtml": false,
+      "engineOpenPacket": true
+    }
+  ],
+  "socket": [
+    {
+      "transport": "polling",
+      "connected": true
+    },
+    {
+      "transport": "websocket",
+      "connected": true
+    }
+  ],
+  "productionAsset": "/assets/index-8DLqKKWH.js",
+  "productionSocketSnippet": "[Fe,Ie]=(0,v.useState)(!1);(0,v.useEffect)(()=>{let e=vt(void 0,{transports:[`websocket`,`polling`],reconnectionAttempts:5});return Oe.",
+  "passed": true
+}

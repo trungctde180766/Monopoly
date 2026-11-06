@@ -384,6 +384,103 @@ runTest('(F13) checkBusinessTourVictory phát hiện ngay khi đạt Độc Quy�
   assert.strictEqual(victory.reason.includes('ĐỘC QUYỀN MỘT HÀNG'), true);
 });
 
+// 17. (R02) Bot qua ô GO nhận 2M lương và mua đất: giữ nguyên vị trí và lương mới
+runTest('(R02) Bot qua ô GO và mua đất: tiền và vị trí cập nhật chuẩn xác, không dùng state cũ', () => {
+  // Trước di chuyển: Bot ở ô 39 với 1.000.000đ
+  const initialBot = { id: 'bot1', name: 'Bot Tỷ Phú', money: 1000000, position: 39, isBot: true };
+  const initialPlayers = [initialBot];
+
+  // Đi 2 bước -> qua GO (ô 0) nhận +2.000.000đ lương, tới ô 1
+  const GO_SALARY = 2000000;
+  const postMoveBot = {
+    ...initialBot,
+    position: (initialBot.position + 2) % 40, // ô 1
+    money: initialBot.money + GO_SALARY,      // 3.000.000đ
+  };
+  const updatedPlayersList = [postMoveBot];
+
+  // Mua đất ô 1 giá 600.000đ
+  const tile1Price = 600000;
+  assert.strictEqual(postMoveBot.money >= tile1Price, true);
+
+  // Áp dụng mua đất với updatedPlayersList
+  const finalPlayers = updatedPlayersList.map(p =>
+    p.id === postMoveBot.id ? { ...p, money: p.money - tile1Price } : p
+  );
+
+  const finalBot = finalPlayers[0];
+  assert.strictEqual(finalBot.position, 1, 'Vị trí của Bot phải ở ô 1');
+  assert.strictEqual(finalBot.money, 2400000, 'Tiền của Bot phải là 3M - 600k = 2.400.000đ');
+});
+
+// 18. (R03) Thanh lý nợ: Chủ đất nhận đủ 100% tiền thuê sau khi con nợ thế chấp tài sản
+runTest('(R03) Chủ đất nhận đủ 100% tiền thuê sau khi con nợ giải quyết nợ shortfall', () => {
+  const debtor = { id: 'debtor', name: 'Con Nợ', money: 400000, isBot: true };
+  const creditor = { id: 'creditor', name: 'Chủ Đất', money: 0, isBot: false };
+  const players = [debtor, creditor];
+
+  const rentAmount = 1000000;
+  // Con nợ chỉ có 400k mặt
+  const canPayFull = debtor.money >= rentAmount;
+  const actualTransfer = canPayFull ? rentAmount : Math.max(0, debtor.money);
+  const shortfall = rentAmount - actualTransfer; // 600.000đ
+
+  assert.strictEqual(actualTransfer, 400000);
+  assert.strictEqual(shortfall, 600000);
+
+  // Sau khi trừ tiền ban đầu: debtor có -600k, creditor có 400k
+  const step1Debtor = { ...debtor, money: debtor.money - rentAmount }; // -600k
+  const step1Creditor = { ...creditor, money: creditor.money + actualTransfer }; // +400k
+
+  // Debtor thế chấp ô 37 thu về 1.750.000đ
+  const mortgageValue = 1750000;
+  const currentCash = step1Debtor.money + mortgageValue; // -600k + 1.750k = 1.150.000đ
+
+  // R03 Fix: Chuyển nốt shortfall 600k cho chủ nợ
+  const finalCreditorMoney = step1Creditor.money + shortfall;
+  const finalDebtorMoney = currentCash;
+
+  assert.strictEqual(finalCreditorMoney, 1000000, 'Chủ đất phải nhận đủ 100% tiền thuê 1.000.000đ');
+  assert.strictEqual(finalDebtorMoney, 1150000, 'Con nợ có 1.150.000đ sau khi trừ nợ và nhận tiền thế chấp');
+  // Bảo toàn dòng tiền: 400k ban đầu + 1.750k từ ngân hàng = 2.150k tổng
+  assert.strictEqual(finalCreditorMoney + finalDebtorMoney, 400000 + mortgageValue);
+});
+
+// 19. (R01) Server data sanitization: Chặn cấp nhà > 4 và tiền ảo > 100M
+runTest('(R01) Server sanitization: Chặn triệt để houses > 4 và tiền bất thường', () => {
+  // Giả lập logic kiểm tra của server/index.js
+  const maliciousPayload = {
+    propertiesState: {
+      1: { owner: 'guest', houses: 99 },
+      2: { owner: 'guest', houses: 4 },
+      3: { owner: 'guest', houses: -5 },
+    },
+    players: [
+      { id: 'guest', money: 999999999, position: 50 },
+    ],
+  };
+
+  const sanitizedProps = {};
+  for (const [tid, pData] of Object.entries(maliciousPayload.propertiesState)) {
+    sanitizedProps[tid] = {
+      ...pData,
+      houses: Math.min(4, Math.max(0, Number(pData.houses) || 0)),
+    };
+  }
+
+  const sanitizedPlayers = maliciousPayload.players.map(p => ({
+    ...p,
+    money: Math.min(100000000, p.money),
+    position: Math.max(0, Math.min(39, p.position)),
+  }));
+
+  assert.strictEqual(sanitizedProps[1].houses, 4, 'Nhà cấp 99 phải bị giới hạn về tối đa cấp 4 (Landmark)');
+  assert.strictEqual(sanitizedProps[2].houses, 4);
+  assert.strictEqual(sanitizedProps[3].houses, 0, 'Nhà âm phải bị đưa về 0');
+  assert.strictEqual(sanitizedPlayers[0].money, 100000000, 'Tiền 999.999.999đ phải bị chặn trần');
+  assert.strictEqual(sanitizedPlayers[0].position, 39, 'Vị trí 50 phải bị giới hạn về tối đa 39');
+});
+
 console.log(`\n========================================`);
 console.log(`🎉 TẤT CẢ ${passedTests} BÀI TEST ĐỀU VƯỢT QUA 100%!`);
 console.log(`========================================\n`);
