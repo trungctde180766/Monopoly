@@ -87,7 +87,7 @@ export class AIEngine {
     return 'pay_fine';
   }
 
-  // Tự động xây nhà khi có cơ hội (Có mô phỏng state độc lập, không vượt cấp 4)
+  // Tự động xây nhà khi có cơ hội (H02 & H03 Fix: Bot chỉ có thể xây dựng khi đang đứng trên ô đất đó)
   static getBuildRecommendations(bot, propertiesState, players) {
     const actions = [];
     if (!bot || bot.money < 1000000) return actions; // Cần giữ tiền mặt tối thiểu
@@ -99,8 +99,10 @@ export class AIEngine {
     const ownedGroups = new Set();
     BOARD_TILES.forEach(tile => {
       if (tile.type === 'property' && simProps[tile.id]?.owner === bot.id) {
-        if (hasMonopoly(simProps, bot.id, tile.group)) {
-          ownedGroups.add(tile.group);
+        if (bot.position === undefined || tile.id === bot.position) {
+          if (hasMonopoly(simProps, bot.id, tile.group)) {
+            ownedGroups.add(tile.group);
+          }
         }
       }
     });
@@ -111,6 +113,7 @@ export class AIEngine {
       // Lặp qua để xây dựng (tối đa cấp 4 - Khách Sạn Landmark)
       for (let level = 0; level < 4; level++) {
         for (const tile of groupTiles) {
+          if (bot.position !== undefined && tile.id !== bot.position) continue;
           const check = canBuildHouse(tile.id, simProps, [{ ...bot, money: currentCash }], bot.id);
           if (check.can && currentCash - tile.housePrice >= 800000) {
             actions.push(tile.id);

@@ -577,8 +577,8 @@ export default function App() {
           if (wantBuy) {
             let bestTier = 1;
             const hPrice = tile.housePrice || 500000;
-            if (player.money >= tile.price + hPrice * 3) bestTier = 4;
-            else if (player.money >= tile.price + hPrice * 2) bestTier = 3;
+            // H01 Fix: Mua mới lần đầu tối đa là cấp 3 (Biệt thự), Landmark yêu cầu ghé lại khi đã có cấp 3
+            if (player.money >= tile.price + hPrice * 2) bestTier = 3;
             else if (player.money >= tile.price + hPrice) bestTier = 2;
 
             const cost = tile.price + (bestTier - 1) * hPrice;
@@ -677,8 +677,10 @@ export default function App() {
     const isNew = !prop?.owner;
     const currentHouses = prop?.houses || 0;
 
-    // F03 Fix: Không cho phép hạ cấp hoặc vượt quá cấp 4 (Landmark)
+    // F03 & H01 Fix: Không cho phép hạ cấp, vượt quá cấp 4, hoặc mua thẳng Landmark lần đầu
     if (targetTier <= currentHouses || targetTier > 4) return;
+    if (isNew && targetTier > 3) return; // Mua mới lần đầu chỉ được tối đa cấp 3
+    if (!isNew && currentHouses < 3 && targetTier === 4) return; // Landmark bắt buộc phải từ cấp 3 nâng lên
     if (prop?.isMortgaged) return; // Không thể xây trên đất đang thế chấp
 
     // Tính lại chi phí chuẩn xác từ engine, không phụ thuộc giá do UI truyền
@@ -1399,38 +1401,11 @@ export default function App() {
       return () => clearTimeout(timer);
     }
 
-    // 3. Bot tự động kết thúc lượt
+    // 3. Bot tự động kết thúc lượt (H03 Fix: Bot tuân thủ cùng luật như người chơi, không xây từ xa cuối lượt)
     if (hasRolled && !isRolling && !isHopping && !buildModalTile && !auctionState && !activeCard) {
       const timer = setTimeout(() => {
-        // Tự động xem xét xây nhà
-        const builds = AIEngine.getBuildRecommendations(currentPlayer, propertiesState, players);
-        if (builds.length > 0) {
-          let propsCopy = { ...propertiesState };
-          let botCash = currentPlayer.money;
-          builds.forEach((tileId) => {
-            const tile = BOARD_TILES[tileId];
-            if (tile && botCash >= tile.housePrice) {
-              const nextHouses = (propsCopy[tileId].houses || 0) + 1;
-              propsCopy[tileId].houses = nextHouses;
-              botCash -= tile.housePrice;
-              soundFX.playBuildHouse();
-              addLog(`🔨 ${currentPlayer.name} nâng cấp nhà tại ${tile.name}!`);
-              setConstructionAlert({
-                player: currentPlayer.name,
-                tileName: tile.name,
-                type: nextHouses >= 4 ? 'hotel' : 'house'
-              });
-              setTimeout(() => setConstructionAlert(null), 3500);
-            }
-          });
-          setPropertiesState(propsCopy);
-          setPlayers((prev) =>
-            prev.map((p) => (p.id === currentPlayer.id ? { ...p, money: botCash } : p))
-          );
-        }
-
         handleEndTurn();
-      }, 1500);
+      }, 1200);
       return () => clearTimeout(timer);
     }
   }, [currentPlayer, hasRolled, isRolling, buildModalTile, auctionState, activeCard, screen]);

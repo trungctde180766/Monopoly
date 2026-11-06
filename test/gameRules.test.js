@@ -575,6 +575,58 @@ runTest('(V3-05) Human debt shortfall: Người chơi thật thế chấp trả 
   assert.strictEqual(finalDebtor.debtCreditorId, undefined, 'debtCreditorId phải được xóa sau khi giải quyết nợ');
 });
 
+// 22. (V4-01 & V4-02) Khóa nâng cấp từ xa qua Sổ Đỏ và giới hạn cấp nhà lần đầu
+runTest('(V4-01 & 02) Quy tắc nâng nhà Business Tour: Chặn xây từ xa và chặn Landmark lần đầu', () => {
+  const p1 = 'player_1';
+  const playerAtTile20 = { id: p1, money: 10000000, position: 20 };
+  const playerAtTile1 = { id: p1, money: 10000000, position: 1 };
+  const props = {
+    1: { owner: p1, houses: 3, isMortgaged: false },
+  };
+
+  // Người chơi đang đứng ở ô 20, cố gắng nâng cấp ô 1 qua Sổ Đỏ
+  const remoteCheck = canBuildHouse(1, props, [playerAtTile20], p1);
+  assert.strictEqual(remoteCheck.can, false, 'Không được nâng cấp nhà từ xa khi đang đứng ở ô khác');
+  assert.strictEqual(remoteCheck.reason, 'Chỉ được xây dựng/nâng cấp khi đang đứng tại chính ô đất này!');
+
+  // Người chơi đang đứng tại chính ô 1: Đủ điều kiện nâng lên Landmark (Cấp 4)
+  const localCheck = canBuildHouse(1, props, [playerAtTile1], p1);
+  assert.strictEqual(localCheck.can, true, 'Được phép nâng cấp khi đang đứng tại chính ô đất đó');
+  assert.strictEqual(localCheck.nextHouses, 4);
+
+  // Bot đứng ở ô 20 không được đề xuất nâng cấp ô 1
+  const botAtTile20 = { id: 'bot', money: 10000000, isBot: true, position: 20 };
+  const botRecs = AIEngine.getBuildRecommendations(botAtTile20, { 1: { owner: 'bot', houses: 1 } }, [botAtTile20]);
+  assert.strictEqual(botRecs.length, 0, 'Bot ở xa không được đề xuất xây nhà ngoài lượt');
+});
+
+// 23. (V4-04) Server xác thực chiến thắng dựa trên tài sản thực tế
+runTest('(V4-04) Server xác thực chiến thắng: Từ chối fake winner và chấp nhận thắng hợp lệ', () => {
+  const hostId = 'host_1';
+  const guestId = 'guest_2';
+  const players = [
+    { id: hostId, name: 'Host', isBankrupt: false },
+    { id: guestId, name: 'Guest', isBankrupt: false },
+  ];
+
+  // 1. Client guest gửi fake winner không có tài sản
+  const emptyProps = {};
+  const fakeVictory = checkBusinessTourVictory(emptyProps, players);
+  assert.strictEqual(fakeVictory, null, 'Không có tài sản thì checkBusinessTourVictory phải trả về null');
+
+  // 2. Host sở hữu trọn vẹn 4 ga tàu
+  const railProps = {
+    5: { owner: hostId },
+    15: { owner: hostId },
+    25: { owner: hostId },
+    35: { owner: hostId },
+  };
+  const legitVictory = checkBusinessTourVictory(railProps, players);
+  assert.notStrictEqual(legitVictory, null, 'Sở hữu 4 ga tàu phải được công nhận chiến thắng');
+  assert.strictEqual(legitVictory.winner.id, hostId);
+  assert.strictEqual(legitVictory.reason, 'THẮNG ĐẬM: ĐỘC QUYỀN 4 BẾN XE / GA TÀU TOÀN BẢN ĐỒ!');
+});
+
 console.log(`\n========================================`);
 console.log(`🎉 TẤT CẢ ${passedTests} BÀI TEST ĐỀU VƯỢT QUA 100%!`);
 console.log(`========================================\n`);

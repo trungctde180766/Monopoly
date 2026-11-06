@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-11-06T07:18:00.085Z",
+  "gameplay": {
+    "goPurchase": {
+      "actual": [
+        {
+          "id": "bot",
+          "name": "Bot",
+          "isBot": true,
+          "money": 1400000,
+          "position": 1
+        }
+      ],
+      "expectedMoney": 900000,
+      "expectedPosition": 1,
+      "tierPurchased": 4
+    },
+    "botDebt": {
+      "players": [
+        {
+          "id": "debtor",
+          "money": 1150000,
+          "isBot": true
+        },
+        {
+          "id": "creditor",
+          "money": 1000000
+        }
+      ],
+      "expectedCreditorMoney": 1000000
+    },
+    "humanDebtAfterMortgage": {
+      "players": [
+        {
+          "id": "debtor",
+          "money": 1150000,
+          "isBot": false
+        },
+        {
+          "id": "creditor",
+          "money": 1000000
+        }
+      ],
+      "expectedCreditorMoney": 1000000
+    }
+  },
+  "network": {}
+}

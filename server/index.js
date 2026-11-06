@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { checkBusinessTourVictory } from '../src/logic/gameEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -228,19 +229,20 @@ io.on('connection', (socket) => {
       sanitized.turnIndex = currentGS.turnIndex || 0;
     }
 
-    // 5. Kiểm tra winner (V3-02 Fix: Chặn client tự khai thắng giả mạo với winReason bất kỳ)
+    // 5. Kiểm tra winner: Xác thực điều kiện thắng Business Tour thực tế từ propertiesState & players (V4 Fix)
     if (updatedGameState.winner) {
       const activePlayers = sanitized.players.filter((p) => !p.isBankrupt);
       const isLegitSolitarySurvivor = activePlayers.length === 1 && activePlayers[0].id === updatedGameState.winner.id;
-      const validReasons = ['ĐỘC QUYỀN MỘT HÀNG', 'ĐỘC QUYỀN 3 BỘ MÀU', 'ĐỘC QUYỀN 4 GA TÀU', 'sống sót duy nhất'];
-      const hasLegitReason =
-        typeof updatedGameState.winner.winReason === 'string' &&
-        validReasons.some((r) => updatedGameState.winner.winReason.includes(r));
+      const verifiedVictory = checkBusinessTourVictory(sanitized.propertiesState || {}, sanitized.players || []);
+      const isLegitVictory = verifiedVictory && verifiedVictory.winner && verifiedVictory.winner.id === updatedGameState.winner.id;
 
-      if (isLegitSolitarySurvivor || hasLegitReason) {
-        sanitized.winner = updatedGameState.winner;
+      if (isLegitSolitarySurvivor || isLegitVictory) {
+        sanitized.winner = {
+          ...updatedGameState.winner,
+          winReason: isLegitSolitarySurvivor ? 'Tất cả đối thủ đã phá sản! Người sống sót duy nhất!' : verifiedVictory.reason,
+        };
       } else {
-        sanitized.winner = null; // Từ chối lý do thắng giả mạo
+        sanitized.winner = null; // Chặn client tự khai thắng giả mạo
       }
     } else {
       sanitized.winner = null;
@@ -268,24 +270,44 @@ io.on('connection', (socket) => {
     socket.to(code).emit('game_state_updated', sanitized);
   });
 
-  // R05 & V3-04 Fix: Giao dịch trực tuyến qua Socket.IO tới đúng người nhận
+  // R05, V3-04 & V4 Fix: Giao dịch trực tuyến qua Socket.IO có lưu và xác thực pending offer ID
   socket.on('send_trade_offer', (offer) => {
     const code = socket.roomCode;
-    if (!code || !offer) return;
-    socket.to(code).emit('trade_offer_received', offer);
+    const room = rooms.get(code);
+    if (!code || !room || !offer) return;
+
+    const offerId = offer.id || `offer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const verifiedOffer = { ...offer, id: offerId, senderId: socket.id };
+
+    if (!room.pendingOffers) room.pendingOffers = new Map();
+    room.pendingOffers.set(offerId, verifiedOffer);
+
+    socket.to(code).emit('trade_offer_received', verifiedOffer);
   });
 
   socket.on('respond_trade_offer', ({ offer, accept }) => {
     const code = socket.roomCode;
-    if (!code || !offer) return;
+    const room = rooms.get(code);
+    if (!code || !room || !offer) return;
 
-    // V3-04 Fix: Chỉ đúng người nhận (targetId) mới có quyền accept/reject đề nghị giao dịch!
-    if (socket.id !== offer.targetId) {
-      console.warn(`[Trade Security] Từ chối: Socket ${socket.id} không phải là target (${offer.targetId}) của giao dịch!`);
+    if (!room.pendingOffers) room.pendingOffers = new Map();
+    // V4 Fix: Chỉ chấp nhận đề nghị giao dịch đã tồn tại trong room.pendingOffers
+    const pendingOffer = offer.id ? room.pendingOffers.get(offer.id) : null;
+
+    if (!pendingOffer) {
+      console.warn(`[Trade Security] Từ chối: Đề nghị giao dịch ${offer?.id} không tồn tại hoặc đã hết hạn!`);
       return;
     }
 
-    io.to(code).emit('trade_offer_responded', { offer, accept });
+    if (socket.id !== pendingOffer.targetId) {
+      console.warn(`[Trade Security] Từ chối: Socket ${socket.id} không phải là target (${pendingOffer.targetId}) của giao dịch!`);
+      return;
+    }
+
+    // Xóa offer sau khi đã phản hồi để không bị tái sử dụng
+    room.pendingOffers.delete(offer.id);
+
+    io.to(code).emit('trade_offer_responded', { offer: pendingOffer, accept });
   });
 
   // 6. Chat & Biểu cảm

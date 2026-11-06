@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-11-06T07:17:54.300Z",
+  "firstVisitLandmark": {
+    "admitted": false
+  },
+  "buildFromAnotherTile": {
+    "playerPosition": 20,
+    "targetTile": 1,
+    "validator": {
+      "can": false,
+      "reason": "Chỉ được xây dựng/nâng cấp khi đang đứng tại chính ô đất này!"
+    },
+    "botRecommendations": []
+  },
+  "purchaseAccounting": {
+    "tileId": 1,
+    "firstTierPurchaseCost": 600000,
+    "housePrice": 500000,
+    "note": "Clarify land/building accounting before defining resale and buyout rules."
+  },
+  "placement": {
+    "normalTileWidth": 1.8,
+    "landmarkWidth": 1.25,
+    "landmarkDepth": 0.8500000238418579,
+    "overhangBeyondTileWidth": -0.55,
+    "landmarkAndTokenAabbsIntersect": true,
+    "note": "AABB intersection is a placement risk, not a pixel-accurate collision test."
+  }
+}

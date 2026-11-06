@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-11-06T07:18:06.131Z",
+  "gameLogPreserved": [
+    "Normal update"
+  ],
+  "bankPropertyRemoved": true,
+  "previousInvalidPayload": {
+    "turnIndex": 0,
+    "dice": [
+      1,
+      2
+    ],
+    "winner": null
+  },
+  "keywordWinnerBypass": {
+    "guestMoney": 80000000,
+    "winner": null,
+    "actualProperties": {}
+  },
+  "realRailroadVictory": {
+    "engineReason": "THẮNG ĐẬM: ĐỘC QUYỀN 4 BẾN XE / GA TÀU TOÀN BẢN ĐỒ!",
+    "serverWinner": {
+      "id": "1h0bmBg8vlh06i46AAAC",
+      "name": "Host",
+      "money": 15000000,
+      "position": 0,
+      "isBankrupt": false,
+      "winReason": "THẮNG ĐẬM: ĐỘC QUYỀN 4 BẾN XE / GA TÀU TOÀN BẢN ĐỒ!"
+    }
+  },
+  "acceptInventedOfferWithoutPendingId": {
+    "accepted": false,
+    "blocked": true
+  }
+}

@@ -101,6 +101,9 @@ export function BusinessTourBuildModal({
     );
   }
 
+  // H01 Fix: Gate Landmark - Chỉ mở khi đã sở hữu đất ở cấp 3 và ghé lại ô
+  const isLandmarkLocked = isNewPurchase || currentHouses < 3;
+
   // 4 Cấp độ công trình Business Tour
   const tiers = [
     {
@@ -136,9 +139,11 @@ export function BusinessTourBuildModal({
     {
       level: 4,
       title: 'Khách Sạn (Landmark)',
-      subtitle: 'Kỳ quan bất khả xâm phạm',
-      icon: '🏰',
+      subtitle: isLandmarkLocked ? 'Khóa: Cần đạt Cấp 3 trước' : 'Kỳ quan bất khả xâm phạm',
+      icon: isLandmarkLocked ? '🔒' : '🏰',
       isLandmark: true,
+      isLocked: isLandmarkLocked,
+      lockReason: isNewPurchase ? 'Cần sở hữu Biệt thự (Cấp 3) trước' : 'Cần đạt Cấp 3 trước',
       rent: tile.rent ? (tile.rent[4] || tile.rent[0] * 15) : 0,
       cost: isNewPurchase
         ? tile.price + tile.housePrice * 3
@@ -146,13 +151,14 @@ export function BusinessTourBuildModal({
     },
   ];
 
-  // Mặc định chọn cấp độ cao nhất mà người chơi đủ tiền và chưa xây
-  const availableTiers = tiers.filter((t) => t.level > currentHouses);
-  const defaultTier = availableTiers.filter((t) => player.money >= t.cost).pop() || availableTiers[0] || tiers[3];
+  // Lựa chọn các cấp độ khả dụng: không thể chọn cấp đã xây hoặc bị khóa (H01 Fix)
+  const availableTiers = tiers.filter((t) => t.level > currentHouses && !t.isLocked);
+  // Mặc định chọn cấp độ cơ bản kế tiếp thay vì nhảy cóc lên cấp đắt nhất
+  const defaultTier = availableTiers[0] || tiers[0];
   const [selectedTier, setSelectedTier] = useState(defaultTier ? defaultTier.level : 1);
 
   const activeTierObj = tiers.find((t) => t.level === selectedTier) || tiers[0];
-  const canAfford = player.money >= activeTierObj.cost && activeTierObj.cost > 0;
+  const canAfford = player.money >= activeTierObj.cost && activeTierObj.cost > 0 && !activeTierObj.isLocked;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -181,6 +187,8 @@ export function BusinessTourBuildModal({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
           {tiers.map((t) => {
             const isAlreadyBuilt = currentHouses >= t.level;
+            const isLocked = t.isLocked;
+            const isDisabled = isAlreadyBuilt || isLocked;
             const isSelected = selectedTier === t.level;
             const affordable = player.money >= t.cost;
 
@@ -188,11 +196,13 @@ export function BusinessTourBuildModal({
               <button
                 key={t.level}
                 type="button"
-                disabled={isAlreadyBuilt}
-                onClick={() => setSelectedTier(t.level)}
+                disabled={isDisabled}
+                onClick={() => !isLocked && setSelectedTier(t.level)}
                 className={`p-3 rounded-2xl border-2 text-left transition-all relative flex flex-col justify-between min-h-[145px] ${
                   isAlreadyBuilt
                     ? 'opacity-40 bg-slate-950 border-slate-800 cursor-not-allowed'
+                    : isLocked
+                    ? 'opacity-50 bg-slate-950/60 border-slate-800/80 cursor-not-allowed'
                     : isSelected
                     ? 'bg-amber-500/15 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)] scale-102 ring-2 ring-amber-400/50'
                     : affordable
@@ -203,11 +213,15 @@ export function BusinessTourBuildModal({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-2xl">{t.icon}</span>
-                    {t.isLandmark && (
+                    {t.isLocked ? (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-red-950 text-red-300 border border-red-800 rounded">
+                        KHÓA
+                      </span>
+                    ) : t.isLandmark ? (
                       <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-amber-500 text-slate-950 rounded">
                         MAX
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <div className="font-black text-xs text-white leading-tight">{t.title}</div>
                   <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{t.subtitle}</div>
@@ -218,7 +232,7 @@ export function BusinessTourBuildModal({
                   <div className="text-xs font-bold text-emerald-400">{formatVND(t.rent)}</div>
                   <div className="text-[10px] text-slate-400 mt-1">Chi phí:</div>
                   <div className="text-xs font-black text-amber-300">
-                    {isAlreadyBuilt ? 'Đã xây' : formatVND(t.cost)}
+                    {isAlreadyBuilt ? 'Đã xây' : isLocked ? 'Chưa mở' : formatVND(t.cost)}
                   </div>
                 </div>
               </button>

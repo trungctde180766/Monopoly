@@ -80,7 +80,7 @@ export function calculateBuildTierCost(tile, currentHouses = 0, targetTier = 1, 
   }
 }
 
-// Kiểm tra điều kiện có thể xây nhà & Landmark trên ô đất chuẩn Business Tour
+// Kiểm tra điều kiện có thể xây nhà & Landmark trên ô đất chuẩn Business Tour (H01 & H02 Fix)
 export function canBuildHouse(tileId, propertiesState, players, playerId) {
   const tile = BOARD_TILES[tileId];
   if (!tile || tile.type !== 'property') return { can: false, reason: 'Không phải ô đất có thể xây dựng' };
@@ -90,7 +90,14 @@ export function canBuildHouse(tileId, propertiesState, players, playerId) {
   if (prop.isMortgaged) return { can: false, reason: 'Khu đất đang bị thế chấp' };
 
   const player = players.find(p => p.id === playerId);
-  if (!player || player.money < tile.housePrice) return { can: false, reason: 'Không đủ tiền nâng cấp' };
+  if (!player) return { can: false, reason: 'Không tìm thấy thông tin người chơi' };
+
+  // H02 Fix: Chỉ cho phép xây dựng/nâng cấp khi đang đứng tại chính ô đất đó
+  if (player.position !== undefined && player.position !== tileId) {
+    return { can: false, reason: 'Chỉ được xây dựng/nâng cấp khi đang đứng tại chính ô đất này!' };
+  }
+
+  if (player.money < tile.housePrice) return { can: false, reason: 'Không đủ tiền nâng cấp' };
 
   const currentHouses = prop.houses || 0;
   if (currentHouses >= 4) {

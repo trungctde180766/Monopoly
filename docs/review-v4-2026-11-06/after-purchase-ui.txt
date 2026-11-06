@@ -1,0 +1,49 @@
+- iframe [id="consent-reminder-iframe"]
+- button "Góc Chuẩn (3D)" [active]:
+  - text: Góc Chuẩn (3D)
+- button "Nhìn Thẳng":
+  - text: Nhìn Thẳng
+- text: Kéo chuột để xoay 360° • Lăn chuột để phóng to
+- generic: VÒNG 1
+- generic: •
+- generic: "LƯỢT #2"
+- generic: 04:41
+- generic: 0 ₫
+- generic: 🏎️
+- generic: Người Chơi 1
+- generic: 🪙
+- generic: 13 Triệu ₫
+- generic: 🏰 1 Đất
+- generic: ✈️
+- generic: Người Chơi 2
+- generic: 🪙
+- generic: 12.90 Triệu ₫
+- generic: 🏰 1 Đất
+- generic: 🏨 1
+- button "🏛️ Sổ Đỏ"
+- button "🤝 Đổi Đất"
+- generic: 📜 Nhật Ký Trận Đấu
+- button "Mở rộng"
+- generic: 🏗️ Người Chơi 2 mua và xây Chợ Lớn Sài Gòn lên 🏰 KHÁCH SẠN (LANDMARK - BẤT KHẢ XÂM PHẠM) (Chi 2.10 Triệu ₫)!
+- generic: "📍 Người Chơi 2 đặt chân tới: Chợ Lớn Sài Gòn"
+- generic: "👉 Đến lượt của: Người Chơi 2"
+- generic: "📜 Người Chơi 1 đã mua thành công: Ga Sài Gòn với giá 2 Triệu ₫!"
+- generic: "📍 Người Chơi 1 đặt chân tới: Ga Sài Gòn"
+- generic: Trận đấu Pass & Play bắt đầu với 2 người chơi!
+- button "Nhạc Nền Jazz Tycoon":
+- button "Tắt âm thanh SFX":
+- button "2D"
+- button "🚪"
+- generic: "Cờ Tỷ Phú Việt Nam • Bàn #VN-2026 • Hũ Jackpot: 0₫"
+- generic: ✈️
+- generic: Đang Đến Lượt
+- generic: Người Chơi 2
+- generic: "1"
+- generic: "2"
+- button "Xong Lượt":
+  - generic: Xong Lượt
+- button "Sổ Đỏ":
+  - text: Sổ Đỏ
+- button "Đổi Đất":
+  - text: Đổi Đất
+- button "Bật/Tắt Nhật Ký Trận Đấu":

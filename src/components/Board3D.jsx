@@ -37,6 +37,22 @@ export function getTile3DTransform(tileId) {
   }
 }
 
+// P01 & P02 Fix: Vector hướng quy hoạch ô bàn cờ (Inward hướng tâm bàn, Tangent tiếp tuyến cạnh)
+export function getTileLayoutVectors(side) {
+  switch (side) {
+    case 'bottom':
+      return { inward: { x: 0, z: -1 }, tangent: { x: 1, z: 0 } };
+    case 'left':
+      return { inward: { x: 1, z: 0 }, tangent: { x: 0, z: -1 } };
+    case 'top':
+      return { inward: { x: 0, z: 1 }, tangent: { x: -1, z: 0 } };
+    case 'right':
+      return { inward: { x: -1, z: 0 }, tangent: { x: 0, z: 1 } };
+    default:
+      return { inward: { x: 0, z: 0 }, tangent: { x: 1, z: 0 } };
+  }
+}
+
 // Định dạng giá ngắn gọn chuẩn Business Tour (ví dụ: 200K, 495K, 2.4M)
 function formatShortPrice(num) {
   if (!num) return '';
@@ -464,11 +480,12 @@ function createTier3VillaMesh(roofColor = 0xef4444) {
 }
 
 // Mô hình Khách Sạn / Kỳ Quan Cấp 4 (Landmark Castle Bất Khả Xâm Phạm chuẩn Business Tour)
+// P01 Fix: Kích thước 1.25 x 0.85 nằm gọn gàng bên trong ô đất 1.8 x 2.7 (zero overhang)
 function createLandmarkMesh(roofColor = 0x3b82f6) {
   const group = new THREE.Group();
 
-  // Đế vàng phát sáng báo hiệu đất Landmark
-  const baseGeo = new THREE.CylinderGeometry(0.85, 0.95, 0.1, 16);
+  // Đế vàng phát sáng báo hiệu đất Landmark (Kích thước gọn 1.25 x 0.85)
+  const baseGeo = new THREE.BoxGeometry(1.25, 0.08, 0.85);
   const baseMat = new THREE.MeshStandardMaterial({
     color: 0xf59e0b,
     metalness: 0.9,
@@ -477,51 +494,51 @@ function createLandmarkMesh(roofColor = 0x3b82f6) {
     emissiveIntensity: 0.35,
   });
   const base = new THREE.Mesh(baseGeo, baseMat);
-  base.position.y = 0.05;
+  base.position.y = 0.04;
   group.add(base);
 
   // Thân lâu đài / khách sạn trắng sứ
-  const bodyGeo = new THREE.BoxGeometry(0.95, 0.72, 0.7);
+  const bodyGeo = new THREE.BoxGeometry(0.82, 0.65, 0.60);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.25,
     metalness: 0.1,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.41;
+  body.position.y = 0.40;
   body.castShadow = true;
   group.add(body);
 
   // 2 Tháp trụ tròn bên hông
-  [-0.42, 0.42].forEach(x => {
-    const towerGeo = new THREE.CylinderGeometry(0.18, 0.2, 0.95, 12);
+  [-0.38, 0.38].forEach((x) => {
+    const towerGeo = new THREE.CylinderGeometry(0.14, 0.16, 0.82, 12);
     const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 });
     const tower = new THREE.Mesh(towerGeo, towerMat);
-    tower.position.set(x, 0.48, 0);
+    tower.position.set(x, 0.45, 0);
     tower.castShadow = true;
     group.add(tower);
 
-    const coneGeo = new THREE.ConeGeometry(0.24, 0.35, 12);
+    const coneGeo = new THREE.ConeGeometry(0.20, 0.30, 12);
     const coneMat = new THREE.MeshStandardMaterial({ color: roofColor, metalness: 0.5, roughness: 0.2 });
     const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(x, 0.95 + 0.17, 0);
+    cone.position.set(x, 0.86 + 0.15, 0);
     cone.castShadow = true;
     group.add(cone);
   });
 
   // Tháp trung tâm mạ vàng hoàng gia
-  const centerSpireGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.15, 16);
+  const centerSpireGeo = new THREE.CylinderGeometry(0.20, 0.24, 1.05, 16);
   const centerSpireMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
   const centerSpire = new THREE.Mesh(centerSpireGeo, centerSpireMat);
-  centerSpire.position.set(0, 0.62, 0);
+  centerSpire.position.set(0, 0.56, 0);
   centerSpire.castShadow = true;
   group.add(centerSpire);
 
   // Mái vòm vàng & Đỉnh kim cương Landmark
-  const domeGeo = new THREE.ConeGeometry(0.35, 0.45, 16);
+  const domeGeo = new THREE.ConeGeometry(0.28, 0.38, 16);
   const domeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
   const dome = new THREE.Mesh(domeGeo, domeMat);
-  dome.position.set(0, 1.2 + 0.2, 0);
+  dome.position.set(0, 1.08 + 0.19, 0);
   dome.castShadow = true;
   group.add(dome);
 
@@ -1127,6 +1144,10 @@ export default function Board3D({
       if (!prop || !prop.owner) return;
 
       const transform = getTile3DTransform(tile.id);
+      const { inward } = getTileLayoutVectors(transform.side);
+      // P01 & P02 Fix: Vùng đặt công trình hướng về phía trung tâm bàn cờ (inwardDist = 0.52)
+      const bX = transform.x + inward.x * 0.52;
+      const bZ = transform.z + inward.z * 0.52;
       const houses = prop.houses || 0;
       const owner = players.find((p) => p.id === prop.owner);
       const roofColor = owner?.color || '#ef4444';
@@ -1134,25 +1155,25 @@ export default function Board3D({
       if (houses >= 4) {
         // G04 Cấp 4: Khách Sạn / Kỳ Quan Landmark Bất Khả Xâm Phạm
         const landmark = createLandmarkMesh(roofColor);
-        landmark.position.set(transform.x, 0.16, transform.z);
+        landmark.position.set(bX, 0.16, bZ);
         landmark.rotation.y = transform.rotY;
         group.add(landmark);
       } else if (houses === 3) {
         // G04 Cấp 3: Biệt Thự Sang Trọng
         const villa = createTier3VillaMesh(roofColor);
-        villa.position.set(transform.x, 0.16, transform.z);
+        villa.position.set(bX, 0.16, bZ);
         villa.rotation.y = transform.rotY;
         group.add(villa);
       } else if (houses === 2) {
         // G04 Cấp 2: Nhà Phố 2 Tầng
         const townhouse = createTier2TownhouseMesh(roofColor);
-        townhouse.position.set(transform.x, 0.16, transform.z);
+        townhouse.position.set(bX, 0.16, bZ);
         townhouse.rotation.y = transform.rotY;
         group.add(townhouse);
       } else if (houses === 1) {
         // G04 Cấp 1: Nhà Mái Dốc Ấm Cúng
         const cottage = createTier1CottageMesh(roofColor);
-        cottage.position.set(transform.x, 0.16, transform.z);
+        cottage.position.set(bX, 0.16, bZ);
         cottage.rotation.y = transform.rotY;
         group.add(cottage);
       }
@@ -1191,11 +1212,41 @@ export default function Board3D({
       const prevPos = lastRecordedPositionsRef.current[p.id];
       const newPos = p.position || 0;
 
-      // Độ lệch toạ độ để nhiều người chơi cùng đứng 1 ô không bị đè lên nhau
-      const pIdx = players.findIndex((x) => x.id === p.id);
-      const angle = (pIdx * Math.PI) / 2;
-      const offX = Math.cos(angle) * 0.42;
-      const offZ = Math.sin(angle) * 0.42;
+      // P02 & P03 Fix: Chia slot riêng cho quân cờ (token lane) và hỗ trợ 1-6 người chơi không trùng tọa độ
+      const transform = getTile3DTransform(newPos);
+      let offX = 0;
+      let offZ = 0;
+
+      if (transform.isCorner) {
+        // Với ô góc 2.8x2.8: phân bố quân cờ xoay vòng theo số người thực tế đang đứng tại ô này
+        const occupants = players.filter((pl) => !pl.isBankrupt && (pl.position || 0) === newPos);
+        const occIdx = occupants.findIndex((pl) => pl.id === p.id);
+        const totalOcc = Math.max(1, occupants.length);
+        const angle = (occIdx * 2 * Math.PI) / totalOcc;
+        const radius = totalOcc > 1 ? 0.65 : 0;
+        offX = Math.cos(angle) * radius;
+        offZ = Math.sin(angle) * radius;
+      } else {
+        // Với ô cạnh 1.8x2.7: đặt tại lane quân cờ (lùi về phía ngoài 0.45 để tách biệt hoàn toàn với nhà 0.52)
+        const { inward, tangent } = getTileLayoutVectors(transform.side);
+        const occupants = players.filter((pl) => !pl.isBankrupt && (pl.position || 0) === newPos);
+        const occIdx = occupants.findIndex((pl) => pl.id === p.id);
+        const totalOcc = Math.max(1, occupants.length);
+
+        let tangentOffset = 0;
+        if (totalOcc === 2) {
+          tangentOffset = occIdx === 0 ? -0.32 : 0.32;
+        } else if (totalOcc === 3) {
+          tangentOffset = (occIdx - 1) * 0.40;
+        } else if (totalOcc >= 4) {
+          const spacing = 1.1 / (totalOcc - 1);
+          tangentOffset = -0.55 + occIdx * spacing;
+        }
+
+        const laneDist = 0.45;
+        offX = -inward.x * laneDist + tangent.x * tangentOffset;
+        offZ = -inward.z * laneDist + tangent.z * tangentOffset;
+      }
 
       if (prevPos !== undefined && prevPos !== newPos) {
         let steps = (newPos - prevPos + 40) % 40;
@@ -1210,11 +1261,9 @@ export default function Board3D({
             offZ,
           };
         } else {
-          const transform = getTile3DTransform(newPos);
           tokenMesh.position.set(transform.x + offX, 0.25, transform.z + offZ);
         }
       } else if (prevPos === undefined) {
-        const transform = getTile3DTransform(newPos);
         tokenMesh.position.set(transform.x + offX, 0.25, transform.z + offZ);
       }
 
