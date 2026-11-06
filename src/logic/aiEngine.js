@@ -87,16 +87,19 @@ export class AIEngine {
     return 'pay_fine';
   }
 
-  // Tự động xây nhà khi có cơ hội
+  // Tự động xây nhà khi có cơ hội (Có mô phỏng state độc lập, không vượt cấp 4)
   static getBuildRecommendations(bot, propertiesState, players) {
     const actions = [];
-    if (bot.money < 1000000) return actions; // Cần giữ tiền mặt
+    if (!bot || bot.money < 1000000) return actions; // Cần giữ tiền mặt tối thiểu
+
+    // Deep copy state để mô phỏng chính xác từng bước xây
+    const simProps = JSON.parse(JSON.stringify(propertiesState || {}));
 
     // Tìm các nhóm màu bot sở hữu trọn bộ
     const ownedGroups = new Set();
     BOARD_TILES.forEach(tile => {
-      if (tile.type === 'property' && propertiesState[tile.id]?.owner === bot.id) {
-        if (hasMonopoly(propertiesState, bot.id, tile.group)) {
+      if (tile.type === 'property' && simProps[tile.id]?.owner === bot.id) {
+        if (hasMonopoly(simProps, bot.id, tile.group)) {
           ownedGroups.add(tile.group);
         }
       }
@@ -105,13 +108,18 @@ export class AIEngine {
     let currentCash = bot.money;
     for (const group of ownedGroups) {
       const groupTiles = BOARD_TILES.filter(t => t.group === group);
-      // Lặp qua để xây dựng đồng đều
-      for (let level = 0; level < 5; level++) {
+      // Lặp qua để xây dựng (tối đa cấp 4 - Khách Sạn Landmark)
+      for (let level = 0; level < 4; level++) {
         for (const tile of groupTiles) {
-          const check = canBuildHouse(tile.id, propertiesState, [{ ...bot, money: currentCash }], bot.id);
+          const check = canBuildHouse(tile.id, simProps, [{ ...bot, money: currentCash }], bot.id);
           if (check.can && currentCash - tile.housePrice >= 800000) {
             actions.push(tile.id);
             currentCash -= tile.housePrice;
+            // Cập nhật state mô phỏng để bước lặp tiếp theo thấy đúng cấp mới
+            simProps[tile.id] = {
+              ...simProps[tile.id],
+              houses: (simProps[tile.id]?.houses || 0) + 1,
+            };
           }
         }
       }
@@ -120,25 +128,32 @@ export class AIEngine {
     return actions;
   }
 
-  // Cứu nguy khẩn cấp khi thiếu tiền trả nợ (Emergency Liquidation)
+  // Cứu nguy khẩn cấp khi thiếu tiền trả nợ (Mô phỏng chính xác, không bán lặp 1 nhà)
   static planDebtRelief(bot, debtNeeded, propertiesState) {
     let raised = 0;
-    const actions = []; // { type: 'sell_house' | 'mortgage', tileId }
+    const actions = []; // { type: 'sell_house' | 'mortgage', tileId, amount }
+
+    // Deep copy state để mô phỏng chính xác từng bước thanh lý
+    const simProps = JSON.parse(JSON.stringify(propertiesState || {}));
 
     // Bước 1: Bán nhà (những ô có nhà ít quan trọng hơn trước)
-    const ownedPropertiesWithHouses = BOARD_TILES.filter(t => 
-      t.type === 'property' && propertiesState[t.id]?.owner === bot.id && (propertiesState[t.id]?.houses || 0) > 0
-    );
-
-    // Lặp bán nhà
     let keepSelling = true;
     while (keepSelling && raised < debtNeeded) {
       keepSelling = false;
+      const ownedPropertiesWithHouses = BOARD_TILES.filter(t => 
+        t.type === 'property' && simProps[t.id]?.owner === bot.id && (simProps[t.id]?.houses || 0) > 0
+      );
+
       for (const tile of ownedPropertiesWithHouses) {
-        const check = canSellHouse(tile.id, propertiesState, bot.id);
+        const check = canSellHouse(tile.id, simProps, bot.id);
         if (check.can) {
           actions.push({ type: 'sell_house', tileId: tile.id, amount: check.refund });
           raised += check.refund;
+          // Cập nhật state mô phỏng: giảm đúng 1 nhà
+          simProps[tile.id] = {
+            ...simProps[tile.id],
+            houses: Math.max(0, (simProps[tile.id]?.houses || 0) - 1),
+          };
           keepSelling = true;
           if (raised >= debtNeeded) break;
         }
@@ -150,25 +165,76 @@ export class AIEngine {
     // Bước 2: Thế chấp đất (ưu tiên thế chấp đất đơn lẻ không thuộc bộ màu trước)
     const ownedProperties = BOARD_TILES.filter(t => 
       (t.type === 'property' || t.type === 'railroad' || t.type === 'utility') &&
-      propertiesState[t.id]?.owner === bot.id &&
-      !propertiesState[t.id]?.isMortgaged
+      simProps[t.id]?.owner === bot.id &&
+      !simProps[t.id]?.isMortgaged
     ).sort((a, b) => {
-      // Ưu tiên đất không monopoly trước
-      const monoA = hasMonopoly(propertiesState, bot.id, a.group) ? 1 : 0;
-      const monoB = hasMonopoly(propertiesState, bot.id, b.group) ? 1 : 0;
+      const monoA = hasMonopoly(simProps, bot.id, a.group) ? 1 : 0;
+      const monoB = hasMonopoly(simProps, bot.id, b.group) ? 1 : 0;
       return monoA - monoB;
     });
 
     for (const tile of ownedProperties) {
-      const check = canMortgage(tile.id, propertiesState, bot.id);
+      const check = canMortgage(tile.id, simProps, bot.id);
       if (check.can) {
         actions.push({ type: 'mortgage', tileId: tile.id, amount: check.amount });
         raised += check.amount;
+        simProps[tile.id] = {
+          ...simProps[tile.id],
+          isMortgaged: true,
+        };
         if (raised >= debtNeeded) break;
       }
     }
 
     return actions;
+  }
+
+  // Đánh giá đề nghị giao dịch từ người chơi khác (F02 Fix)
+  static evaluateTradeOffer(bot, offer, propertiesState, players) {
+    if (!bot || !offer) return { accept: false, reason: 'Dữ liệu không hợp lệ' };
+
+    const { offerMoney = 0, offerTiles = [], demandMoney = 0, demandTiles = [] } = offer;
+
+    // Nếu đối phương đòi nhiều tiền hơn tiền họ đưa mà không bù đất giá trị cao: TỪ CHỐI
+    if (demandMoney > bot.money) {
+      return { accept: false, reason: 'Bot không có đủ tiền mặt theo yêu cầu' };
+    }
+
+    // Tính giá trị bot nhận được (Gồm tiền mặt + giá đất đối phương đưa)
+    let valueReceived = offerMoney;
+    for (const tileId of offerTiles) {
+      const t = BOARD_TILES[tileId];
+      if (t) {
+        let tileVal = t.price || 0;
+        // Nếu ô đất này giúp bot hoàn thành Monopoly: định giá x2.5!
+        const testProps = { ...propertiesState, [tileId]: { owner: bot.id, houses: 0 } };
+        if (t.group && hasMonopoly(testProps, bot.id, t.group)) {
+          tileVal *= 2.5;
+        }
+        valueReceived += tileVal;
+      }
+    }
+
+    // Tính giá trị bot phải bỏ ra (Tiền mặt + giá đất bot phải trao)
+    let valueGiven = demandMoney;
+    for (const tileId of demandTiles) {
+      const t = BOARD_TILES[tileId];
+      if (t) {
+        let tileVal = t.price || 0;
+        // Nếu mất ô này làm bot mất Monopoly: định giá x3.0 (rất đắt)!
+        if (t.group && hasMonopoly(propertiesState, bot.id, t.group)) {
+          tileVal *= 3.0;
+        }
+        valueGiven += tileVal;
+      }
+    }
+
+    // Bot chỉ chấp thuận nếu giá trị nhận được lớn hơn hoặc bằng ít nhất 95% giá trị bỏ ra
+    if (valueReceived >= valueGiven * 0.95 && (valueReceived > 0 || valueGiven > 0)) {
+      return { accept: true, reason: 'Giao dịch hợp lý và có lợi cho cả hai' };
+    }
+
+    return { accept: false, reason: 'Giao dịch bất lợi hoặc làm mất vị thế độc quyền của Bot' };
   }
 }
 

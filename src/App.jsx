@@ -23,6 +23,7 @@ import {
   JailModal,
   ManagePropertiesModal,
   TradeModal,
+  TradeConfirmModal,
   VictoryModal,
 } from './components/ActionModals.jsx';
 
@@ -79,8 +80,26 @@ export default function App() {
   const [showJailModal, setShowJailModal] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
   const [showTradeModal, setShowTradeModal] = useState(false);
+  const [pendingTradeOffer, setPendingTradeOffer] = useState(null);
+  const [totalTurnsCount, setTotalTurnsCount] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [winner, setWinner] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
+
+  // Đồng hồ tính giờ trận đấu trực tiếp
+  useEffect(() => {
+    if (screen !== 'playing' || winner) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [screen, winner]);
+
+  const formatMatchTime = (sec) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   // Online Multiplayer State
   const socketRef = useRef(null);
@@ -336,7 +355,9 @@ export default function App() {
 
     // Kiểm tra nếu đang ở trong tù
     if (currentPlayer.inJail) {
-      setShowJailModal(true);
+      if (!currentPlayer.isBot) {
+        setShowJailModal(true);
+      }
       return;
     }
 
@@ -376,8 +397,8 @@ export default function App() {
   };
 
   // DI CHUYỂN QUÂN CỜ VỚI HOẠT ẢNH STEP-BY-STEP
-  const movePlayer = (playerId, steps, isDoubles) => {
-    const p = players.find((x) => x.id === playerId);
+  const movePlayer = (playerId, steps, isDoubles, currentPlayersList = players) => {
+    const p = currentPlayersList.find((x) => x.id === playerId);
     if (!p) return;
 
     const oldPos = p.position;
@@ -391,7 +412,7 @@ export default function App() {
       addLog(`💰 ${p.name} đi qua ô Khởi Hành (GO), nhận lương ${formatVND(GO_REWARD)}!`);
     }
 
-    const updatedPlayers = players.map((x) =>
+    const updatedPlayers = currentPlayersList.map((x) =>
       x.id === playerId ? { ...x, position: newPos, money: updatedMoney } : x
     );
     setPlayers(updatedPlayers);
@@ -495,6 +516,21 @@ export default function App() {
 
       // Nếu ô chưa có chủ: Mua và xây dựng theo 4 cấp bậc
       if (!prop || !prop.owner) {
+        // F12: Nếu là Ga Tàu hoặc Tiện Ích, mua đứt không xây nhà
+        if (tile.type !== 'property') {
+          if (player.isBot) {
+            const wantBuy = AIEngine.shouldBuyProperty(player, tile, propertiesState, currentPlayersList);
+            if (wantBuy && player.money >= tile.price) {
+              buyProperty(player.id, tile.id, tile.price);
+            } else {
+              startAuction(tile, currentPlayersList);
+            }
+          } else {
+            setBuildModalTile({ tile, player, propState: null, isNewPurchase: true });
+          }
+          return;
+        }
+
         if (player.isBot) {
           const wantBuy = AIEngine.shouldBuyProperty(player, tile, propertiesState, currentPlayersList);
           if (wantBuy) {
@@ -555,6 +591,11 @@ export default function App() {
         }
       } else {
         // ĐẶT CHÂN LÊN ĐẤT CỦA CHÍNH MÌNH: NÂNG CẤP NHÀ THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR
+        if (tile.type !== 'property') {
+          addLog(`🚂 ${player.name} ghé thăm ${tile.name} của mình!`);
+          setHasRolled(true);
+          return;
+        }
         if (prop.houses >= 4) {
           addLog(`🏰 ${player.name} ghé thăm Khách Sạn (Landmark) của mình tại ${tile.name}!`);
           setHasRolled(true);
@@ -579,16 +620,36 @@ export default function App() {
     }
   };
 
-  // XÁC NHẬN XÂY DỰNG / NÂNG CẤP THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR
-  const handleConfirmBuildTier = (tileId, targetTier, totalCost, activeP = currentPlayer) => {
+  // XÁC NHẬN XÂY DỰNG / NÂNG CẤP THEO 4 CẤP BẬC CHUẨN BUSINESS TOUR (F03 & F12 FIX)
+  const handleConfirmBuildTier = (tileId, targetTier, totalCost, activeP = currentPlayer, playersList = players) => {
     const tile = BOARD_TILES[tileId];
-    if (!tile || !activeP || activeP.money < totalCost) return;
+    if (!tile || !activeP) return;
+
+    // F12 Fix: Ga tàu và Tiện ích mua đứt không xây nhà
+    if (tile.type !== 'property') {
+      buyProperty(activeP.id, tileId, tile.price);
+      return;
+    }
+
+    const prop = propertiesState[tileId];
+    const isNew = !prop?.owner;
+    const currentHouses = prop?.houses || 0;
+
+    // F03 Fix: Không cho phép hạ cấp hoặc vượt quá cấp 4 (Landmark)
+    if (targetTier <= currentHouses || targetTier > 4) return;
+    if (prop?.isMortgaged) return; // Không thể xây trên đất đang thế chấp
+
+    // Tính lại chi phí chuẩn xác từ engine, không phụ thuộc giá do UI truyền
+    const hPrice = tile.housePrice || 500000;
+    const neededUpgrade = isNew ? targetTier - 1 : targetTier - currentHouses;
+    const calculatedCost = (isNew ? tile.price : 0) + Math.max(0, neededUpgrade) * hPrice;
+
+    if (activeP.money < calculatedCost) return;
 
     const isLandmark = targetTier >= 4;
-    const isNew = !propertiesState[tileId]?.owner;
 
-    const updatedPlayers = players.map((p) =>
-      p.id === activeP.id ? { ...p, money: p.money - totalCost } : p
+    const updatedPlayers = playersList.map((p) =>
+      p.id === activeP.id ? { ...p, money: p.money - calculatedCost } : p
     );
 
     const updatedProps = {
@@ -610,7 +671,7 @@ export default function App() {
     addLog(
       `🏗️ ${activeP.name} ${isNew ? 'mua và xây' : 'nâng cấp'} ${tile.name} lên ${
         isLandmark ? '🏰 KHÁCH SẠN (LANDMARK - BẤT KHẢ XÂM PHẠM)' : `Nhà Cấp ${targetTier}`
-      } (Chi ${formatVND(totalCost)})!`
+      } (Chi ${formatVND(calculatedCost)})!`
     );
     setConstructionAlert({
       player: activeP.name,
@@ -750,7 +811,7 @@ export default function App() {
     soundFX.playGavel();
     addLog(`🔨 ${bidder.name} trả giá: ${formatVND(bidAmount)}`);
 
-    advanceAuctionTurn(bidAmount, bidder.id, auctionState.activeBidders);
+    advanceAuctionTurn(bidAmount, bidder.id, auctionState.activeBidders, false);
   };
 
   // BỎ QUA ĐẤU GIÁ
@@ -759,10 +820,10 @@ export default function App() {
     const remaining = auctionState.activeBidders.filter(
       (id) => id !== auctionState.currentTurnPlayerId
     );
-    advanceAuctionTurn(auctionState.currentBid, auctionState.highestBidderId, remaining);
+    advanceAuctionTurn(auctionState.currentBid, auctionState.highestBidderId, remaining, true);
   };
 
-  const advanceAuctionTurn = (currentBid, highestBidderId, activeBidders) => {
+  const advanceAuctionTurn = (currentBid, highestBidderId, activeBidders, didPass = false) => {
     // Nếu chỉ còn 1 người tham gia và đã có người trả giá: Người đó thắng đấu giá!
     if (activeBidders.length === 1 && highestBidderId) {
       const winnerPlayer = players.find((p) => p.id === highestBidderId);
@@ -784,8 +845,9 @@ export default function App() {
       return;
     }
 
-    // Chuyển lượt đấu giá sang người tiếp theo
-    const nextIdx = (auctionState.turnIdx + 1) % activeBidders.length;
+    // F08: Tính index kế tiếp chính xác: nếu người trước vừa bỏ cuộc (didPass), giữ nguyên index modulo độ dài mới; nếu vừa ra giá, index + 1
+    const currentIdx = auctionState.turnIdx || 0;
+    const nextIdx = didPass ? (currentIdx % activeBidders.length) : ((currentIdx + 1) % activeBidders.length);
     const nextBidderId = activeBidders[nextIdx];
     const nextBidder = players.find((p) => p.id === nextBidderId);
 
@@ -831,8 +893,55 @@ export default function App() {
 
       case 'pay_money':
         triggerFloatingMoney(card.amount, false);
+        setHasRolled(true);
         deductMoney(player.id, card.amount, null, updatedPlayers);
         return;
+
+      case 'move_nearest_railroad': {
+        const railroads = [5, 15, 25, 35];
+        let targetRailroad = railroads.find((r) => r > player.position);
+        let passed = false;
+        if (targetRailroad === undefined) {
+          targetRailroad = railroads[0];
+          passed = true;
+        }
+        let cash = player.money + (passed && card.collectPassGo ? GO_REWARD : 0);
+        if (passed && card.collectPassGo) {
+          soundFX.playCollectMoney();
+          addLog(`💰 ${player.name} đi qua GO tới Ga gần nhất, nhận ${formatVND(GO_REWARD)}.`);
+        }
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === player.id ? { ...p, position: targetRailroad, money: cash } : p
+        );
+        setPlayers(updatedPlayers);
+        handleTileLanding(targetRailroad, { ...player, position: targetRailroad, money: cash }, false, updatedPlayers);
+        return;
+      }
+
+      case 'property_repair': {
+        let repairCost = 0;
+        BOARD_TILES.forEach((t) => {
+          if (t.type === 'property' && propertiesState[t.id]?.owner === player.id) {
+            const h = propertiesState[t.id]?.houses || 0;
+            if (h === 4) {
+              repairCost += (card.hotelCost || 1000000);
+            } else if (h > 0) {
+              repairCost += h * (card.houseCost || 250000);
+            }
+          }
+        });
+        if (repairCost > 0) {
+          triggerFloatingMoney(repairCost, false);
+          addLog(`🛠️ ${player.name} chi ${formatVND(repairCost)} bảo trì toàn bộ công trình.`);
+          setHasRolled(true);
+          deductMoney(player.id, repairCost, null, updatedPlayers);
+        } else {
+          addLog(`🛠️ ${player.name} không có bất động sản nào cần bảo trì.`);
+          setPlayers(updatedPlayers);
+          setHasRolled(true);
+        }
+        return;
+      }
 
       case 'move_to':
         const targetTile = card.targetTile;
@@ -913,11 +1022,75 @@ export default function App() {
     syncOnlineState({ players: updatedPlayers, hasRolled: true });
   };
 
+  // THỰC THI GIAO DỊCH SAU KHI ĐỒNG THUẬN (F02 & F13)
+  const executeTrade = (tradeOffer) => {
+    const { senderId, targetId, offerMoney, offerTiles, demandMoney, demandTiles } = tradeOffer;
+    const sender = players.find((p) => p.id === senderId);
+    const target = players.find((p) => p.id === targetId);
+    if (!sender || !target) return;
+
+    if (sender.money < offerMoney || target.money < demandMoney) {
+      addLog(`❌ Giao dịch thất bại: Một trong hai bên không còn đủ tiền mặt!`);
+      return;
+    }
+    const senderOwnsAll = offerTiles.every((id) => propertiesState[id]?.owner === senderId);
+    const targetOwnsAll = demandTiles.every((id) => propertiesState[id]?.owner === targetId);
+    if (!senderOwnsAll || !targetOwnsAll) {
+      addLog(`❌ Giao dịch thất bại: Quyền sở hữu tài sản đã bị thay đổi!`);
+      return;
+    }
+
+    soundFX.playBuyProperty();
+    addLog(`🤝 Giao dịch hoàn tất thành công giữa ${sender.name} và ${target.name}!`);
+
+    let propsCopy = { ...propertiesState };
+    offerTiles.forEach((id) => {
+      propsCopy[id] = { ...propsCopy[id], owner: targetId };
+    });
+    demandTiles.forEach((id) => {
+      propsCopy[id] = { ...propsCopy[id], owner: senderId };
+    });
+
+    const updatedPlayers = players.map((p) => {
+      if (p.id === senderId) {
+        return { ...p, money: p.money - offerMoney + demandMoney };
+      }
+      if (p.id === targetId) {
+        return { ...p, money: p.money - demandMoney + offerMoney };
+      }
+      return p;
+    });
+
+    setPlayers(updatedPlayers);
+    setPropertiesState(propsCopy);
+
+    // F13: Kiểm tra điều kiện thắng Business Tour ngay sau giao dịch
+    const victory = checkBusinessTourVictory(propsCopy, updatedPlayers);
+    if (victory && victory.winner) {
+      setWinner({ ...victory.winner, winReason: victory.reason });
+      syncOnlineState({
+        players: updatedPlayers,
+        propertiesState: propsCopy,
+        winner: { ...victory.winner, winReason: victory.reason },
+      });
+      return;
+    }
+
+    syncOnlineState({ players: updatedPlayers, propertiesState: propsCopy });
+  };
+
   // CHUYỂN TIỀN GIỮA 2 NGƯỜI CHƠI
   const transferMoney = (fromId, toId, amount, currentPlayersList = players) => {
+    const fromPlayer = currentPlayersList.find((p) => p.id === fromId);
+    if (!fromPlayer) return currentPlayersList;
+
+    // F07: Con nợ chỉ có thể trả tối đa số tiền mặt đang có nếu phá sản (hoặc đủ trả amount)
+    const canPayFull = fromPlayer.money >= amount;
+    const actualTransfer = canPayFull ? amount : Math.max(0, fromPlayer.money);
+
     let updated = currentPlayersList.map((p) => {
       if (p.id === fromId) return { ...p, money: p.money - amount };
-      if (p.id === toId) return { ...p, money: p.money + amount };
+      if (p.id === toId) return { ...p, money: p.money + actualTransfer };
       return p;
     });
 
@@ -945,15 +1118,17 @@ export default function App() {
     }
 
     setPlayers(updated);
-    syncOnlineState({ players: updated, freeParkingPool: poolVal });
+    setHasRolled(true);
+    syncOnlineState({ players: updated, freeParkingPool: poolVal, hasRolled: true });
   };
 
   // XỬ LÝ KHỦNG HOẢNG NỢ / PHÁ SẢN (BANKRUPTCY CHECK)
   const handleDebtCrisis = (debtor, creditorId, currentPlayersList) => {
     const maxLiquid = calculateMaxLiquidatable(debtor, propertiesState);
 
-    // Nếu ngay cả khi bán hết tài sản vẫn không đủ trả nợ: TUYÊN BỐ PHÁ SẢN!
-    if (debtor.money + maxLiquid < 0) {
+    // F04: calculateMaxLiquidatable đã bao gồm tiền mặt hiện có.
+    // Nếu maxLiquid < 0: ngay cả khi bán hết toàn bộ nhà và thế chấp mọi đất đai vẫn không đủ bù nợ -> PHÁ SẢN!
+    if (maxLiquid < 0) {
       declareBankruptcy(debtor.id, creditorId, currentPlayersList);
     } else {
       // Nếu là Bot: tự động bán nhà và thế chấp để cứu nguy
@@ -1021,16 +1196,33 @@ export default function App() {
     // Kiểm tra người chiến thắng cuối cùng
     const survivors = updatedPlayers.filter((p) => !p.isBankrupt);
     if (survivors.length === 1) {
-      setWinner(survivors[0]);
+      setWinner({ ...survivors[0], winReason: 'Tất cả đối thủ đã phá sản! Bạn là người sống sót duy nhất!' });
       syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, winner: survivors[0] });
-    } else {
-      syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps });
+      return;
     }
+
+    // F13: Nếu tài sản được chuyển cho chủ nợ, kiểm tra xem chủ nợ có đạt chiến thắng Business Tour ngay không!
+    if (creditor) {
+      const victory = checkBusinessTourVictory(updatedProps, updatedPlayers);
+      if (victory && victory.winner) {
+        setWinner({ ...victory.winner, winReason: victory.reason });
+        syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps, winner: victory.winner });
+        return;
+      }
+    }
+
+    syncOnlineState({ players: updatedPlayers, propertiesState: updatedProps });
   };
 
   // KẾT THÚC LƯỢT ĐI
   const handleEndTurn = () => {
     if (!currentPlayer) return;
+
+    if (currentPlayer.money < 0) {
+      addLog(`⚠️ ${currentPlayer.name} đang bị âm tiền (${formatVND(currentPlayer.money)})! Phải thanh lý tài sản hoặc phá sản trước khi kết thúc lượt!`);
+      setShowManageModal(true);
+      return;
+    }
 
     // Nếu đổ xúc xắc đôi (và không bị vào tù), được đi tiếp thêm lượt!
     const isDoubles = dice[0] === dice[1];
@@ -1042,13 +1234,16 @@ export default function App() {
 
     // Chuyển lượt sang người chơi tiếp theo còn sống
     let nextIdx = (turnIndex + 1) % players.length;
-    while (players[nextIdx].isBankrupt) {
+    let loopGuard = 0;
+    while (players[nextIdx].isBankrupt && loopGuard < players.length) {
       nextIdx = (nextIdx + 1) % players.length;
+      loopGuard++;
     }
 
     setTurnIndex(nextIdx);
     setHasRolled(false);
     setDoublesCount(0);
+    setTotalTurnsCount((prev) => prev + 1);
 
     const nextPlayer = players[nextIdx];
     addLog(`👉 Đến lượt của: ${nextPlayer.name}`);
@@ -1059,6 +1254,14 @@ export default function App() {
   useEffect(() => {
     if (screen !== 'playing' || !currentPlayer || !currentPlayer.isBot || currentPlayer.isBankrupt) {
       return;
+    }
+
+    // 0. Nếu Bot đang có thẻ Cơ Hội / Khí Vận cần xác nhận
+    if (activeCard && activeCard.player.id === currentPlayer.id) {
+      const timer = setTimeout(() => {
+        handleConfirmCard();
+      }, 1200);
+      return () => clearTimeout(timer);
     }
 
     // 1. Nếu Bot đang trong tù
@@ -1084,8 +1287,39 @@ export default function App() {
           );
           setPlayers(updated);
         } else {
-          // Thử đổ đôi
-          handleRollDice();
+          // Thử đổ đôi trong tù
+          const d1 = Math.floor(Math.random() * 6) + 1;
+          const d2 = Math.floor(Math.random() * 6) + 1;
+          setDice([d1, d2]);
+          if (d1 === d2) {
+            soundFX.playCollectMoney();
+            addLog(`🎉 ${currentPlayer.name} đổ đôi [${d1}-${d2}], được tha bổng ngay lập tức!`);
+            const updated = players.map((p) =>
+              p.id === currentPlayer.id ? { ...p, inJail: false, jailTurns: 0 } : p
+            );
+            setPlayers(updated);
+            movePlayer(currentPlayer.id, d1 + d2, false, updated);
+          } else {
+            soundFX.playPayRent();
+            const turns = (currentPlayer.jailTurns || 0) + 1;
+            if (turns >= 3) {
+              addLog(`⏳ ${currentPlayer.name} đã ở tù đủ 3 lượt, nộp ${formatVND(JAIL_FINE)} ra tù.`);
+              const updated = players.map((p) =>
+                p.id === currentPlayer.id
+                  ? { ...p, inJail: false, jailTurns: 0, money: p.money - JAIL_FINE }
+                  : p
+              );
+              setPlayers(updated);
+              movePlayer(currentPlayer.id, d1 + d2, false, updated);
+            } else {
+              addLog(`🔒 ${currentPlayer.name} đổ [${d1}-${d2}], tiếp tục ngồi tù (${turns}/3).`);
+              const updated = players.map((p) =>
+                p.id === currentPlayer.id ? { ...p, jailTurns: turns } : p
+              );
+              setPlayers(updated);
+              setHasRolled(true);
+            }
+          }
           return;
         }
       }, 1000);
@@ -1119,7 +1353,7 @@ export default function App() {
               setConstructionAlert({
                 player: currentPlayer.name,
                 tileName: tile.name,
-                type: nextHouses === 5 ? 'hotel' : 'house'
+                type: nextHouses >= 4 ? 'hotel' : 'house'
               });
               setTimeout(() => setConstructionAlert(null), 3500);
             }
@@ -1253,9 +1487,9 @@ export default function App() {
       {/* BẢNG ĐIỂM / LƯỢT ĐI TRÊN KHÔNG GIAN BÀN CỜ (ROUND CAPSULE CHUẨN BUSINESS TOUR) */}
       <div className="fixed top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
         <div className="bg-white/95 text-slate-800 border-2 border-slate-200 px-4 py-1 rounded-full text-xs font-black tracking-widest shadow-md flex items-center gap-2 backdrop-blur-md">
-          <span className="text-amber-600">VÒNG {Math.floor(turnIndex / Math.max(1, players.length)) + 1}</span>
+          <span className="text-amber-600">VÒNG {Math.floor(totalTurnsCount / Math.max(1, players.length)) + 1}</span>
           <span className="text-slate-400">•</span>
-          <span className="text-emerald-600">LƯỢT #{turnIndex + 1}</span>
+          <span className="text-emerald-600">LƯỢT #{totalTurnsCount + 1}</span>
         </div>
       </div>
 
@@ -1264,11 +1498,11 @@ export default function App() {
         {/* Hộp đồng hồ kỹ thuật số LED màu đen 2 chân đế */}
         <div className="bg-[#2b3543] text-white font-mono text-xs sm:text-sm font-black px-4 py-1 rounded border border-[#1b222c] shadow-xl tracking-widest flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>07:18</span>
+          <span>{formatMatchTime(elapsedSeconds)}</span>
         </div>
         {/* Số tiền Jackpot trắng phát sáng trên thảm cỏ */}
         <div className="mt-1.5 text-white font-black text-xl sm:text-2xl tracking-wider drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
-          {freeParkingPool > 0 ? formatVND(freeParkingPool) : '440 000 ₫'}
+          {freeParkingPool > 0 ? formatVND(freeParkingPool) : '0 ₫'}
         </div>
       </div>
 
@@ -1516,6 +1750,7 @@ export default function App() {
         <BusinessTourBuildModal
           tile={buildModalTile.tile}
           player={buildModalTile.player}
+          propState={buildModalTile.propState}
           currentHouses={buildModalTile.propState ? buildModalTile.propState.houses || 0 : 0}
           isNewPurchase={buildModalTile.isNewPurchase}
           onConfirmBuild={(targetTier, cost) =>
@@ -1701,36 +1936,44 @@ export default function App() {
           activePlayer={currentPlayer}
           players={players}
           propertiesState={propertiesState}
-          onSendTrade={({ senderId, targetId, offerMoney, offerTiles, demandMoney, demandTiles }) => {
+          onSendTrade={(offer) => {
             setShowTradeModal(false);
+            const { targetId } = offer;
             const target = players.find((p) => p.id === targetId);
+            if (!target) return;
 
-            // Tự động chấp thuận nếu là BOT hoặc Pass & Play đồng thuận
-            addLog(`🤝 Giao dịch thành công giữa ${currentPlayer.name} và ${target?.name}!`);
-            soundFX.playBuyProperty();
-
-            let propsCopy = { ...propertiesState };
-            offerTiles.forEach((id) => {
-              propsCopy[id] = { ...propsCopy[id], owner: targetId };
-            });
-            demandTiles.forEach((id) => {
-              propsCopy[id] = { ...propsCopy[id], owner: senderId };
-            });
-
-            setPlayers((prev) =>
-              prev.map((p) => {
-                if (p.id === senderId) {
-                  return { ...p, money: p.money - offerMoney + demandMoney };
-                }
-                if (p.id === targetId) {
-                  return { ...p, money: p.money - demandMoney + offerMoney };
-                }
-                return p;
-              })
-            );
-            setPropertiesState(propsCopy);
+            if (target.isBot) {
+              const decision = AIEngine.evaluateTradeOffer(target, offer, propertiesState, players);
+              if (decision.accept) {
+                executeTrade(offer);
+                addLog(`🤖 ${target.name}: "${decision.reason}"`);
+              } else {
+                soundFX.playPayRent();
+                addLog(`🤖 ${target.name} từ chối giao dịch: "${decision.reason}"`);
+              }
+            } else {
+              // Đối thủ là người chơi: Mở modal xác nhận
+              setPendingTradeOffer(offer);
+            }
           }}
           onClose={() => setShowTradeModal(false)}
+        />
+      )}
+
+      {pendingTradeOffer && (
+        <TradeConfirmModal
+          offer={pendingTradeOffer}
+          players={players}
+          propertiesState={propertiesState}
+          onAccept={() => {
+            executeTrade(pendingTradeOffer);
+            setPendingTradeOffer(null);
+          }}
+          onReject={() => {
+            const target = players.find((p) => p.id === pendingTradeOffer.targetId);
+            addLog(`❌ ${target?.name || 'Đối thủ'} đã từ chối lời đề nghị giao dịch.`);
+            setPendingTradeOffer(null);
+          }}
         />
       )}
 

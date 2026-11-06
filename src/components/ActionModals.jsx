@@ -9,16 +9,100 @@ import { soundFX } from '../utils/soundFx.js';
 export function BusinessTourBuildModal({
   tile,
   player,
-  propState,
+  propState = null,
+  currentHouses: explicitHouses,
+  isNewPurchase: explicitIsNew,
   onConfirmBuild,
   onAuction,
   onClose,
 }) {
   if (!tile || !player) return null;
 
-  const currentHouses = propState?.houses || 0;
-  const isNewPurchase = !propState?.owner;
+  const currentHouses = explicitHouses !== undefined ? explicitHouses : (propState?.houses || 0);
+  const isNewPurchase = explicitIsNew !== undefined ? explicitIsNew : (!propState || !propState.owner);
   const group = tile.group ? COLOR_GROUPS[tile.group.toUpperCase()] : null;
+
+  // F12: Nếu là Ga Tàu hoặc Tiện Ích, hiển thị giao diện mua tài sản chuyên biệt
+  if (tile.type !== 'property') {
+    const isRailroad = tile.type === 'railroad';
+    const canAffordSimple = player.money >= tile.price;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+        <div className="relative w-full max-w-md bg-slate-900 border-2 border-amber-400 rounded-3xl p-6 shadow-2xl text-slate-100">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
+                {isRailroad ? 'CƠ HỘI ĐẦU TƯ GA TÀU' : 'CƠ HỘI ĐẦU TƯ TIỆN ÍCH'}
+              </span>
+              <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                <span>{tile.name}</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full text-white font-bold bg-sky-600">
+                  {isRailroad ? 'Bến Xe / Ga Tàu' : 'Công Ty Tiện Ích'}
+                </span>
+              </h2>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase text-slate-400 block font-bold">Số dư</span>
+              <span className="text-base font-black text-emerald-400">{formatVND(player.money)}</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 mb-5">
+            <div className="text-xs text-slate-300 mb-2">
+              {isRailroad ? (
+                <>
+                  <p className="font-bold text-amber-300 mb-1">Quy tắc thu tiền vé Ga Tàu:</p>
+                  <p className="text-[11px] text-slate-400">1 Ga: 250k • 2 Ga: 500k • 3 Ga: 1.0M • 4 Ga: 2.0M</p>
+                  <p className="text-[10px] text-amber-400 mt-1 font-bold">⭐ Sở hữu toàn bộ 4 Ga tàu sẽ THẮNG NGAY LẬP TỨC!</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-amber-300 mb-1">Quy tắc thu tiền Tiện Ích EVN:</p>
+                  <p className="text-[11px] text-slate-400">1 Tiện Ích: 40.000₫ × Điểm xúc xắc</p>
+                  <p className="text-[11px] text-slate-400">Cả 2 Tiện Ích: 100.000₫ × Điểm xúc xắc</p>
+                </>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-400">Giá mua:</span>
+              <span className="text-xl font-black text-amber-400">{formatVND(tile.price)}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={!canAffordSimple}
+              onClick={() => {
+                soundFX.playBuyProperty();
+                onConfirmBuild(1, tile.price);
+              }}
+              className={`py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 ${
+                canAffordSimple
+                  ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 shadow-glow-gold hover:brightness-110'
+                  : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+              }`}
+            >
+              <span>{canAffordSimple ? 'Xác Nhận Mua' : 'Không Đủ Tiền'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                soundFX.playGavel();
+                onAuction();
+              }}
+              className="py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 flex items-center justify-center gap-1.5 transition active:scale-95"
+            >
+              <Gavel size={16} />
+              <span>Mở Đấu Giá</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 4 Cấp độ công trình Business Tour
   const tiers = [
@@ -913,6 +997,97 @@ export function TradeModal({ activePlayer, players, propertiesState, onSendTrade
   );
 }
 
+// 6.5. MODAL XÁC NHẬN GIAO DỊCH (TRADE CONFIRM MODAL - F02 FIX)
+export function TradeConfirmModal({ offer, players, propertiesState, onAccept, onReject }) {
+  if (!offer) return null;
+  const sender = players.find((p) => p.id === offer.senderId);
+  const target = players.find((p) => p.id === offer.targetId);
+  if (!sender || !target) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-lg bg-slate-900 border-2 border-amber-400 rounded-3xl p-6 shadow-glow-gold text-slate-100 flex flex-col">
+        <div className="text-center mb-4">
+          <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40 text-2xl">
+            🤝
+          </div>
+          <span className="text-xs font-black uppercase tracking-widest text-amber-400">
+            LỜI ĐỀ NGHỊ GIAO DỊCH TỪ ĐỐI THỦ
+          </span>
+          <h2 className="text-xl font-black text-white mt-1">
+            {sender.name} muốn trao đổi tài sản với bạn ({target.name})!
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-5 text-xs">
+          {/* Đối phương đưa bạn */}
+          <div className="bg-slate-950 p-3.5 rounded-2xl border border-emerald-500/40">
+            <span className="font-black text-emerald-400 block mb-1.5 uppercase tracking-wide">
+              🎁 Bạn sẽ nhận được:
+            </span>
+            {offer.offerMoney > 0 && (
+              <div className="text-sm font-black text-emerald-300 mb-1">
+                + {formatVND(offer.offerMoney)}
+              </div>
+            )}
+            {offer.offerTiles.length > 0 ? (
+              <div className="space-y-1">
+                {offer.offerTiles.map((id) => (
+                  <div key={id} className="p-1.5 rounded-lg bg-slate-900 text-slate-200 font-bold border border-slate-800">
+                    📜 {BOARD_TILES[id]?.name}
+                  </div>
+                ))}
+              </div>
+            ) : offer.offerMoney === 0 ? (
+              <span className="text-slate-500 italic">Không có tài sản kèm theo</span>
+            ) : null}
+          </div>
+
+          {/* Bạn phải đưa đối phương */}
+          <div className="bg-slate-950 p-3.5 rounded-2xl border border-rose-500/40">
+            <span className="font-black text-rose-400 block mb-1.5 uppercase tracking-wide">
+              📤 Bạn phải chuyển nhượng:
+            </span>
+            {offer.demandMoney > 0 && (
+              <div className="text-sm font-black text-rose-300 mb-1">
+                - {formatVND(offer.demandMoney)}
+              </div>
+            )}
+            {offer.demandTiles.length > 0 ? (
+              <div className="space-y-1">
+                {offer.demandTiles.map((id) => (
+                  <div key={id} className="p-1.5 rounded-lg bg-slate-900 text-slate-200 font-bold border border-slate-800">
+                    📜 {BOARD_TILES[id]?.name}
+                  </div>
+                ))}
+              </div>
+            ) : offer.demandMoney === 0 ? (
+              <span className="text-slate-500 italic">Không đòi hỏi tài sản</span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onAccept}
+            className="py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:brightness-110 active:scale-95 transition"
+          >
+            ✅ Đồng Ý Giao Dịch
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className="py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 active:scale-95 transition"
+          >
+            ❌ Từ Chối
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // 7. MODAL MÀN HÌNH CHIẾN THẮNG (VICTORY MODAL)
 export function VictoryModal({ winner, onRestart }) {
   if (!winner) return null;
@@ -954,8 +1129,8 @@ export function VictoryModal({ winner, onRestart }) {
         <h1 className="text-3xl font-black text-white drop-shadow-md mb-2">
           {winner.name}
         </h1>
-        <p className="text-sm text-slate-300 mb-6">
-          Đã xuất sắc thâu tóm toàn bộ bất động sản đắt giá nhất và đánh bại mọi đối thủ trên bàn cờ!
+        <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+          {winner.winReason || 'Đã xuất sắc thâu tóm toàn bộ bất động sản đắt giá nhất và đánh bại mọi đối thủ trên bàn cờ!'}
         </p>
 
         <button

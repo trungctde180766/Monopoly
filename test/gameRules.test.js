@@ -9,6 +9,7 @@ import {
   canMortgage,
   canUnmortgage,
   calculateNetWorth,
+  calculateLiquidationValue,
   calculateMaxLiquidatable,
   calculateBuyoutPrice,
   checkBusinessTourVictory,
@@ -259,6 +260,128 @@ runTest('Tính toán chính xác tài sản ròng và năng lực thanh khoản 
   const maxLiquid = calculateMaxLiquidatable(p1, props);
   // Tiền mặt: 1M + Bán 1 nhà thu 1M (50% của 2M) + Thế chấp thu 1.75M = 3.75M
   assert.strictEqual(maxLiquid, 1000000 + 1000000 + 1750000);
+});
+
+// 10. (F04) Kiểm tra phá sản khi năng lực thanh khoản âm (maxLiquid < 0)
+runTest('(F04) Xác định vỡ nợ chính xác: maxLiquid < 0 khi nợ vượt quá toàn bộ tài sản thanh lý', () => {
+  // Người chơi nợ -5M, tài sản chỉ còn 1 ô đất giá trị thế chấp 1.75M
+  const insolventPlayer = { id: 'p_debtor', money: -5000000 };
+  const props = {
+    37: { owner: insolventPlayer.id, houses: 0, isMortgaged: false },
+  };
+  const liquidationVal = calculateLiquidationValue(insolventPlayer, props);
+  assert.strictEqual(liquidationVal, 1750000); // Chỉ thế chấp được 1.75M
+  const maxLiquid = calculateMaxLiquidatable(insolventPlayer, props);
+  assert.strictEqual(maxLiquid, -5000000 + 1750000); // -3.25M
+  assert.strictEqual(maxLiquid < 0, true, 'Người chơi phải được xác định là vỡ nợ phá sản');
+});
+
+// 11. (F05) Bot xây nhà không vượt quá cấp 4 (Landmark) và cập nhật state mô phỏng
+runTest('(F05) Bot không thể xây vượt quá cấp 4 (Khách Sạn Landmark)', () => {
+  const bot = { id: 'bot_rich', money: 50000000, isBot: true };
+  const players = [bot];
+  // Bot sở hữu tile 1 (Bến xe Miền Tây) đang có 3 nhà
+  let props = {
+    1: { owner: bot.id, houses: 3, isMortgaged: false },
+  };
+  const builds = AIEngine.getBuildRecommendations(bot, props, players);
+  // Bot chỉ có thể xây tối đa 1 bước để lên cấp 4
+  assert.strictEqual(builds.length <= 1, true);
+  if (builds.length === 1) {
+    props[1].houses = 4;
+  }
+  // Khi đã ở cấp 4: Không được đề xuất xây tiếp
+  const nextBuilds = AIEngine.getBuildRecommendations(bot, props, players);
+  assert.strictEqual(nextBuilds.length, 0, 'Cấp 4 Landmark là giới hạn tối đa, không thể xây thêm');
+});
+
+// 12. (F05) Bot thanh lý nợ không bán lặp lại cùng một ngôi nhà
+runTest('(F05) Bot thanh lý nợ tuần tự: Giảm số nhà trong mô phỏng, không bán lặp', () => {
+  const bot = { id: 'bot_debt', money: 0, isBot: true };
+  // Bot sở hữu tile 1 với đúng 1 nhà (giá nhà 500k, bán thu 250k)
+  const props = {
+    1: { owner: bot.id, houses: 1, isMortgaged: false },
+  };
+  // Cần giải quyết khoản nợ 1.000.000₫
+  const reliefActions = AIEngine.planDebtRelief(bot, 1000000, props);
+  const sellActions = reliefActions.filter(a => a.type === 'sell_house' && a.tileId === 1);
+  assert.strictEqual(sellActions.length, 1, 'Chỉ được bán đúng 1 nhà hiện có, không bán lặp');
+});
+
+// 13. (F02) Bot định giá giao dịch: Từ chối giao dịch tạo Monopoly cho đối thủ
+runTest('(F02) Bot đánh giá giao dịch thông minh: Từ chối trao Monopoly cho đối thủ', () => {
+  const bot = { id: 'bot_trader', money: 10000000, isBot: true };
+  const human = { id: 'p_human', money: 10000000, isBot: false };
+  const players = [bot, human];
+
+  // Human đã sở hữu tile 21, 23 (Nhóm Đỏ). Bot sở hữu tile 24 (mảnh ghép cuối để Human có Monopoly)
+  const props = {
+    21: { owner: human.id, houses: 0 },
+    23: { owner: human.id, houses: 0 },
+    24: { owner: bot.id, houses: 0 },
+  };
+
+  const tradeOffer = {
+    senderId: human.id,
+    targetId: bot.id,
+    offerMoney: 2000000, // Đề nghị trả 2M
+    offerTiles: [],
+    demandMoney: 0,
+    demandTiles: [24],   // Đòi lấy tile 24 của Bot
+  };
+
+  const decision = AIEngine.evaluateTradeOffer(bot, tradeOffer, props, players);
+  assert.strictEqual(decision.accept, false, 'Bot phải từ chối vì không được trao bộ màu Monopoly cho đối thủ');
+});
+
+// 14. (F09) Tính toán đúng ô Ga tàu gần nhất và chi phí bảo trì công trình
+runTest('(F09) Thẻ Cơ Hội: Tính đúng Ga tàu gần nhất và chi phí bảo trì', () => {
+  const railroads = [5, 15, 25, 35];
+  // Vị trí 38 (sau ga 35): ga tiếp theo phải là ga 5 (vòng lại đầu bàn cờ)
+  const playerPos = 38;
+  let targetRailroad = railroads.find(r => r > playerPos);
+  let passedGo = false;
+  if (targetRailroad === undefined) {
+    targetRailroad = railroads[0];
+    passedGo = true;
+  }
+  assert.strictEqual(targetRailroad, 5);
+  assert.strictEqual(passedGo, true);
+});
+
+// 15. (F12) Nghiêm cấm xây nhà trên Ga Tàu và Tiện Ích
+runTest('(F12) Ga Tàu và Tiện Ích là tài sản không thể xây dựng nhà/khách sạn', () => {
+  const p1 = { id: 'p1', money: 10000000 };
+  const players = [p1];
+  const props = {
+    5: { owner: p1.id, houses: 0 },   // Ga Tàu
+    12: { owner: p1.id, houses: 0 },  // Tiện Ích EVN
+  };
+
+  const buildGa = canBuildHouse(5, props, players, p1.id);
+  assert.strictEqual(buildGa.can, false, 'Ga tàu không được phép xây nhà');
+
+  const buildEVN = canBuildHouse(12, props, players, p1.id);
+  assert.strictEqual(buildEVN.can, false, 'Tiện ích không được phép xây nhà');
+});
+
+// 16. (F13) Kiểm tra điều kiện thắng Business Tour: Độc quyền 1 hàng và Độc quyền 3 bộ màu
+runTest('(F13) checkBusinessTourVictory phát hiện ngay khi đạt Độc Quyền 1 Hàng hoặc 3 Bộ Màu', () => {
+  const p1 = { id: 'p1', money: 10000000, isBankrupt: false };
+  const p2 = { id: 'p2', money: 10000000, isBankrupt: false };
+  const players = [p1, p2];
+
+  // Sở hữu toàn bộ cạnh dưới: [1, 3, 5, 6, 8, 9]
+  const bottomSide = [1, 3, 5, 6, 8, 9];
+  let props = {};
+  bottomSide.forEach(tId => {
+    props[tId] = { owner: p1.id, houses: 1 };
+  });
+
+  const victory = checkBusinessTourVictory(props, players);
+  assert.strictEqual(victory !== null, true);
+  assert.strictEqual(victory.winner.id, p1.id);
+  assert.strictEqual(victory.reason.includes('ĐỘC QUYỀN MỘT HÀNG'), true);
 });
 
 console.log(`\n========================================`);

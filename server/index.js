@@ -132,10 +132,18 @@ io.on('connection', (socket) => {
   });
 
   // 4. Bắt đầu trận đấu
-  socket.on('start_game', (initialGameState) => {
+  socket.on('start_game', (initialGameState, callback) => {
     const code = socket.roomCode;
     const room = rooms.get(code);
     if (!room || room.hostId !== socket.id) return;
+
+    // F01: Kiểm tra tính sẵn sàng của tất cả người chơi trước khi bắt đầu
+    const nonHostPlayers = room.players.filter((p) => !p.isHost);
+    const allReady = nonHostPlayers.every((p) => p.isReady);
+    if (nonHostPlayers.length > 0 && !allReady) {
+      if (callback) callback({ success: false, message: 'Tất cả người chơi phải bấm Sẵn Sàng!' });
+      return;
+    }
 
     room.status = 'playing';
     room.gameState = initialGameState;
@@ -144,15 +152,20 @@ io.on('connection', (socket) => {
       roomCode: code,
       gameState: initialGameState
     });
+    if (callback) callback({ success: true });
   });
 
   // 5. Đồng bộ hành động trong ván cờ
   socket.on('sync_game_state', (updatedGameState) => {
     const code = socket.roomCode;
     const room = rooms.get(code);
-    if (!room) return;
+    if (!room || room.status !== 'playing') return;
 
-    room.gameState = updatedGameState;
+    // Sanitize & merge game state
+    room.gameState = {
+      ...(room.gameState || {}),
+      ...updatedGameState,
+    };
     socket.to(code).emit('game_state_updated', updatedGameState);
   });
 

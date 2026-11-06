@@ -240,26 +240,34 @@ export function calculateNetWorth(player, propertiesState) {
   return total;
 }
 
-// Tính tổng số tiền người chơi có thể huy động ngay lập tức (Bán nhà + Thế chấp)
-export function calculateMaxLiquidatable(player, propertiesState) {
-  let liquid = player.money || 0;
+// Tính giá trị tài sản có thể thanh lý khẩn cấp (Bán nhà 50% + Thế chấp đất chưa thế chấp)
+export function calculateLiquidationValue(player, propertiesState) {
+  let value = 0;
 
   BOARD_TILES.forEach(tile => {
     const prop = propertiesState[tile.id];
     if (prop?.owner === player.id) {
-      // Tiền từ bán nhà (50%)
+      // Tiền từ bán nhà (50% chi phí xây)
       const houses = prop.houses || 0;
       if (houses > 0 && tile.housePrice) {
-        liquid += houses * Math.floor(tile.housePrice / 2);
+        value += houses * Math.floor(tile.housePrice / 2);
       }
-      // Tiền từ thế chấp nếu chưa thế chấp
+      // Tiền từ thế chấp đất nếu chưa thế chấp
       if (!prop.isMortgaged && tile.mortgageValue) {
-        liquid += tile.mortgageValue;
+        value += tile.mortgageValue;
       }
     }
   });
 
-  return liquid;
+  return value;
+}
+
+// Tính số dư ròng tối đa sau khi thanh lý toàn bộ tài sản khẩn cấp (Tiền mặt hiện có + Giá trị thanh lý)
+// Nếu kết quả < 0: Người chơi thực sự không còn khả năng trả nợ và PHẢI PHÁ SẢN!
+export function calculateMaxLiquidatable(player, propertiesState) {
+  const currentCash = player?.money || 0;
+  const assetValue = calculateLiquidationValue(player, propertiesState);
+  return currentCash + assetValue;
 }
 
 // Format tiền tệ Việt Nam hiển thị đẹp mắt
