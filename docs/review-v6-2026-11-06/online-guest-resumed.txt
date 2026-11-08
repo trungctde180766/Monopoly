@@ -7,7 +7,7 @@ Browser tab: 2, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "http://
 				6 text Cờ tỷ phú VIỆT NAM
 			7 container
 				8 text Phòng online  · N7P6C
-			9 text Lượt 
+			9 text Lượt
 			10 text 2
 			11 container Thời gian ván chơi
 				12 text 01:15

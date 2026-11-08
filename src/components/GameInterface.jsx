@@ -75,7 +75,7 @@ export default function GameInterface({
   if (pendingTrade && !turn.disabled) turn = { ...turn, disabled: true, hint: 'Xác nhận hoặc từ chối đề nghị giao dịch đang mở.' };
   const canTrade = !player.isBot && player.money >= 0 && (mode !== 'online' || (player.id === myId && connected)) &&
     !busy && !animation.rolling && !animation.hopping && !state.winner && !state.pendingDecision && !pendingTrade;
-  
+
   const inspectedTile = selectedTileId !== null ? BOARD_TILES[selectedTileId] : null;
   const modeLabel = mode === 'online' ? 'Online' : mode === 'quick' ? 'AI Bots' : 'Pass & Play';
   const mainAction = () => turn.action === 'manage' ? onManage() : controller.dispatch(turn.action);

@@ -303,23 +303,23 @@ export function applySessionTrade(state, offer) {
   target.money += offer.offerMoney - offer.demandMoney;
   for (const id of offer.offerTiles) s.propertiesState[id].owner = target.id;
   for (const id of offer.demandTiles) s.propertiesState[id].owner = sender.id;
-  
+
   // Clear buildOpportunity only for players involved in the trade
   for (const p of s.players) {
     if (p.id === sender.id || p.id === target.id) p.buildOpportunity = null;
   }
-  
+
   // Trading only affects landing if the active player was part of the trade
   // or if the landing tile itself was transferred in the trade
   const activePlayer = s.players[s.turnIndex];
   const tradedTileIds = new Set([...(offer.offerTiles || []), ...(offer.demandTiles || [])]);
   const affectsActiveLanding = (activePlayer.id === sender.id || activePlayer.id === target.id) ||
     (s.pendingDecision?.tileId !== undefined && tradedTileIds.has(s.pendingDecision.tileId));
-    
+
   if (affectsActiveLanding) {
     if (s.pendingDecision?.type === 'build' || s.pendingDecision?.type === 'buyout') endLanding(s);
   }
-  
+
   s.revision++; log(s, `🤝 ${sender.name} và ${target.name} hoàn tất giao dịch.`);
   s.lastAction = { type: 'trade', actorId: sender.id, revision: s.revision };
   checkWinner(s);
