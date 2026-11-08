@@ -3,9 +3,24 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/health",
+      "destination": "/api/health.js"
+    },
+    {
+      "source": "/api/realtime/socket.io/(.*)",
+      "destination": "/api/realtime.js"
+    },
+    {
+      "source": "/socket.io/(.*)",
+      "destination": "/api/realtime.js"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!assets/|favicon\\.svg|icons\\.svg).*)$",
       "destination": "/index.html"
     }
   ]
 }
-

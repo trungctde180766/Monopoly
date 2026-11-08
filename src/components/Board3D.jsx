@@ -5,7 +5,8 @@ import { formatVND, calculateRent } from '../logic/gameEngine.js';
 import { soundFX } from '../utils/soundFx.js';
 import { Eye, RotateCcw, Sparkles } from 'lucide-react';
 
-import { getTile3DTransform, getTileLayoutVectors, getTokenLayout, sampleTokenHop } from '../logic/boardLayout.js';
+import { getTile3DTransform, getTileLayoutVectors, getTokenLayout, sampleTokenHop, getBoardCameraPose } from '../logic/boardLayout.js';
+import { getTileDetails, getBuildingLabel } from '../logic/gamePresentation.js';
 export { getTile3DTransform, getTileLayoutVectors } from '../logic/boardLayout.js';
 
 // Định dạng giá ngắn gọn chuẩn Business Tour (ví dụ: 200K, 495K, 2.4M)
@@ -308,10 +309,19 @@ function createDiceFaceTexture(value) {
   return texture;
 }
 
-// Tạo vật liệu 6 mặt xúc xắc theo đúng giá trị
+// Tạo vật liệu 6 mặt xúc xắc theo đúng chuẩn đối xứng (tổng 2 mặt đối diện = 7, không lặp số)
 function createDiceMaterials(topValue) {
-  // Sắp xếp mặt trên hiển thị đúng số xúc xắc
-  const faceValues = [2, 5, topValue, 7 - topValue, 3, 4];
+  const v = Math.min(6, Math.max(1, topValue || 1));
+  const bottomValue = 7 - v;
+  let px, nx, pz, nz;
+  if (v === 1 || v === 6) {
+    px = 2; nx = 5; pz = 3; nz = 4;
+  } else if (v === 2 || v === 5) {
+    px = 1; nx = 6; pz = 3; nz = 4;
+  } else {
+    px = 1; nx = 6; pz = 2; nz = 5;
+  }
+  const faceValues = [px, nx, v, bottomValue, pz, nz];
   return faceValues.map(val => new THREE.MeshStandardMaterial({
     map: createDiceFaceTexture(val),
     roughness: 0.15,
@@ -319,73 +329,80 @@ function createDiceMaterials(topValue) {
   }));
 }
 
-// G04: MÔ HÌNH NHÀ CẤP 1 (Cottage 1 tầng mái dốc ấm cúng + ống khói gạch)
+// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 1 (Cottage 1 tầng rõ khối, mái dốc ấm cúng + ống khói gạch)
 function createTier1CottageMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  const bodyGeo = new THREE.BoxGeometry(0.48, 0.36, 0.44);
+  const bodyGeo = new THREE.BoxGeometry(0.68, 0.52, 0.56);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xf8fafc,
     roughness: 0.3,
     metalness: 0.05,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.18;
+  body.position.y = 0.26;
   body.castShadow = true;
   group.add(body);
 
-  const roofGeo = new THREE.ConeGeometry(0.42, 0.3, 4);
+  // Cửa gỗ nhỏ phía trước
+  const doorGeo = new THREE.BoxGeometry(0.18, 0.28, 0.04);
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 });
+  const door = new THREE.Mesh(doorGeo, doorMat);
+  door.position.set(0, 0.14, 0.285);
+  group.add(door);
+
+  const roofGeo = new THREE.ConeGeometry(0.58, 0.42, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.25,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.36 + 0.15;
+  roof.position.y = 0.52 + 0.21;
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
   group.add(roof);
 
-  const chimneyGeo = new THREE.BoxGeometry(0.09, 0.22, 0.09);
+  const chimneyGeo = new THREE.BoxGeometry(0.12, 0.30, 0.12);
   const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
   const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
-  chimney.position.set(0.14, 0.44, 0.12);
+  chimney.position.set(0.18, 0.65, 0.15);
   chimney.castShadow = true;
   group.add(chimney);
 
   return group;
 }
 
-// G04: MÔ HÌNH NHÀ CẤP 2 (Nhà Phố 2 Tầng cao ráo + ban công phía trước)
+// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 2 (Nhà Phố 2 Tầng cao ráo + ban công tầng 2)
 function createTier2TownhouseMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  const bodyGeo = new THREE.BoxGeometry(0.56, 0.68, 0.5);
+  const bodyGeo = new THREE.BoxGeometry(0.76, 0.95, 0.62);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xf1f5f9,
     roughness: 0.25,
     metalness: 0.1,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.34;
+  body.position.y = 0.475;
   body.castShadow = true;
   group.add(body);
 
-  // Ban công tầng 2
-  const balconyGeo = new THREE.BoxGeometry(0.44, 0.07, 0.12);
-  const balconyMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3 });
+  // Ban công tầng 2 với lan can
+  const balconyGeo = new THREE.BoxGeometry(0.58, 0.10, 0.16);
+  const balconyMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3 });
   const balcony = new THREE.Mesh(balconyGeo, balconyMat);
-  balcony.position.set(0, 0.42, 0.28);
+  balcony.position.set(0, 0.55, 0.35);
   balcony.castShadow = true;
   group.add(balcony);
 
   // Mái dốc cao phong cách nhà phố
-  const roofGeo = new THREE.ConeGeometry(0.48, 0.35, 4);
+  const roofGeo = new THREE.ConeGeometry(0.64, 0.46, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.2,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.68 + 0.175;
+  roof.position.y = 0.95 + 0.23;
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
   group.add(roof);
@@ -393,48 +410,48 @@ function createTier2TownhouseMesh(roofColor = 0xef4444) {
   return group;
 }
 
-// G04: MÔ HÌNH NHÀ CẤP 3 (Biệt Thự Sang Trọng + Cặp cột sảnh hiên đá cẩm thạch)
+// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 3 (Biệt Thự Sang Trọng + Cặp cột sảnh hiên đá cẩm thạch)
 function createTier3VillaMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
   // Khối nhà biệt thự bề thế
-  const bodyGeo = new THREE.BoxGeometry(0.82, 0.55, 0.65);
+  const bodyGeo = new THREE.BoxGeometry(1.05, 0.82, 0.78);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.2,
     metalness: 0.08,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.275;
+  body.position.y = 0.41;
   body.castShadow = true;
   group.add(body);
 
   // 2 Cột trụ sảnh hiên đá cẩm thạch
-  [-0.28, 0.28].forEach(x => {
-    const colGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.52, 12);
+  [-0.36, 0.36].forEach(x => {
+    const colGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.75, 12);
     const colMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2 });
     const col = new THREE.Mesh(colGeo, colMat);
-    col.position.set(x, 0.26, 0.35);
+    col.position.set(x, 0.375, 0.44);
     col.castShadow = true;
     group.add(col);
   });
 
   // Mái hiên sảnh
-  const porchGeo = new THREE.BoxGeometry(0.72, 0.06, 0.22);
+  const porchGeo = new THREE.BoxGeometry(0.92, 0.08, 0.26);
   const porchMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.25 });
   const porch = new THREE.Mesh(porchGeo, porchMat);
-  porch.position.set(0, 0.54, 0.35);
+  porch.position.set(0, 0.76, 0.44);
   porch.castShadow = true;
   group.add(porch);
 
   // Mái chính biệt thự
-  const roofGeo = new THREE.ConeGeometry(0.68, 0.42, 4);
+  const roofGeo = new THREE.ConeGeometry(0.88, 0.55, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.2,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.55 + 0.21;
+  roof.position.y = 0.82 + 0.275;
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
   group.add(roof);
@@ -443,65 +460,65 @@ function createTier3VillaMesh(roofColor = 0xef4444) {
 }
 
 // Mô hình Khách Sạn / Kỳ Quan Cấp 4 (Landmark Castle Bất Khả Xâm Phạm chuẩn Business Tour)
-// P01 Fix: Kích thước 1.25 x 0.85 nằm gọn gàng bên trong ô đất 1.8 x 2.7 (zero overhang)
+// Kích thước 1.30 x 0.90 nằm gọn trong ô đất, chiều cao nổi bật ~2.2 world units
 function createLandmarkMesh(roofColor = 0x3b82f6) {
   const group = new THREE.Group();
 
-  // Đế vàng phát sáng báo hiệu đất Landmark (Kích thước gọn 1.25 x 0.85)
-  const baseGeo = new THREE.BoxGeometry(1.25, 0.08, 0.85);
+  // Đế vàng phát sáng báo hiệu đất Landmark
+  const baseGeo = new THREE.BoxGeometry(1.30, 0.12, 0.90);
   const baseMat = new THREE.MeshStandardMaterial({
     color: 0xf59e0b,
     metalness: 0.9,
     roughness: 0.1,
     emissive: 0xf59e0b,
-    emissiveIntensity: 0.35,
+    emissiveIntensity: 0.4,
   });
   const base = new THREE.Mesh(baseGeo, baseMat);
-  base.position.y = 0.04;
+  base.position.y = 0.06;
   group.add(base);
 
   // Thân lâu đài / khách sạn trắng sứ
-  const bodyGeo = new THREE.BoxGeometry(0.82, 0.65, 0.60);
+  const bodyGeo = new THREE.BoxGeometry(0.95, 0.90, 0.70);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.25,
     metalness: 0.1,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.40;
+  body.position.y = 0.57;
   body.castShadow = true;
   group.add(body);
 
   // 2 Tháp trụ tròn bên hông
-  [-0.38, 0.38].forEach((x) => {
-    const towerGeo = new THREE.CylinderGeometry(0.14, 0.16, 0.82, 12);
+  [-0.45, 0.45].forEach((x) => {
+    const towerGeo = new THREE.CylinderGeometry(0.18, 0.20, 1.15, 12);
     const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 });
     const tower = new THREE.Mesh(towerGeo, towerMat);
-    tower.position.set(x, 0.45, 0);
+    tower.position.set(x, 0.65, 0);
     tower.castShadow = true;
     group.add(tower);
 
-    const coneGeo = new THREE.ConeGeometry(0.20, 0.30, 12);
+    const coneGeo = new THREE.ConeGeometry(0.24, 0.40, 12);
     const coneMat = new THREE.MeshStandardMaterial({ color: roofColor, metalness: 0.5, roughness: 0.2 });
     const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(x, 0.86 + 0.15, 0);
+    cone.position.set(x, 1.22 + 0.20, 0);
     cone.castShadow = true;
     group.add(cone);
   });
 
   // Tháp trung tâm mạ vàng hoàng gia
-  const centerSpireGeo = new THREE.CylinderGeometry(0.20, 0.24, 1.05, 16);
+  const centerSpireGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.45, 16);
   const centerSpireMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
   const centerSpire = new THREE.Mesh(centerSpireGeo, centerSpireMat);
-  centerSpire.position.set(0, 0.56, 0);
+  centerSpire.position.set(0, 0.85, 0);
   centerSpire.castShadow = true;
   group.add(centerSpire);
 
   // Mái vòm vàng & Đỉnh kim cương Landmark
-  const domeGeo = new THREE.ConeGeometry(0.28, 0.38, 16);
+  const domeGeo = new THREE.ConeGeometry(0.34, 0.50, 16);
   const domeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
   const dome = new THREE.Mesh(domeGeo, domeMat);
-  dome.position.set(0, 1.08 + 0.19, 0);
+  dome.position.set(0, 1.57 + 0.25, 0);
   dome.castShadow = true;
   group.add(dome);
 
@@ -641,6 +658,8 @@ export default function Board3D({
   onTileClick,
   dice = [1, 1],
   isRolling = false,
+  selectedTileId = 0,
+  buildPreview = null,
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -653,6 +672,9 @@ export default function Board3D({
   const die2MeshRef = useRef(null);
   const animationFrameRef = useRef(null);
   const particleSystemRef = useRef(null);
+  const previewGroupRef = useRef(null), selectionGroupRef = useRef(null), focusLabelRef = useRef(null);
+  const selectedIdRef = useRef(selectedTileId); selectedIdRef.current = buildPreview?.tileId ?? selectedTileId;
+  const previewTileId = buildPreview?.tileId;
 
   // Trạng thái nhảy hoạt họa từng ô (Step-by-step hopping)
   const hoppingStateRef = useRef({});
@@ -662,7 +684,7 @@ export default function Board3D({
   const isDraggingRef = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
   const pointerDownPosition = useRef({ x: 0, y: 0 });
-  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 46 });
+  const cameraAnglesRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 });
 
   // G05 Fix: Giữ ref isRolling thời gian thực cho vòng render loop
   const activePlayerIdRef = useRef(activePlayerId);
@@ -682,10 +704,12 @@ export default function Board3D({
 
     const scene = new THREE.Scene();
     // Bầu không gian trời xanh tươi sáng chuẩn Business Tour (Image 1)
-    scene.background = new THREE.Color(0xc2e2fa);
+    scene.background = new THREE.Color(0xe7f0f6);
     // G03 Fix: Tắt hoàn toàn fog trên bàn cờ để chữ và màu sắc không bị mờ nhạt
     scene.fog = null;
     sceneRef.current = scene;
+    previewGroupRef.current = new THREE.Group(); scene.add(previewGroupRef.current);
+    selectionGroupRef.current = new THREE.Group(); scene.add(selectionGroupRef.current);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 120);
     cameraRef.current = camera;
@@ -725,14 +749,14 @@ export default function Board3D({
 
     // Các khối đa diện lập phương / bát diện 3D bán trong suốt lơ lửng trên bầu trời (chuẩn Image 1)
     const skyShapesGroup = new THREE.Group();
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 10; i++) {
       const isBox = i % 2 === 0;
       const geo = isBox ? new THREE.BoxGeometry(1.6, 1.6, 1.6) : new THREE.OctahedronGeometry(1.4);
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         wireframe: true,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.10,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
@@ -933,11 +957,12 @@ export default function Board3D({
     container.addEventListener('wheel', handleWheel, { passive: false });
 
     // VÒNG LẶP RENDER HOẠT HỌA 60 FPS
-    let clock = new THREE.Clock();
+    let previousTime = performance.now(), elapsed = 0;
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsed = clock.getElapsedTime();
+      const now = performance.now();
+      const delta = Math.min(0.1, (now - previousTime) / 1000);
+      previousTime = now; elapsed += delta;
 
       // Hạt tinh thể vàng bay
       if (particleSystemRef.current) {
@@ -998,6 +1023,13 @@ export default function Board3D({
         }
       });
 
+      if (focusLabelRef.current) {
+        const tile = getTile3DTransform(selectedIdRef.current);
+        const point = new THREE.Vector3(tile.x, 1.75, tile.z).project(camera);
+        const w = container.clientWidth, h = container.clientHeight;
+        focusLabelRef.current.style.left = Math.max(102, Math.min(w - 102, (point.x + 1) * w / 2)) + 'px';
+        focusLabelRef.current.style.top = Math.max(80, Math.min(h - 10, (1 - point.y) * h / 2)) + 'px';
+      }
       renderer.render(scene, camera);
     };
     animate();
@@ -1030,14 +1062,10 @@ export default function Board3D({
 
   function updateCameraPosition() {
     if (!cameraRef.current) return;
-    const { theta, phi, radius } = cameraAnglesRef.current;
-    const aspect = cameraRef.current.aspect || 1;
-    // Tự động điều chỉnh bán kính camera theo tỷ lệ khung hình (đặc biệt cho màn hình điện thoại 390x844 dạng dọc)
-    const effectiveRadius = aspect < 1 ? radius * (0.92 / aspect) : radius;
-    cameraRef.current.position.x = effectiveRadius * Math.sin(phi) * Math.sin(theta);
-    cameraRef.current.position.y = effectiveRadius * Math.cos(phi);
-    cameraRef.current.position.z = effectiveRadius * Math.sin(phi) * Math.cos(theta);
-    cameraRef.current.lookAt(0, 0, 0);
+    const pose = getBoardCameraPose(cameraAnglesRef.current, cameraRef.current.aspect || 1);
+    cameraRef.current.position.set(pose.position.x, pose.position.y, pose.position.z);
+    cameraRef.current.lookAt(pose.target.x, pose.target.y, pose.target.z);
+    cameraRef.current.updateMatrixWorld();
   }
 
   // Cập nhật mặt xúc xắc khi đổ xong (kèm giải phóng material cũ)
@@ -1090,7 +1118,7 @@ export default function Board3D({
       // P01 & P02 Fix: Vùng đặt công trình hướng về phía trung tâm bàn cờ (inwardDist = 0.52)
       const bX = transform.x + inward.x * 0.52;
       const bZ = transform.z + inward.z * 0.52;
-      const houses = prop.houses || 0;
+      const houses = tile.id === previewTileId ? 0 : prop.houses || 0;
       const owner = players.find((p) => p.id === prop.owner);
       const roofColor = owner?.color || '#ef4444';
 
@@ -1128,7 +1156,39 @@ export default function Board3D({
         group.add(fest);
       }
     });
-  }, [propertiesState, ownerColors]);
+  }, [propertiesState, ownerColors, previewTileId]);
+
+  useEffect(() => {
+    const group = previewGroupRef.current;
+    if (!group) return;
+    disposeObject(group); group.clear();
+    if (!buildPreview || !BOARD_TILES[buildPreview.tileId] || buildPreview.tier < 1 || buildPreview.tier > 4) return;
+    const transform = getTile3DTransform(buildPreview.tileId), { inward } = getTileLayoutVectors(transform.side);
+    const factories = [null, createTier1CottageMesh, createTier2TownhouseMesh, createTier3VillaMesh, createLandmarkMesh];
+    const ghost = factories[buildPreview.tier](0x44b17e);
+    ghost.traverse(object => {
+      if (!object.isMesh) return;
+      object.castShadow = false;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        material.transparent = true; material.opacity = 0.58; material.depthWrite = false;
+        material.color.set(0x4da67b); material.roughness = 0.8; material.metalness = 0;
+      }
+    });
+    ghost.position.set(transform.x + inward.x * 0.52, 0.17, transform.z + inward.z * 0.52);
+    ghost.rotation.y = transform.rotY; group.add(ghost);
+  }, [buildPreview]);
+
+  useEffect(() => {
+    const group = selectionGroupRef.current;
+    if (!group) return;
+    disposeObject(group); group.clear();
+    const transform = getTile3DTransform(buildPreview?.tileId ?? selectedTileId);
+    const width = transform.isCorner ? 2.8 : 1.8, depth = transform.isCorner ? 2.8 : 2.7;
+    const source = new THREE.BoxGeometry(width + 0.02, 0.025, depth + 0.02);
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(source), new THREE.LineBasicMaterial({ color: buildPreview ? 0x19a567 : 0x176e93, depthTest: false }));
+    source.dispose();
+    frame.position.set(transform.x, 0.17, transform.z); frame.rotation.y = transform.rotY; group.add(frame);
+  }, [selectedTileId, previewTileId]);
 
   // Cập nhật vị trí và kích hoạt bước nhảy Step-by-Step
   useEffect(() => {
@@ -1164,38 +1224,38 @@ export default function Board3D({
   }, [players, activePlayerId]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-[#c2e2fa]">
+    <div className="w-full h-full relative overflow-hidden bg-[#e7f0f6]">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div ref={focusLabelRef} className={`tile-focus-label ${buildPreview ? 'is-preview' : ''}`} aria-live="polite">
+        <strong>{BOARD_TILES[buildPreview?.tileId ?? selectedTileId]?.shortName || BOARD_TILES[selectedTileId]?.name}</strong>
+        <span>{buildPreview ? `Xem trước · ${getBuildingLabel(buildPreview.tier)}` : (() => { const details = getTileDetails(BOARD_TILES[selectedTileId], propertiesState, players, dice); return details?.amount !== null ? `${details?.priceLabel}: ${formatVND(details?.amount)}` : details?.typeLabel; })()}</span>
+      </div>
 
-      {/* Floating Controls (Đặt dưới Card người chơi góc trên bên trái, tránh chồng lấn G01) */}
-      <div className="absolute top-[125px] left-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300 shadow-lg">
+      {/* Floating Controls (Đặt dưới Card người chơi góc trên bên trái, tránh chồng lấn G01 & R04) */}
+      <div className="camera-controls absolute top-3 left-3 z-20 flex items-center gap-1 bg-white/95 p-1 rounded-xl border border-slate-200 shadow-sm">
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 46 };
+            cameraAnglesRef.current = { theta: Math.PI / 4, phi: Math.PI / 3.4, radius: 36 };
             updateCameraPosition();
           }}
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
           title="Về góc nhìn chuẩn bao quát 4 góc bàn cờ"
         >
-          <RotateCcw size={14} /> Góc Chuẩn (3D)
+          <RotateCcw size={14} /> Góc 3D
         </button>
         <button
           onClick={() => {
-            cameraAnglesRef.current = { theta: 0, phi: 0.05, radius: 40 };
+            cameraAnglesRef.current = { theta: 0, phi: 0.05, radius: 34 };
             updateCameraPosition();
           }}
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
           title="Góc nhìn thẳng từ trên xuống"
         >
-          <Eye size={14} /> Nhìn Thẳng
+          <Eye size={14} /> Từ trên
         </button>
       </div>
 
-      <div className="absolute bottom-24 right-4 z-20 pointer-events-none hidden sm:block">
-        <span className="text-[11px] font-medium text-slate-700 bg-white/80 backdrop-blur px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 shadow-sm">
-          <Sparkles size={13} className="text-amber-500" /> Kéo chuột để xoay 360° • Lăn chuột để phóng to
-        </span>
-      </div>
+
     </div>
   );
 }

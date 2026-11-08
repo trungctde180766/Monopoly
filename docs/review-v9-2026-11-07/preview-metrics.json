@@ -1,0 +1,15 @@
+{
+  "backdrop": "none",
+  "background": "rgba(0, 0, 0, 0)",
+  "dialog": {
+    "bottom": 696.0000152587891,
+    "height": 232.1999969482422,
+    "left": 24,
+    "right": 384,
+    "top": 463.8000183105469,
+    "width": 360,
+    "x": 24,
+    "y": 463.8000183105469
+  },
+  "pointer": "none"
+}

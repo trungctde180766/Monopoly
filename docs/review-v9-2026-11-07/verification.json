@@ -1,0 +1,8 @@
+{
+  "reviewDate": "2026-11-07",
+  "tests": {"exitCode": 0, "legacyPassed": 23, "nodeRunnerPassed": 46, "totalPassed": 69, "failed": 0, "skipped": 0},
+  "build": {"exitCode": 0, "asset": "index-CsOH2fmY.js", "mainKB": 412.45, "mainGzipKB": 125.92, "board3DKB": 564.53, "warning": "3D chunk exceeds 500 kB"},
+  "ui": {"desktop": "1280x720", "mobile": ["390x844", "320x740"], "sixPlayer390MainActionClickable": true, "mobileRollViaUI": [2, 6], "landing": "Hoi An", "purchaseTier": 3, "purchaseCost": 2000000, "balanceAfter": 13000000, "rentDisplayed": 2700000, "hudVillaCount": 1, "previewBackdropFilter": "none", "remaining320HeaderClipped": true, "finalConsoleErrorsOrWarnings": []},
+  "network": {"twoActualProcessesSeeSameRoom": false, "apiColdWebSocketConnected": false, "apiWarmDefaultPathConnected": true, "hostTokenContractFixed": true, "tradeWhilePendingDecisionBlocked": true, "requestResultRecorded": false},
+  "scope": "Review artifacts only; no game source edits, commit, push or deployment during this review."
+}

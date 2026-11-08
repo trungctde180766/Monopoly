@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Users, Play, MessageSquare, Send, Shield, User } from 'lucide-react';
+import { Copy, Check, Users, Play, MessageSquare, Send } from 'lucide-react';
 import { TOKENS } from '../data/boardData.js';
 import { soundFX } from '../utils/soundFx.js';
 
@@ -11,6 +11,7 @@ export default function OnlineRoom({
   onLeaveRoom,
   onSendChat,
   chatMessages = [],
+  disabled = false,
 }) {
   const [copied, setCopied] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -29,7 +30,7 @@ export default function OnlineRoom({
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (disabled || !chatInput.trim()) return;
     onSendChat(chatInput.trim());
     setChatInput('');
   };
@@ -136,7 +137,7 @@ export default function OnlineRoom({
               {isHost ? (
                 <button
                   type="button"
-                  disabled={!canStart}
+                  disabled={disabled || !canStart}
                   onClick={() => {
                     soundFX.playCollectMoney();
                     onStartGame();
@@ -157,6 +158,7 @@ export default function OnlineRoom({
               ) : (
                 <button
                   type="button"
+                  disabled={disabled}
                   onClick={onToggleReady}
                   className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition active:scale-95 ${
                     me?.isReady
@@ -199,6 +201,7 @@ export default function OnlineRoom({
           <form onSubmit={handleSendMessage} className="mt-3 flex gap-2">
             <input
               type="text"
+              disabled={disabled}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Nhập tin nhắn..."
@@ -206,6 +209,8 @@ export default function OnlineRoom({
             />
             <button
               type="submit"
+              disabled={disabled}
+              aria-label="Gửi tin nhắn"
               className="p-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition"
             >
               <Send size={16} />

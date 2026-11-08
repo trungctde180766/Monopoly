@@ -9,6 +9,15 @@ export function getTile3DTransform(tileId) {
   if (tileId === 30) return { x: half, z: -half, rotY: -3 * Math.PI / 4, isCorner: true, side: 'right' };
   return { x: half, z: -half + 2.5 + (tileId - 31) * step, rotY: -Math.PI / 2, isCorner: false, side: 'right' };
 }
+
+export function getBoardCameraPose({ theta, phi, radius }, aspect = 1) {
+  const topView = phi < 0.15;
+  const effectiveRadius = radius * Math.max(1, (topView ? 1 : 1.42) / Math.max(0.1, aspect));
+  return {
+    position: { x: effectiveRadius * Math.sin(phi) * Math.sin(theta), y: effectiveRadius * Math.cos(phi), z: effectiveRadius * Math.sin(phi) * Math.cos(theta) },
+    target: { x: 0, y: topView ? 0 : -radius / 6, z: 0 },
+  };
+}
 export function getTileLayoutVectors(side) {
   return {
     bottom: { inward: { x: 0, z: -1 }, tangent: { x: 1, z: 0 } },

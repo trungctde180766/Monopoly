@@ -1,0 +1,41 @@
+{
+  "camera": {
+    "bottom": 143,
+    "height": 27,
+    "left": 8,
+    "right": 149.90625,
+    "top": 116,
+    "width": 141.90625,
+    "x": 8,
+    "y": 116
+  },
+  "pill": {
+    "bottom": 42.5,
+    "height": 30.5,
+    "left": 97.703125,
+    "right": 222.296875,
+    "top": 12,
+    "width": 124.59375,
+    "x": 97.703125,
+    "y": 12
+  },
+  "pillCameraOverlap": 0,
+  "pillWithinViewport": true,
+  "primary": {
+    "bottom": 727,
+    "height": 40,
+    "left": 123.1171875,
+    "right": 298.1953125,
+    "top": 687,
+    "width": 175.078125,
+    "x": 123.1171875,
+    "y": 687
+  },
+  "primaryReceivesClick": true,
+  "rootWidth": 320,
+  "tradeDisplay": "none",
+  "viewport": {
+    "h": 740,
+    "w": 320
+  }
+}

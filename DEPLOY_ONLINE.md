@@ -1,40 +1,68 @@
-# Đưa bản đã sửa lên online
+# Deploy online trên Vercel + Redis
 
-Frontend hiện tại: https://monopoly-silk-ten.vercel.app. Các thay đổi trong workspace chưa tự cập nhật URL này.
+Frontend và API Socket.IO có thể dùng cùng project Vercel. Bản này có Redis TCP/TLS, CAS bằng Lua theo version toàn phòng, pub/sub giữa instance và resume bằng phiên dùng chung.
 
-## Phương án phù hợp code hiện tại
+## Biến môi trường
 
-Giữ frontend trên Vercel và chạy backend Node/Socket.IO bằng một dịch vụ Node chạy liên tục.
+Trong Vercel → Project → Settings → Environment Variables, đặt:
 
-1. Deploy **toàn bộ repository**, không chỉ thư mục `server`: backend còn import engine và dữ liệu từ `src`.
-2. Build: `npm ci` rồi `npm run build`. Start: `npm start`. Nền tảng cấp `PORT`; server tự đọc biến này.
-3. Kiểm tra `https://<backend>/api/health`: phải trả JSON có `status: "ok"` và `protocol: "actions-v1"`.
-4. Trong Environment Variables của project Vercel, đặt `VITE_SOCKET_URL=https://<backend>` và `VITE_SOCKET_PATH=/socket.io`.
-5. Rebuild/redeploy frontend. Vite nhúng các biến này lúc build, thay biến xong cần deploy lại.
-6. Dùng script dưới kiểm tra URL frontend và backend thực tế.
+| Biến | Giá trị |
+| --- | --- |
+| REDIS_URL | TCP URL do dịch vụ Redis cung cấp: redis://... hoặc rediss://... |
+| REDIS_KEY_PREFIX | cotyphu, hoặc prefix riêng cho từng môi trường |
+| VITE_SOCKET_URL | Để trống khi frontend và API cùng domain |
+| VITE_SOCKET_PATH | /socket.io |
 
-```powershell
-node docs/review-v5-2026-11-06/check-online.mjs https://monopoly-silk-ten.vercel.app https://<backend>
-```
+REDIS_URL là bí mật backend. Không dùng tiền tố VITE_ cho nó và không commit mật khẩu. Nhà cung cấp phải cho phép kết nối Redis TCP/TLS, Lua EVAL và PUB/SUB; REST URL/token không thay thế TCP URL. Có thể chọn Redis qua Vercel Marketplace hoặc dịch vụ tương thích đáp ứng các khả năng trên.
 
-Script chỉ kiểm tra kết nối, không tạo phòng. Sau đó mở hai thiết bị: một Wi-Fi, một 4G; tạo/vào phòng, sẵn sàng, lắc, mua, đổi lượt, tải lại trang để thử nối lại.
+Nên dùng database/prefix riêng cho Preview và Production để tránh hai deployment dùng chung phòng ngoài ý muốn. State phòng có TTL 24 giờ, được gia hạn khi cập nhật; thời hạn giữ dữ liệu dài hơn cần đổi rõ trong RedisRoomStore.
 
-## Hành vi của bản mới
+Vercel thiếu cấu hình Redis sẽ trả 503 JSON ở health và từ chối kết nối online. Chế độ chơi local/bot ở frontend vẫn dùng được. Local development không có Redis dùng file store; file store chỉ dành cho một máy phát triển.
 
-- Client gửi `game_action` kèm revision; server tính xúc xắc, tiền, tài sản và chiến thắng. `sync_game_state` từ client bị từ chối.
-- Có 60 giây để nối lại phiên nếu mất kết nối. Token khôi phục nằm trong sessionStorage của tab; không gửi token cho bạn bè. Hết thời gian, hoặc bấm Rời Bàn, người đó rời ván và tài sản về ngân hàng.
-- Chạy **một instance backend** với code hiện tại. State và token vẫn ở RAM; restart/deploy backend sẽ mất phòng. Muốn nhiều instance hoặc lưu ván cần kho state/pub-sub và lưu phiên dùng chung.
-- Frontend và backend phải deploy cùng phiên bản giao thức. Frontend cũ dùng snapshot sẽ không điều khiển được server mới.
+## Triển khai và nghiệm thu
 
-## Nếu muốn chỉ dùng Vercel
+1. Đưa source và package-lock.json đã cập nhật lên repository, rồi deploy đúng revision. Review V14 chưa commit/push/deploy.
+2. Giữ Build Command npm run build và Output Directory dist theo vercel.json. API default export là HTTP server đã gắn Socket.IO; cả /socket.io và /api/realtime/socket.io được chuẩn hóa.
+3. Kiểm tra https://YOUR_DOMAIN/api/health. Phải trả JSON với status=ok, protocol=actions-v1 và backend=redis. HTML trang chủ hoặc status=unavailable chưa đạt.
+4. Hai thiết bị ở hai mạng khác nhau cùng tạo/vào mã phòng, ready, start, chat, lắc, mua/xây và đổi lượt.
+5. Tải lại tab ở phòng chờ và trong ván; giữ cùng logical player và state. Mở phiên thay thế: phiên cũ phải hiện thông báo, khóa thao tác và không loại người ở phiên mới khi rời.
+6. Kiểm tra lại sau deployment/restart; dữ liệu đã commit và request result phải khôi phục từ Redis.
 
-Tài liệu hiện hành cho phép WebSocket trên Vercel Functions, nên không có kết luận “Vercel không hỗ trợ WebSocket”. Tuy nhiên repo này chưa được chuyển thành Functions với state phân tán. Cần triển khai endpoint/export HTTP server đúng chuẩn, cấu hình Socket.IO path/transport, kho state dùng chung và khôi phục qua instance. Xem [Vercel WebSockets](https://vercel.com/docs/functions/websockets), [ví dụ Socket.IO](https://vercel.com/kb/guide/do-vercel-serverless-functions-support-websocket-connections).
+WebSocket có thể đóng khi Function hết thời lượng chạy; client phải reconnect/resume. Deadline phiên được lưu trong Redis, có heartbeat khi kết nối còn sống. Nếu process cũ biến mất, lần truy cập phòng kế tiếp xử lý các deadline đã hết. [Vercel WebSockets](https://vercel.com/docs/functions/websockets).
 
-Không chỉ đổi rewrite về `index.html` rồi coi backend đã hoạt động. Không triển khai bản `rooms = new Map()` trực tiếp qua nhiều Function instance rồi kỳ vọng mọi người thấy cùng phòng.
+Chỉ có REDIS_URL chưa đủ để tuyên bố nghiệm thu production: vẫn cần kiểm cold deployment, route thực tế, TLS/auth của nhà cung cấp và luồng hai thiết bị nói trên.
 
-## Tình trạng lần thực hiện này
+## Chạy trên máy
 
-- Backend và hai client đã được kiểm tra ở localhost; có test Socket.IO thật và kiểm tra UI.
-- Chưa có URL backend công khai được cung cấp.
-- Lệnh `vercel whoami` báo token không hợp lệ; workspace cũng chưa có liên kết `.vercel/project.json`. Vì vậy chưa thể xác thực/deploy project hiện tại bằng CLI trong phiên này.
-- Không có thay đổi trên production được tuyên bố là đã triển khai.
+Dùng Node.js 22 trở lên. Có thể build và chạy toàn bộ app:
+
+~~~powershell
+rtk npm ci
+rtk npm run build
+rtk npm start
+~~~
+
+Mở http://localhost:3001. Nếu dùng Redis local, đặt REDIS_URL trong môi trường của terminal trước khi chạy. Nếu lưu các biến trong .env.local, chạy:
+
+~~~powershell
+rtk proxy node --env-file=.env.local server/index.js
+~~~
+
+Vite development trên cổng 5173 đã proxy /socket.io tới backend cổng 3001. Chạy thêm npm run dev trong terminal riêng nếu cần hot reload frontend.
+
+## Kiểm thử
+
+~~~powershell
+rtk npm test
+~~~
+
+Kiểm thử Redis thật dùng database thử nghiệm riêng:
+
+~~~powershell
+$env:REDIS_TEST_URL='redis://127.0.0.1:16389'
+rtk npm run test:redis
+~~~
+
+Suite Redis tạo prefix ngẫu nhiên của riêng nó, chạy hai backend với thư mục tách biệt, kiểm chat/trade/mua nhà, retry, restart/resume, session fencing và CAS bằng hai process. Chỉ dọn các key thuộc prefix thử nghiệm của chính suite. Không có REDIS_TEST_URL thì các ca tích hợp được đánh dấu skip; skip không phải bằng chứng Redis đã hoạt động.
+
+PersistentStorageAdapter và adapter Map được inject trong các test cũ là fixture local; chúng không phải kho phân tán hoặc phép kiểm Redis production.

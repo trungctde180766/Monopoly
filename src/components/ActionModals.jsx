@@ -13,7 +13,6 @@ export function BusinessTourBuildModal({
   currentHouses: explicitHouses,
   isNewPurchase: explicitIsNew,
   onConfirmBuild,
-  onAuction,
   onClose,
 }) {
   if (!tile || !player) return null;
@@ -320,7 +319,20 @@ export function BusinessTourBuildModal({
 
 // 1.5. MODAL CƯỚP ĐẤT (BUYOUT MODAL) CHUẨN BUSINESS TOUR
 export function BuyoutModal({ tile, owner, player, buyoutPrice, onBuyout, onSkip }) {
-  if (!tile || !owner || !player) return null;
+  if (!tile || !player) return null;
+  // L02 Fix: Nếu chủ đất đã rời phòng, hiển thị nút bỏ qua để không kẹt lượt trên UI
+  if (!owner) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center max-w-sm text-slate-100 shadow-2xl">
+          <p className="text-sm text-slate-300 mb-4">Chủ đất đã rời ván hoặc phá sản.</p>
+          <button onClick={onSkip} className="py-2.5 px-6 rounded-xl bg-amber-500 text-slate-950 font-bold hover:brightness-110">
+            Tiếp tục ván chơi
+          </button>
+        </div>
+      </div>
+    );
+  }
   const canAfford = player.money >= buyoutPrice;
 
   return (
@@ -694,7 +706,7 @@ export function JailModal({ player, onPayFine, onRollDoubles, onUseCard }) {
 }
 
 // 5. MODAL QUẢN LÝ BẤT ĐỘNG SẢN & THẾ CHẤP (MANAGE PROPERTIES MODAL)
-export function ManagePropertiesModal({ player, players, propertiesState, onBuildHouse, onSellHouse, onMortgage, onUnmortgage, onClose }) {
+export function ManagePropertiesModal({ player, players, propertiesState, onBuildHouse, onSellHouse, onMortgage, onUnmortgage, onClose, readOnly = false }) {
   if (!player) return null;
 
   const playerProperties = BOARD_TILES.filter(t => propertiesState[t.id]?.owner === player.id);
@@ -704,7 +716,8 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
       <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-6 shadow-2xl text-slate-100 max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
           <div>
-            <h2 className="text-xl font-black text-white">SỔ TÀI SẢN & ĐẦU TƯ</h2>
+            <h2 className="text-xl font-black text-white">Tài sản của {player.name}</h2>
+            {readOnly && <p className="text-xs text-sky-300 mt-1">Chỉ xem — quản lý tài sản khi đến lượt của bạn và quân đã dừng.</p>}
             <p className="text-xs text-slate-400">
               Chủ sở hữu: <strong className="text-amber-400">{player.name}</strong> • Số dư ví: <strong className="text-emerald-400">{formatVND(player.money)}</strong>
             </p>
@@ -772,7 +785,7 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
                     {tile.type === 'property' && (
                       <button
                         type="button"
-                        disabled={!buildCheck.can}
+                        disabled={readOnly || !buildCheck.can}
                         title={buildCheck.reason}
                         onClick={() => {
                           soundFX.playBuildHouse();
@@ -792,7 +805,7 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
                     {tile.type === 'property' && houses > 0 && (
                       <button
                         type="button"
-                        disabled={!sellCheck.can}
+                        disabled={readOnly || !sellCheck.can}
                         title={sellCheck.reason}
                         onClick={() => onSellHouse(tile.id)}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-900/60 hover:bg-amber-800/80 text-amber-300 border border-amber-700/60"
@@ -805,7 +818,7 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
                     {!isMort ? (
                       <button
                         type="button"
-                        disabled={!mortCheck.can}
+                        disabled={readOnly || !mortCheck.can}
                         title={mortCheck.reason}
                         onClick={() => onMortgage(tile.id)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -819,7 +832,7 @@ export function ManagePropertiesModal({ player, players, propertiesState, onBuil
                     ) : (
                       <button
                         type="button"
-                        disabled={!unmortCheck.can}
+                        disabled={readOnly || !unmortCheck.can}
                         title={unmortCheck.reason}
                         onClick={() => onUnmortgage(tile.id)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${

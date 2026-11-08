@@ -232,7 +232,7 @@ export default function Lobby({
               <div>
                 <span className="text-sm font-bold text-slate-200">Hũ Thưởng Bãi Đỗ Xe (Free Parking Jackpot)</span>
                 <p className="text-xs text-slate-400">
-                  Gom toàn bộ tiền phạt và thuế nộp vào quỹ. Người dừng chân ở Đỗ Xe Miễn Phí nhận trọn quỹ!
+                  Gom toàn bộ tiền thuế từ các ô thuế nộp vào quỹ. Người dừng chân ở Đỗ Xe Miễn Phí nhận trọn quỹ!
                 </p>
               </div>
               <input
@@ -427,7 +427,7 @@ export default function Lobby({
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-500 max-w-md mx-auto w-full pt-4 border-t border-slate-800/80">
-        Luật chơi Monopoly nguyên bản quốc tế • Thiết kế riêng cho bạn bè và gia đình Việt Nam
+        Luật Arcade lấy cảm hứng từ Monopoly & Business Tour • Chơi cùng bạn bè và gia đình
       </footer>
     </div>
   );

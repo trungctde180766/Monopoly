@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-11-07T09:08:37.290Z",
+  "fixed": [
+    {
+      "id": "V8-F05",
+      "case": "Current controller host token contract",
+      "expected": "diamond",
+      "actual": "diamond"
+    },
+    {
+      "id": "V8-F06",
+      "case": "Trade blocked during mandatory purchase",
+      "success": false,
+      "message": "Không thể gửi đề nghị giao dịch khi đang có quyết định cần xử lý."
+    }
+  ],
+  "remaining": [
+    {
+      "id": "R01",
+      "case": "Two real Node processes using default SharedRoomStore",
+      "joinFromOtherProcess": false,
+      "error": "Phòng không tồn tại!",
+      "explanation": "Module-level GLOBAL_ROOMS_MAP is shared within a JS runtime, not across processes or Vercel instances."
+    },
+    {
+      "id": "R03",
+      "case": "Replaying the identical requestId does not return recorded result",
+      "original": {
+        "success": true,
+        "revision": 2
+      },
+      "replay": {
+        "success": false,
+        "message": "State đã thay đổi, vui lòng thử lại"
+      },
+      "storeRecordedRequest": false,
+      "note": "Revision rejects duplicate mutation, but new recordProcessed/atomicUpdate helpers are not wired to the handlers; no claim that this replay debits money twice."
+    },
+    {
+      "id": "R02",
+      "case": "Updated HTTP function entry still attaches upgrade only after HTTP bootstrap",
+      "coldDefaultPath": false,
+      "coldError": "websocket error",
+      "warmDefaultPath": true,
+      "warmAlternatePath": false,
+      "scope": "Node HTTP wrapper of current entry; actual Vercel edge rewrites were not emulated."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "primary": {
+    "bottom": 829.2000122070312,
+    "height": 65.5,
+    "left": 131.7312469482422,
+    "right": 244.9187469482422,
+    "top": 763.7000122070312,
+    "width": 113.1875,
+    "x": 131.7312469482422,
+    "y": 763.7000122070312
+  },
+  "receivesClick": true,
+  "rootWidth": 390,
+  "viewport": {
+    "h": 844,
+    "w": 390
+  },
+  "visibleDesktopCards": 0,
+  "visibleMobileHUD": "flex"
+}

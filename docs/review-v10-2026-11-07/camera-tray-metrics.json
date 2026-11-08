@@ -1,0 +1,29 @@
+{
+  "boardZ": "1",
+  "camera": {
+    "bottom": 143,
+    "height": 27,
+    "left": 8,
+    "right": 149.90625,
+    "top": 116,
+    "width": 141.90625,
+    "x": 8,
+    "y": 116
+  },
+  "intersection": 0,
+  "opponents": {
+    "bottom": 185,
+    "height": 27,
+    "left": 8,
+    "right": 312,
+    "top": 158,
+    "width": 304,
+    "x": 8,
+    "y": 158
+  },
+  "trayZ": "22",
+  "viewport": {
+    "h": 740,
+    "w": 320
+  }
+}

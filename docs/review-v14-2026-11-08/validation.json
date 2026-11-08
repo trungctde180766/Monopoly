@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-08T02:40:47.198Z",
+  "unit": {
+    "legacyPassed": 23,
+    "nodePassed": 71,
+    "failed": 0
+  },
+  "redisIntegration": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "backend": "Real Redis 7.4, isolated Docker test container"
+  },
+  "totalPassed": 96,
+  "buildMain": "/assets/index-D_uAc47K.js",
+  "ui": {
+    "waitingRoomReloadPreserved": true,
+    "supersededNotificationObserved": true,
+    "controlsDisabledObserved": true,
+    "screenshot": "session-superseded.jpg"
+  },
+  "productionDeployed": false
+}

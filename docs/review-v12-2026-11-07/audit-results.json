@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-11-07T10:26:23.640Z",
+  "findings": [
+    {
+      "id": "R02",
+      "defaultExportFirstWebsocket": false,
+      "defaultAfterHttp": true,
+      "namedServerFirstWebsocket": true,
+      "defaultExportType": "function",
+      "namedExportIsHttpServer": true,
+      "scope": "Local entry simulation, not an actual new Vercel deployment."
+    },
+    {
+      "id": "R01",
+      "lockHeldDuringUnprotectedSet": true,
+      "tradeRecipientBalanceImmediatelyAfterSet": 16000000,
+      "mortgageResult": {
+        "stage": "result",
+        "success": true,
+        "revision": 1
+      },
+      "finalRevision": 1,
+      "finalRecipientBalance": 15000000,
+      "scope": "Two processes; worker pauses only its set call after production CAS validation. Parent uses the production trade reducer and direct set path, not a full concurrent Socket.IO trade test."
+    },
+    {
+      "id": "R04",
+      "conflictReturned": true,
+      "rejectedSnapshotRevision": 1,
+      "diskRevision": 1,
+      "rejectedSnapshotMortgagedTiles": [
+        3
+      ],
+      "diskMortgagedTiles": [
+        5
+      ],
+      "scope": "Deterministic store interleaving. Server error handler emits its previously held room.gameState; no UI screenshot or full network race claimed."
+    },
+    {
+      "id": "R03",
+      "roomStatus": "playing",
+      "resumedWhileOriginalConnected": true,
+      "sameLogicalPlayer": true,
+      "oldConnectionChatAck": {
+        "success": true
+      },
+      "newConnectionChatAck": {
+        "success": true
+      },
+      "newConnectionAfterOldLeaves": {
+        "success": false,
+        "message": "Tin nhắn không hợp lệ."
+      },
+      "scope": "Two real server processes on the same host, same shared filesystem; no stolen token, uses owner token returned by create_room."
+    },
+    {
+      "id": "R05",
+      "roomVisibleAcrossSeparateFilesystems": false,
+      "scope": "Architecture simulation of separate filesystem roots; no Vercel infrastructure measurement."
+    }
+  ]
+}

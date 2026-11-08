@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-07T09:10:37.629Z",
+  "hashes": {
+    "package.json": "5a6c139055619be591ef21f8aeb9ebb41274c039f83af2119f9ac7e26c33923d",
+    "vercel.json": "5a2f3de7cd5a50d1ed9c15d6c3fc36b054948f45ee9e35b44f060c57bebce74e",
+    "api/realtime.js": "ea5c4920244dff6a34887bed5d0c38e1e0090c7b39b394a58254b7d0bb7e408a",
+    "api/health.js": "33ff0aff7d50404253b2c3571fdaf094172a4fe47c1120d1532300f609c297f7",
+    "server/index.js": "6c3205539ea613ed7b0fedf4e7c33066dd7e11cc5d3c466be9b99a4607fccb2d",
+    "server/roomStore.js": "3241bc05c229d9f14cedb4a3e99819e6c05bcb76439ec12174ccefb37c49ad44",
+    "src/hooks/useGameController.js": "2559b4e5ab0cadc304053d9066b5706d754a41b7536a2290ea60067fc738a237",
+    "src/logic/gameSession.js": "9a8aa74f37b94712ee4284e6cf1db3099c656880596c8d23a8646fc64fb756ba",
+    "src/logic/gameEngine.js": "152e035b43aa3d866bc470041a45365fa36b94e41a5c1637973da5889d9357ae",
+    "src/logic/boardLayout.js": "89519e55fca7fc7eb8b29c79cf659796403aa97bfa43ba90d5c54a7def0e8cd2",
+    "src/components/GameInterface.jsx": "c06b1e9ec35c3800dc46b8cecb2ee4608dedd407cba5ce2e6ae3b6be1f0ae30d",
+    "src/components/CornerHUD.jsx": "2f5c7c52d498d8a1c6d54cbcbaef271d8e68c2119f6b961adebc354f23a4ad46",
+    "src/components/BuildDialog.jsx": "f112218e5c2f14fe3ed4f8b84b89b0179260de0a6dda45f6432e744f9a0c0b62",
+    "src/components/Board3D.jsx": "98ecf442cfe4bd8385f89e6d882c001d0d783dcb7e6773f5df98cb9aeef2ac08",
+    "src/game.css": "203d7041b6b31727e9282c118d941ef4a034493b4ff64142e9a416222b6b94e8",
+    "test/reviewV7.test.js": "2ff7805bb14a5b8703af2ae5e6fcdeb71ea87ba2aa8f41431395f6bd53467de6"
+  }
+}

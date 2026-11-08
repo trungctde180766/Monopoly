@@ -1,7 +1,8 @@
 import React from 'react';
 import { Home, Hotel, ShieldAlert, Sparkles, AlertCircle, Coins, Train, Zap, Droplet } from 'lucide-react';
 import { BOARD_TILES, COLOR_GROUPS, TOKENS } from '../data/boardData.js';
-import { formatVND } from '../logic/gameEngine.js';
+import { calculateRent, formatVND } from '../logic/gameEngine.js';
+import { getBuildingLabel } from '../logic/gamePresentation.js';
 
 // Tọa độ lưới 11x11 cho 40 ô
 function getGridPosition(tileId) {
@@ -25,6 +26,7 @@ export default function Board({
   players = [],
   activePlayerId,
   freeParkingPool = 0,
+  dice = [1, 1],
   onTileClick,
   centerContent,
 }) {
@@ -75,11 +77,9 @@ export default function Board({
                       <Hotel size={10} />
                     </span>
                   ) : (
-                    Array.from({ length: prop.houses }).map((_, i) => (
-                      <span key={i} className="p-0.5 rounded bg-emerald-500 text-slate-950 shadow-sm" title={`Nhà Cấp ${prop.houses}`}>
-                        <Home size={8} />
-                      </span>
-                    ))
+                    <span className="p-0.5 rounded bg-emerald-500 text-slate-950 shadow-sm flex items-center gap-0.5" title={getBuildingLabel(prop.houses)}>
+                      <Home size={8} /><small>{prop.houses}</small>
+                    </span>
                   )}
                 </div>
               )}
@@ -101,7 +101,7 @@ export default function Board({
                 {/* Giá tiền */}
                 {tile.price && (
                   <span className="text-[6px] md:text-[8px] font-extrabold text-amber-400 mt-0.5">
-                    {formatVND(tile.price)}
+                    {formatVND(owner ? calculateRent(tile, propertiesState, dice[0] + dice[1]) : tile.price)}
                   </span>
                 )}
                 {tile.taxAmount && (

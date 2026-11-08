@@ -1,0 +1,9 @@
+{
+  "reviewDate": "2026-11-07",
+  "baselineCommit": "b9b9621",
+  "tests": {"command": "npm test", "exitCode": 0, "legacyPassed": 23, "nodeRunnerPassed": 43, "totalPassed": 66, "failed": 0, "skipped": 0},
+  "build": {"command": "npm run build", "exitCode": 0, "mainAsset": "index-C6NwrgvF.js", "mainKB": 407.04, "mainGzipKB": 125.13, "board3DKB": 564.72, "board3DGzipKB": 142.35, "warning": "Board3D chunk exceeds 500 kB"},
+  "ui": {"desktop": "1440x900", "mobile": ["390x844", "320x740"], "localBotCycle": "passed", "leaveDuringRollThenNewGame": "passed", "onlineTwoTabs": "passed on localhost", "reloadResume": "passed on localhost", "onlinePurchaseSynchronized": "passed on localhost", "browserConsoleErrorsAtFinalCheck": []},
+  "publicOnline": "failed: see public-connectivity.json",
+  "deployment": "V6 has not been committed, pushed or deployed during this review"
+}

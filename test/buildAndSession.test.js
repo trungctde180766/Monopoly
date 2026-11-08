@@ -127,7 +127,7 @@ test('Seeded multi-player games resolve cards, choices and debt without acceptin
       } else if (decision?.type === 'card') type = 'confirm_card';
       else if (decision?.type === 'jail') { type = 'jail'; data = { method: p.money >= 500000 ? 'pay' : 'roll' }; }
       else if (decision) type = 'skip';
-      if (!decision && p.money < 0) {
+      if (p.money < 0) {
         const sell = BOARD_TILES.find(t => canSellHouse(t.id, s.propertiesState, p.id).can);
         const mortgage = BOARD_TILES.find(t => canMortgage(t.id, s.propertiesState, p.id).can);
         assert.ok(sell || mortgage, 'A surviving debtor must have a liquidation action: ' + JSON.stringify({ seed, step, p, properties: s.propertiesState }));

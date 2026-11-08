@@ -30,7 +30,7 @@ Một tựa game **Cờ Tỷ Phú** hoàn chỉnh được thiết kế riêng c
 ### 3. Đa Dạng Chế Độ Chơi
 1. **Chơi Chung 1 Máy (Pass & Play)**: Hỗ trợ 2 đến 6 người chơi, có thể bật/tắt Bot AI cho từng vị trí.
 2. **Chơi Online Qua Mã Phòng (Multiplayer)**:
-   - Tạo phòng nhận mã Code 5 chữ cái (VD: `TYPHU`).
+   - Tạo phòng nhận mã gồm 6 ký tự để gửi cho bạn bè.
    - Bạn bè nhập mã Code để vào phòng từ máy tính hoặc điện thoại trên cùng mạng Wi-Fi/LAN hoặc qua Internet.
    - Hỗ trợ phòng chờ, trạng thái sẵn sàng, chat trò chuyện trực tiếp trong game.
 3. **Chơi Nhanh Với 3 AI Bots (Quick Solo)**: 1-click vào trận ngay với 3 Bot máy thông minh (biết mua đất và nâng cấp khi có quyền xây hợp lệ).
@@ -64,28 +64,13 @@ npm run dev
 
 ---
 
-## 🌐 HƯỚNG DẪN DEPLOY LÊN VERCEL & RENDER
+## 🌐 DEPLOY ONLINE TRÊN VERCEL
 
-### 1. Deploy Frontend Lên Vercel
-- **Hỗ trợ tuyệt vời**: Chơi Pass & Play (chung 1 máy) và Chơi với 3 AI Bots với đồ họa 3D Three.js mượt mà.
-- **Cách deploy**:
-  1. Đẩy mã nguồn lên GitHub: `git push -u origin main`.
-  2. Truy cập [vercel.com](https://vercel.com) -> Chọn **Add New Project** -> Chọn repository `Monopoly`.
-  3. Vercel sẽ tự động nhận diện cấu hình trong `vercel.json` và build tự động (`npm run build`, output: `dist`).
-  4. Nhấn **Deploy** -> Sau 30 giây bạn sẽ có link web công khai `https://monopoly-xyz.vercel.app`!
+Frontend và API Socket.IO có thể dùng chung project Vercel; phòng chơi online lưu trên Redis TCP/TLS với CAS theo version và pub/sub giữa instance. Cấu hình `REDIS_URL` ở backend, giữ `VITE_SOCKET_URL` trống khi cùng domain và dùng `VITE_SOCKET_PATH=/socket.io`.
 
-### 2. Hỗ trợ Chế Độ Chơi Online Nhiều Máy (Multiplayer Socket.io)
-- Hướng dẫn hiện hành: [DEPLOY_ONLINE.md](DEPLOY_ONLINE.md). Vercel Functions hiện có WebSocket; cấu hình SPA trong repo chưa tự chạy backend realtime. Với backend Node hiện tại:
-  - Bạn có thể deploy toàn bộ repository để backend import được src/logic và src/data; chạy dịch vụ Node lên [Render.com](https://render.com) hoặc [Railway.app](https://railway.app) (Web Service Node.js, chạy lệnh `npm start`; kiểm tra gói và giới hạn của nền tảng).
-  - Sau đó vào Vercel Dashboard -> **Settings** -> **Environment Variables** -> Thêm biến:
-    ```
-    VITE_SOCKET_URL = https://your-server-on-render.onrender.com
-    ```
-  - Hoặc deploy toàn bộ dự án trực tiếp lên Render/Railway (hỗ trợ cả frontend lẫn WebSocket trọn gói).
-```bash
-npm run start
-```
-Frontend chạy tại `http://localhost:5173` và Backend chạy tại `http://localhost:3001`.
+Xem [DEPLOY_ONLINE.md](DEPLOY_ONLINE.md) để thiết lập, kiểm health JSON, cold deployment và thử hai thiết bị. Vercel thiếu Redis trả 503 cho online; file store local không phải kho chung giữa các instance.
+
+Dùng `npm run test:redis` cùng `REDIS_TEST_URL` của database thử nghiệm để kiểm hai backend độc lập, restart/resume và CAS thật. Bản sửa tại máy chưa tự cập nhật lên link public.
 
 ---
 
@@ -94,4 +79,6 @@ Dự án có test hồi quy, engine xây nhà, layout, mô phỏng ván dài và
 ```bash
 npm test
 ```
-Kết quả và giới hạn của lần kiểm tra mới: [REVIEW_V5_VA_KET_QUA_KHAC_PHUC.md](REVIEW_V5_VA_KET_QUA_KHAC_PHUC.md).
+Kết quả và giới hạn của lần kiểm tra mới: [REVIEW_V6_GIAO_DIEN_VA_LOGIC.md](REVIEW_V6_GIAO_DIEN_VA_LOGIC.md).
+
+V6 dùng chung bộ xử lý phiên `src/logic/gameSession.js` cho local/bot và server. Giao diện mới tách vùng bàn, người chơi, thông tin ô và thanh lượt; cửa sổ mua có preview công trình. Online public vẫn cần cấu hình backend theo [DEPLOY_ONLINE.md](DEPLOY_ONLINE.md).

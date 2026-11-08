@@ -1,0 +1,117 @@
+Browser tab: 2, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "http://localhost:3139/".
+1 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: localhost:3139/
+	2 container
+		3 AXWebArea about:blank
+		4 container
+			5 heading Cờ tỷ phú VIỆT NAM, Value: 1
+				6 text Cờ tỷ phú VIỆT NAM
+			7 container
+				8 text Phòng online  · N7P6C
+			9 text Lượt 
+			10 text 2
+			11 container Thời gian ván chơi
+				12 text 01:15
+			13 text Đã kết nối
+			14 button Description: Bật nhạc nền, Help: Nhạc nền
+			15 button Description: Tắt âm thanh, Help: Âm thanh
+			16 button Description: Rời bàn chơi, Help: Rời bàn
+			17 container Bàn chơi
+				18 text Khởi Hành (GO)
+				19 checkbox Bản đồ 2D, Value: 0
+				20 container
+					21 text GO
+					22 text Khởi hành
+					23 button Góc 3D, Help: Về góc nhìn chuẩn bao quát 4 góc bàn cờ
+					24 button Từ trên, Help: Góc nhìn thẳng từ trên xuống
+					25 text Kéo chuột để xoay 360° • Lăn chuột để phóng to
+				26 text Viền màu: chủ sở hữu Số trên ô: giá mua / tiền thuê
+				27 button Về ô đang đứng
+			28 container Thông tin ván chơi
+				29 container
+					30 heading Người chơi, Value: 2
+						31 text Người chơi
+					32 text 2  người
+					33 content list Danh sách người chơi
+						34 container
+							35 text Host V6 13 Triệu ₫ 1  tài sản #1
+						36 container
+							37 text Guest V6 Bạn 15 Triệu ₫ 0  tài sản Đến lượt
+				38 container Ô đang xem
+					39 heading Ô đang xem, Value: 2, ID: inspector-title
+						40 text Ô đang xem
+					41 text # 00
+					42 text Chọn ô để xem thông tin
+					43 pop up button (collapsed, settable) Chọn ô để xem thông tin, Value: 0. Khởi Hành (GO), ID: tile-picker, Secondary Actions: Expand
+						44 menu
+							45 (selected) 0. Khởi Hành (GO)
+							46 1. Bến Xe Miền Tây
+							47 2. Khí Vận
+							48 3. Chợ Lớn Sài Gòn
+							49 4. Thuế Thu Nhập
+							50 5. Ga Sài Gòn
+							51 6. Cố Đô Huế
+							52 7. Cơ Hội
+							53 8. Phố Cổ Hội An
+							54 9. Bán Đảo Sơn Trà
+							55 10. Nhà Tù / Thăm Tù
+							56 11. Phong Nha Kẻ Bàng
+							57 12. EVN - Điện Lực
+							58 13. Tràng An Ninh Bình
+							59 14. Quần Thể Tam Chúc
+							60 15. Ga Đà Nẵng
+							61 16. Đà Lạt Mộng Mơ
+							62 17. Khí Vận
+							63 18. Nha Trang Biển Xanh
+							64 19. Đồi Cát Mũi Né
+							65 20. Lễ hội & Quỹ thưởng
+							66 21. Sa Pa Mù Sương
+							67 22. Cơ Hội
+							68 23. Đảo Cát Bà
+							69 24. Vịnh Hạ Long
+							70 25. Ga Hà Nội
+							71 26. Ngũ Hành Sơn
+							72 27. Bãi Biển Mỹ Khê
+							73 28. Sawaco - Cấp Nước
+							74 29. Cầu Rồng Đà Nẵng
+							75 30. Vào Tù Ngay!
+							76 31. Hồ Gươm Hà Nội
+							77 32. Nhà Hát Lớn Hà Nội
+							78 33. Khí Vận
+							79 34. Phố Cổ Hà Nội
+							80 35. Cảng Hải Phòng
+							81 36. Cơ Hội
+							82 37. Bến Nhà Rồng
+							83 38. Thuế Xa Xỉ
+							84 39. Landmark 81
+					85 heading Khởi Hành (GO), Value: 3
+						86 text Khởi Hành (GO)
+					87 text Khởi hành
+					88 text Qua hoặc dừng ở Khởi hành nhận 2 triệu đồng.
+				89 text Quỹ thưởng
+				90 text Thu tại ô Lễ hội
+				91 text 0₫
+			92 container Điều khiển lượt chơi
+				93 container
+					94 text 💎 ĐẾN LƯỢT BẠN
+					95 heading Lắc xúc xắc, Value: 2
+						96 text Lắc xúc xắc
+					97 text Lắc hai viên xúc xắc để di chuyển quanh bàn.
+				98 container Xúc xắc 3 và 2, tổng 5
+					99 text 3 2
+					100 container
+						101 text Σ  5
+				102 button Lắc xúc xắc
+				103 container Thao tác khác
+					104 button Tài sản
+					105 button Giao dịch
+					106 button (collapsed) Nhật ký, Secondary Actions: Expand
+	107 container
+		108 button logo icon
+			109 image logo icon
+			110 image
+		111 container
+			112 button
+	113 container grammarly-integration
+		114 text {"mode":"full","isActive":true,"isUserDisabled":false}
+
+The focused UI element is 1 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: localhost:3139/

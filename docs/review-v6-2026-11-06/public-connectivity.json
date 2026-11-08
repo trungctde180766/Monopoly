@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-11-07T07:42:45.694Z",
+  "base": "https://monopoly-silk-ten.vercel.app",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "html": true,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "html": true,
+      "engineOpenPacket": false
+    },
+    {
+      "path": "/socket.io/?EIO=4&transport=polling",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "html": true,
+      "engineOpenPacket": false
+    }
+  ],
+  "socket": [
+    {
+      "transport": "websocket",
+      "connected": false,
+      "error": "websocket error"
+    },
+    {
+      "transport": "polling",
+      "connected": false,
+      "error": "server error"
+    }
+  ],
+  "asset": "assets/index-BarhytB4.js",
+  "socketCall": "),[Ve,He]=(0,v.useState)(!1);(0,v.useEffect)(()=>{let e=vt(void 0,{path:`/socket.io`,transports:[`websocket`,`polling`],reconnectionAttempts:1/0,reconnectionDelay:1e3,rec"
+}

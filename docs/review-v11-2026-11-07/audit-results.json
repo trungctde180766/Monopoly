@@ -1,0 +1,83 @@
+{
+  "checkedAt": "2026-11-07T10:09:56.024Z",
+  "findings": [
+    {
+      "id": "N03",
+      "firstColdConnected": false,
+      "alternatePathRetryConnected": true,
+      "afterHttpConnected": true,
+      "scope": "Local default-export HTTP wrapper; no test-only attachServer call. First failed upgrade may itself invoke HTTP fallback and attach the server for later attempts. Not a Vercel deployment test."
+    },
+    {
+      "id": "N01",
+      "startAck": {
+        "success": true
+      },
+      "chatAck": {
+        "success": true
+      },
+      "tradeAck": {
+        "success": true,
+        "offerId": "11874418-6246-4bcb-b5da-0eb1feab9e47"
+      },
+      "hostSawJoin": true,
+      "hostGameStarted": 1,
+      "guestGameStarted": 0,
+      "guestGameStateUpdated": 2,
+      "guestChats": 0,
+      "guestOffers": 0,
+      "scope": "Two independent Node processes sharing the same scratch directory on one host."
+    },
+    {
+      "id": "N02",
+      "reads": [
+        {
+          "stage": "read",
+          "revision": 0
+        },
+        {
+          "stage": "read",
+          "revision": 0
+        }
+      ],
+      "accepted": [
+        {
+          "stage": "result",
+          "success": true,
+          "revision": 1
+        },
+        {
+          "stage": "result",
+          "success": true,
+          "revision": 1
+        }
+      ],
+      "finalRevision": 1,
+      "mortgagedTiles": [
+        5
+      ],
+      "lostAcceptedMutations": 1,
+      "scope": "Barrier only schedules two real processes after their revision checks; production store/reducer are unmodified."
+    },
+    {
+      "id": "N04",
+      "separateFilesystemRoomVisible": false,
+      "scope": "Two isolated filesystem roots; architecture simulation, not Vercel infrastructure measurement."
+    },
+    {
+      "id": "N05",
+      "disconnectGraceMsInProduction": 60000,
+      "diagnosticGraceMs": 900,
+      "afterActionTimerCount": 0,
+      "resumeSuccess": true,
+      "resumedGuestRemovedWhileConnected": true
+    }
+  ],
+  "positives": [
+    {
+      "id": "V10-F03-side-effect",
+      "prototypeUntouched": true,
+      "unrelatedWebsocketConnected": false
+    }
+  ]
+}

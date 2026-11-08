@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-11-07T08:39:21.047Z",
+  "findings": [
+    {
+      "id": "P2-host-token",
+      "sent": "diamond",
+      "received": "car",
+      "reason": "Controller sends token; server reads hostToken."
+    },
+    {
+      "id": "P1-room-store",
+      "case": "Two instances with separate default memory stores cannot see the same room",
+      "joinSuccess": false,
+      "message": "Phòng không tồn tại!"
+    },
+    {
+      "id": "P2-pending-trade",
+      "case": "Active player can trade while a mandatory purchase decision is open; accept ends that decision",
+      "offerAccepted": true,
+      "tradeAccepted": true,
+      "before": "decision",
+      "after": "end"
+    },
+    {
+      "id": "P1-function-upgrade",
+      "case": "Current API handler needs a prior HTTP request to install upgrade handling",
+      "coldWebSocket": false,
+      "coldError": "websocket error",
+      "afterHttpWarmup": true,
+      "scope": "Local Node wrapper reproduces cold-start entry behavior; not a claim of a completed Vercel deployment test."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "checkedAt": "2026-11-07T07:58:41.644Z",
+  "purpose": "Reproduce observed review findings; these are not passing acceptance tests.",
+  "findings": [
+    {
+      "id": "L01",
+      "case": "Trade between non-active B and C clears active A purchase",
+      "before": {
+        "active": "a",
+        "phase": "decision",
+        "pending": "build"
+      },
+      "after": {
+        "active": "a",
+        "phase": "end",
+        "pending": null,
+        "buildOpportunity": null
+      }
+    },
+    {
+      "id": "L02",
+      "case": "Owner forfeits during another player buyout",
+      "pending": {
+        "type": "buyout",
+        "tileId": 1
+      },
+      "property": null,
+      "mainActionDisabled": true,
+      "uiConsequence": "BuyoutModal returns null without owner; main CTA is disabled; UI exposes no skip for this orphaned choice."
+    },
+    {
+      "id": "L03",
+      "case": "Tier-1 cost basis differs between purchase and valuation",
+      "paid": 600000,
+      "netWorthBefore": 15000000,
+      "netWorthAfter": 15500000,
+      "buyout": 2200000,
+      "twicePurchase": 1200000,
+      "note": "Reconcile formulas or explicitly define a separate replacement valuation; current descriptions say 2x total land+building value."
+    },
+    {
+      "id": "L04",
+      "case": "Jackpot option says fines and taxes, but direct jail/card fines do not contribute",
+      "jailFinePaid": 500000,
+      "poolAfterJail": 0,
+      "cardFinePaid": 1000000,
+      "poolAfterCard": 0
+    },
+    {
+      "id": "L01-network",
+      "case": "Real Socket.IO accepts B/C trade during A turn",
+      "activeRemainsA": true,
+      "offerAccepted": true,
+      "tradeAccepted": true,
+      "balances": [
+        15000000,
+        14999999,
+        15000001
+      ]
+    },
+    {
+      "id": "N01",
+      "case": "Resuming another room while already joined keeps old room membership",
+      "resumeAccepted": true,
+      "receivedOldRoomBroadcast": true,
+      "oldRosterStillContainsOriginalIdentity": true
+    },
+    {
+      "id": "N02",
+      "case": "Non-host start_game request gets no acknowledgement",
+      "observed": "client request times out instead of receiving a rejection"
+    }
+  ]
+}

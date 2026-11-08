@@ -1,0 +1,63 @@
+{
+  "checkedAt": "2026-11-07T09:45:22.058Z",
+  "findings": [
+    {
+      "id": "F03",
+      "case": "Listener created before API import",
+      "coldConnected": false,
+      "afterHttpWarmupConnected": true,
+      "globalListenPrototypeChanged": true,
+      "scope": "Local runtime-order simulation, not an actual Vercel deployment test."
+    },
+    {
+      "id": "F03-side-effect",
+      "case": "Plain HTTP server started after API import acquires the game endpoint",
+      "websocketConnected": true,
+      "canCreateRoom": true
+    },
+    {
+      "id": "F02",
+      "case": "Two cached stores both accept revision 0; later write loses previous mortgage",
+      "finalRevision": 1,
+      "tile3MortgageLost": true,
+      "tile5Mortgaged": true,
+      "finalMoney": 16000000
+    },
+    {
+      "id": "F01",
+      "case": "Two actual processes on one host: guest joins and readies, but host cannot start",
+      "joinSuccess": true,
+      "guestReady": true,
+      "hostSawJoin": false,
+      "startSuccess": false,
+      "message": "Cần ít nhất hai người và phòng đang chờ."
+    },
+    {
+      "id": "F05",
+      "case": "Accepted trade is broadcast but not persisted to the file store",
+      "liveBalances": [
+        14000000,
+        16000000
+      ],
+      "diskBalances": [
+        15000000,
+        15000000
+      ],
+      "liveRevision": 1,
+      "diskRevision": 0
+    },
+    {
+      "id": "F04",
+      "case": "Different actor and invalid payload reuse ID and get cached success",
+      "first": {
+        "success": true,
+        "revision": 2
+      },
+      "wrongActor": {
+        "success": true,
+        "revision": 2
+      },
+      "note": "No forged asset mutation occurred; the acknowledgement incorrectly reports success before authorization/payload validation."
+    }
+  ]
+}

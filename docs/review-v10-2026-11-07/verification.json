@@ -1,0 +1,8 @@
+{
+  "reviewDate": "2026-11-07",
+  "tests": {"exitCode": 0, "legacyPassed": 23, "nodeRunnerPassed": 49, "totalPassed": 72, "failed": 0, "skipped": 0},
+  "build": {"exitCode": 0, "asset": "index-BGBxsv2J.js", "mainKB": 412.55, "mainGzipKB": 125.98, "board3DKB": 564.55, "warning": "3D chunk exceeds 500 kB"},
+  "ui": {"mobile": "320x740", "desktop": "1280x720", "players": 6, "primaryWidth": 175.08, "primaryHeight": 40, "primaryReceivesClick": true, "pillWithinViewport": true, "pillCameraOverlap": 0, "rollViaUI": [3, 4], "cardConfirmedViaUI": true, "finalConsoleErrorsOrWarnings": []},
+  "diagnostics": {"exitCode": 0, "twoProcessesJoinVisibleButHostCannotStart": true, "staleFileCasLosesMortgage": true, "tradeBroadcastNotPersisted": true, "runtimeListenerBeforeApiImportFailsColdUpgrade": true, "globalPrototypeHookAttachesGameToUnrelatedServer": true, "wrongActorReusingRequestIdReceivesCachedSuccess": true},
+  "scope": "Review and diagnostic artifacts only; no game source edits, commit, push or deployment during this review."
+}

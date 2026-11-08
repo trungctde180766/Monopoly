@@ -1,0 +1,4 @@
+Browser tab: 1, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "http://localhost:3139/".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+~				102 text 02:07
+The focused UI element is 0 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: localhost:3139/

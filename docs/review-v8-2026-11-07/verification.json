@@ -1,0 +1,8 @@
+{
+  "reviewDate": "2026-11-07",
+  "tests": {"command": "npm test", "exitCode": 0, "legacyPassed": 23, "nodeRunnerPassed": 46, "totalPassed": 69, "failed": 0, "skipped": 0},
+  "build": {"command": "npm run build", "exitCode": 0, "mainAsset": "index-DaJqT9cM.js", "mainKB": 410.47, "mainGzipKB": 125.70, "board3DAsset": "Board3D-BQkrRyMS.js", "board3DKB": 564.53, "board3DGzipKB": 142.29, "warning": "3D chunk exceeds 500 kB"},
+  "browser": {"desktop": "1280x720", "mobile": "390x844", "playersTested": [4, 6], "mobilePrimaryActionCenterCovered": true, "previewBackdrop": "blur(8px)", "purchase": {"city": "Phong Nha", "tier": 3, "cost": 3400000, "balanceAfter": 11600000, "rentDisplayed": 4500000}, "finalConsoleErrorsOrWarnings": []},
+  "production": "Public frontend remains on index-BarhytB4.js; see public-check.json",
+  "scope": "Review and diagnostic artifacts only; no game source edits or deployment during this review."
+}

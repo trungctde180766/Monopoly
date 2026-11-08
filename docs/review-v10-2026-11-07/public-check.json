@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-07T09:46:58.929Z",
+  "base": "https://monopoly-silk-ten.vercel.app",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "asset": "assets/index-BarhytB4.js",
+      "html": true
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "html": true
+    }
+  ],
+  "socket": [
+    {
+      "connected": false,
+      "error": "websocket error"
+    }
+  ]
+}

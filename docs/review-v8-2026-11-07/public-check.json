@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-11-07T08:40:57.793Z",
+  "base": "https://monopoly-silk-ten.vercel.app",
+  "http": [
+    {
+      "path": "/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "asset": "assets/index-BarhytB4.js"
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "body": "<!doctype html>\n<html lang=\"vi\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Cờ Tỷ Phú Pro - Monop"
+    },
+    {
+      "path": "/api/realtime/socket.io/?EIO=4&transport=polling",
+      "status": 200,
+      "type": "text/html; charset=utf-8"
+    }
+  ],
+  "socket": [
+    {
+      "path": "/socket.io",
+      "connected": false,
+      "error": "websocket error"
+    },
+    {
+      "path": "/api/realtime/socket.io",
+      "connected": false,
+      "error": "websocket error"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-11-08T01:46:18.984Z",
+  "findings": [
+    {
+      "id": "C01",
+      "wrote": {
+        "mode": "write",
+        "hasRoom": true,
+        "defaultStoreClass": "SharedRoomStore",
+        "storageClass": "Map"
+      },
+      "readFromAnotherProcess": {
+        "mode": "read",
+        "hasRoom": false,
+        "defaultStoreClass": "SharedRoomStore",
+        "storageClass": "Map"
+      },
+      "scope": "Two fresh real processes; endpoint is an isolated deliberately unreachable fixture address; no Redis client is used by production ExternalRoomStore."
+    },
+    {
+      "id": "C02",
+      "acceptedMortgageRevision": 1,
+      "afterStaleMetadataSetRevision": 0,
+      "mortgageLost": true,
+      "newSessionPersisted": true,
+      "scope": "Deterministic store read/commit/set interleaving. Metadata write reproduces the resume_room persistence path, not a full network race."
+    },
+    {
+      "id": "C03",
+      "oldChat": {
+        "success": false,
+        "message": "Phiên kết nối này đã được chuyển sang kết nối khác."
+      },
+      "supersededGuestToggleReady": {
+        "success": true,
+        "isReady": true
+      },
+      "supersededHostStartGame": {
+        "success": true
+      },
+      "oldGameAction": {
+        "success": false,
+        "conflict": true,
+        "message": "Phiên kết nối này đã được chuyển sang kết nối khác."
+      },
+      "activeHostChat": {
+        "success": true
+      },
+      "scope": "Real Socket.IO, same server, both original sockets superseded by resumed sessions; never uses stolen credentials."
+    },
+    {
+      "id": "C04",
+      "singleSendAck": {
+        "success": true
+      },
+      "receiverChatEventCount": 2,
+      "scope": "Real Socket.IO service explicitly configured with ExternalRoomStore, in-process shared Map/bus as in the new test; default file store is not affected by this duplicate path."
+    }
+  ],
+  "entryObservations": {
+    "defaultType": "function",
+    "defaultInstanceofHttpServer": true,
+    "defaultEqualsNamedServer": false
+  }
+}

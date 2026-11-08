@@ -5,11 +5,24 @@ import fs from 'fs';
 import path from 'path';
 
 async function capture() {
+  let srv = null;
+  const isRunning = await new Promise(resolve => {
+    const req = http.get('http://localhost:3001', () => resolve(true));
+    req.on('error', () => resolve(false));
+    req.setTimeout(500, () => { req.destroy(); resolve(false); });
+  });
+
+  if (!isRunning) {
+    srv = spawn('node', ['server/index.js'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    srv.stdout.on('data', d => console.log('SRV:', d.toString().trim()));
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
   const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
   const edge = spawn(edgePath, [
     '--headless=new',
     '--remote-debugging-port=9226',
-    '--window-size=1280,800',
+    '--window-size=1280,720',
     'http://localhost:3001'
   ]);
 
@@ -24,6 +37,7 @@ async function capture() {
       if (!page) {
         console.error('No page found');
         edge.kill();
+        srv.kill();
         process.exit(1);
       }
 
@@ -46,33 +60,34 @@ async function capture() {
           }));
         }, 1500);
 
-        // Sau 4s chụp ảnh màn hình
+        // Sau 4.5s chụp ảnh màn hình
         setTimeout(() => {
           ws.send(JSON.stringify({
             id: 4,
             method: 'Page.captureScreenshot',
-            params: { format: 'png' }
+            params: {
+              format: 'png',
+              fromSurface: true
+            }
           }));
-        }, 4000);
+        }, 4500);
+      });
 
-        ws.on('message', (msg) => {
-          const resp = JSON.parse(msg);
-          if (resp.method === 'Runtime.exceptionThrown') {
-            console.error('PAGE EXCEPTION:', JSON.stringify(resp.params.exceptionDetails));
-          }
-          if (resp.id === 4 && resp.result?.data) {
-            const buf = Buffer.from(resp.result.data, 'base64');
-            const outPath = path.resolve('./screenshot_verified.png');
-            fs.writeFileSync(outPath, buf);
-            console.log('SCREENSHOT_SAVED:', outPath);
-            edge.kill();
-            process.exit(0);
-          }
-        });
+      ws.on('message', (msg) => {
+        const res = JSON.parse(msg.toString());
+        if (res.id === 4 && res.result && res.result.data) {
+          const buffer = Buffer.from(res.result.data, 'base64');
+          const outPath = path.resolve('screenshot_business_tour_live.png');
+          fs.writeFileSync(outPath, buffer);
+          console.log('SCREENSHOT_SAVED:', outPath);
+          ws.close();
+          edge.kill();
+          if (srv) srv.kill();
+          process.exit(0);
+        }
       });
     });
   });
 }
 
 capture();
-

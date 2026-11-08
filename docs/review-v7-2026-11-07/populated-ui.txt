@@ -1,0 +1,28 @@
+Browser tab: 3, Title: "Cờ Tỷ Phú Pro - Monopoly Việt Nam", URL: "http://localhost:3139/".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 180
+~			79 text 20
+~				81 text 01:57
+~				87 text EVN - Điện Lực
+~					177 text EVN Điện Lực
+~					178 text Giá mua: 1.50 Triệu ₫
+~							101 text Người Chơi 1 Bot 13.10 Triệu ₫ 4  tài sản  · 3 công trình #1
+~							103 text Người Chơi 2 Bot 2.10 Triệu ₫ 2  tài sản  · 2 công trình #2
+~							105 text Bot Tỷ Phú Bot 3.90 Triệu ₫ 3  tài sản  · 2 công trình #3
+~							107 text Bot Đại Gia Bot 4.50 Triệu ₫ 3  tài sản  · 2 công trình Đến lượt
+~					111 text # 12
+~					113 pop up button (collapsed, settable) Chọn ô để xem thông tin, Value: 12. EVN - Điện Lực, ID: tile-picker, Secondary Actions: Expand
+~							127 (selected) 12. EVN - Điện Lực
+~							137 22. Cơ Hội
+~					155 heading EVN - Điện Lực, Value: 3
+~						156 text EVN - Điện Lực
+~					157 text Chưa có chủ Giá mua
++					182 text 1.50 Triệu ₫
++					183 container
++						184 text Tiền thuê theo tổng hai xúc xắc hiện tại:  6 .
++					185 button Xem bảng giá và quy tắc
+~					164 text 💎 LƯỢT CỦA BOT ĐẠI GIA
+~				168 container Xúc xắc 4 và 2, tổng 6
+~					169 text 4 2
+~						171 text Σ  6
+The focused UI element is 0 AXWebArea Cờ Tỷ Phú Pro - Monopoly Việt Nam, URL: localhost:3139/
