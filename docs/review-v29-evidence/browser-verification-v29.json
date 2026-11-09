@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-11-09T07:41:43.391Z",
-  "gitCommitHash": "968fda72b2f73b739111688b25d0874d39d09241",
+  "timestamp": "2026-11-09T13:30:17.884Z",
+  "gitCommitHash": "1185707d560bcb984f80057e177ecbf70f941ce9",
   "workingTreeClean": false,
-  "modifiedFilesCount": 2,
+  "modifiedFilesCount": 32,
   "bundleHashes": {
-    "Board3D-Bj_XohnI.js": "cee7b2c032a46649",
-    "index-DnTpCz7j.js": "de93eced9c444019"
+    "Board3D-BstVGBDn.js": "9a303e72ebbec19b",
+    "index-aNehJkHk.js": "da461d34d212ca65"
   },
   "viewports": {
     "desktop": {
@@ -43,12 +43,12 @@
         {
           "strong": "Thanh Trung (Bạn)",
           "body": "Xin chào từ Host Thanh Trung!",
-          "time": "14:41"
+          "time": "20:30"
         },
         {
           "strong": "Thanh Trung",
           "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
-          "time": "14:41"
+          "time": "20:30"
         }
       ]
     },
@@ -101,7 +101,7 @@
   "liveGameplayAction": {
     "buildDialog": {
       "open": true,
-      "title": "Cố Đô Huế",
+      "title": "Phố Cổ Hội An",
       "choices": [
         {
           "title": "Nhà cấp 1",
@@ -128,22 +128,22 @@
     "confirmClicked": true,
     "purchaseVerified": true,
     "synchronizedAcrossClients": true,
-    "tab1Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
-    "tab2Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
-    "tab1CashPostPurchase": "14M",
+    "tab1Log": "🏗️ Thanh Trung mua/nâng Phố Cổ Hội An, chi 1M₫.",
+    "tab2Log": "🏗️ Thanh Trung mua/nâng Phố Cổ Hội An, chi 1M₫.",
+    "tab1CashPostPurchase": "14.000.000₫",
     "tab1PropertiesPostPurchase": "1 Đất, 1 Nhà",
-    "tab2ReflectedCash": "14M",
+    "tab2ReflectedCash": "14.000.000₫",
     "tab2ReflectedProperties": "1 Đất, 1 Nhà"
   },
   "boardVerification": {
     "canvasPresent": true,
     "canvasRect": {
       "top": 0,
-      "bottom": 727,
+      "bottom": 728,
       "left": 0,
-      "right": 1254,
-      "width": 1254,
-      "height": 727
+      "right": 1256,
+      "width": 1256,
+      "height": 728
     },
     "webglContextActive": true
   },
@@ -240,21 +240,204 @@
       "webglContextActive": true
     },
     "desktopFocusLabel": {
+      "tileId": 8,
+      "found": true,
       "title": "Phố Cổ Hội An",
       "tier": "🏨 Cấp 4 (Landmark)",
       "owner": "👤 Đối thủ AI",
       "price": "4M₫",
-      "left": "",
-      "top": ""
+      "rect": {
+        "left": 177.8,
+        "right": 401.5,
+        "top": 208.4,
+        "bottom": 292.9,
+        "width": 223.6,
+        "height": 84.5
+      },
+      "inBoundsHorizontal": true,
+      "inBoundsVertical": true,
+      "fullyVisible": true
     },
     "mobileFocusLabel": {
+      "tileId": 8,
+      "found": true,
       "title": "Phố Cổ Hội An",
       "tier": "🏨 Cấp 4 (Landmark)",
       "owner": "👤 Đối thủ AI",
       "price": "4M₫",
-      "left": "316.398px",
-      "top": "270.322px"
+      "rect": {
+        "left": 11.8,
+        "right": 215.2,
+        "top": 351.1,
+        "bottom": 425.1,
+        "width": 203.3,
+        "height": 74
+      },
+      "inBoundsHorizontal": true,
+      "inBoundsVertical": true,
+      "fullyVisible": true
+    },
+    "geometryVerification": {
+      "mobile390x844": [
+        {
+          "tileId": 8,
+          "found": true,
+          "title": "Phố Cổ Hội An",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "4M₫",
+          "rect": {
+            "left": 11.8,
+            "right": 215.2,
+            "top": 351.1,
+            "bottom": 425.1,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 18,
+          "found": true,
+          "title": "Nha Trang Biển Xanh",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "7.50M₫",
+          "rect": {
+            "left": 57.7,
+            "right": 261,
+            "top": 263.8,
+            "bottom": 337.8,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 28,
+          "found": true,
+          "title": "Sawaco - Cấp Nước",
+          "tier": "Tiện ích",
+          "owner": "👤 Đối thủ AI",
+          "price": "80k₫",
+          "rect": {
+            "left": 222.9,
+            "right": 378.1,
+            "top": 305.2,
+            "bottom": 379.2,
+            "width": 155.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 138.9,
+            "right": 306.3,
+            "top": 393.6,
+            "bottom": 488.6,
+            "width": 167.4,
+            "height": 95
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        }
+      ],
+      "mobile360x800": [
+        {
+          "tileId": 8,
+          "found": true,
+          "title": "Phố Cổ Hội An",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "4M₫",
+          "rect": {
+            "left": 11.8,
+            "right": 215.2,
+            "top": 328,
+            "bottom": 402,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 18,
+          "found": true,
+          "title": "Nha Trang Biển Xanh",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "7.50M₫",
+          "rect": {
+            "left": 45.4,
+            "right": 248.7,
+            "top": 247.2,
+            "bottom": 321.2,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 28,
+          "found": true,
+          "title": "Sawaco - Cấp Nước",
+          "tier": "Tiện ích",
+          "owner": "👤 Đối thủ AI",
+          "price": "80k₫",
+          "rect": {
+            "left": 192.9,
+            "right": 348.1,
+            "top": 285.6,
+            "bottom": 359.6,
+            "width": 155.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 128.1,
+            "right": 282.7,
+            "top": 365.4,
+            "bottom": 460.4,
+            "width": 154.6,
+            "height": 95
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        }
+      ],
+      "all390InBounds": true,
+      "all360InBounds": true
     }
   },
-  "overallSuccess": true
+  "overallSuccess": true,
+  "tooltipInSafeBounds": true
 }

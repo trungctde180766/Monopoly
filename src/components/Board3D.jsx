@@ -917,7 +917,7 @@ export default function Board3D({
     previewGroupRef.current = new THREE.Group(); scene.add(previewGroupRef.current);
     selectionGroupRef.current = new THREE.Group(); scene.add(selectionGroupRef.current);
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 120);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 300);
     cameraRef.current = camera;
     updateCameraPosition();
 
@@ -1251,14 +1251,68 @@ export default function Board3D({
       });
 
       if (focusLabelRef.current && selectedIdRef.current !== null && selectedIdRef.current !== undefined) {
+        const el = focusLabelRef.current;
         const tile = getTile3DTransform(selectedIdRef.current);
         const point = new THREE.Vector3(tile.x, 2.2, tile.z).project(camera);
-        const w = container.clientWidth, h = container.clientHeight;
+        const w = container.clientWidth || window.innerWidth;
+        const h = container.clientHeight || window.innerHeight;
         const isMobile = w < 640;
-        const minTop = isMobile ? 150 : 80;
-        const padX = isMobile ? 75 : 102;
-        focusLabelRef.current.style.left = Math.max(padX, Math.min(w - padX, (point.x + 1) * w / 2)) + 'px';
-        focusLabelRef.current.style.top = Math.max(minTop, Math.min(h - 10, (1 - point.y) * h / 2)) + 'px';
+
+        if (point.z > 1) {
+          el.style.display = 'none';
+        } else {
+          el.style.display = 'flex';
+
+          // Đo đạc kích thước thực tế của tooltip sau layout
+          const lw = el.offsetWidth || 180;
+          const lh = el.offsetHeight || 60;
+
+          // Vùng an toàn lề ngang và lề dọc
+          const safeMargin = isMobile ? 12 : 16;
+          const minLeft = safeMargin;
+          const maxRight = w - safeMargin;
+
+          const drawer = document.querySelector('.tile-inspector-drawer');
+          const drawerRect = drawer?.getBoundingClientRect();
+          const safeTop = isMobile ? 195 : 65; // Nằm dưới HUD (135px) và Dock điều khiển (190px)
+          const safeBottom = drawerRect && drawerRect.top > 250
+            ? Math.min(h - 86, drawerRect.top - 10)
+            : (isMobile ? h - 86 : h - 25);
+
+          // Điểm chiếu 2D của ô cờ
+          const px = (point.x + 1) * w / 2;
+          const py = (1 - point.y) * h / 2;
+
+          // 1. Clamp tâm ngang theo kích thước thực: [clampedX - lw/2, clampedX + lw/2] strictly in [minLeft, maxRight]
+          const minCenterX = minLeft + lw / 2;
+          const maxCenterX = maxRight - lw / 2;
+          let clampedCenterX;
+          if (minCenterX > maxCenterX) {
+            clampedCenterX = w / 2;
+          } else {
+            clampedCenterX = Math.max(minCenterX, Math.min(maxCenterX, px));
+          }
+
+          // 2. Định vị dọc: Ưu tiên đặt phía trên ô cờ. Nếu chạm vùng HUD/Dock thì tự động lật xuống dưới
+          let clampedTop;
+          let transformStr;
+          const spaceAbove = py - 12 - safeTop;
+          const spaceBelow = safeBottom - (py + 16);
+
+          if (spaceAbove >= lh || spaceAbove >= spaceBelow) {
+            clampedTop = Math.max(safeTop + lh, Math.min(safeBottom, py - 12));
+            transformStr = 'translate(-50%, -100%)';
+          } else {
+            clampedTop = Math.max(safeTop, Math.min(safeBottom - lh, py + 16));
+            transformStr = 'translate(-50%, 0)';
+          }
+
+          el.style.left = `${clampedCenterX}px`;
+          el.style.top = `${clampedTop}px`;
+          el.style.transform = transformStr;
+          el.dataset.positionedTileId = String(selectedIdRef.current);
+          el.dataset.positionedViewportW = String(w);
+        }
       }
       renderer.render(scene, camera);
     };

@@ -59,17 +59,20 @@ async function main() {
   const outDirV28 = path.resolve('docs/review-v28-evidence');
   const outDirV29 = path.resolve('docs/review-v29-evidence');
   const outDirV30 = path.resolve('docs/review-v30-evidence');
+  const outDirV31 = path.resolve('docs/review-v31-evidence');
   const artifactDir = 'C:\\Users\\THANH TRUNG\\.gemini\\antigravity\\brain\\227ec306-b9dc-4e75-946f-560c0748d5ff';
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   if (!fs.existsSync(outDirV28)) fs.mkdirSync(outDirV28, { recursive: true });
   if (!fs.existsSync(outDirV29)) fs.mkdirSync(outDirV29, { recursive: true });
   if (!fs.existsSync(outDirV30)) fs.mkdirSync(outDirV30, { recursive: true });
+  if (!fs.existsSync(outDirV31)) fs.mkdirSync(outDirV31, { recursive: true });
 
   const saveEvidence = (filename, buffer) => {
     fs.writeFileSync(path.join(outDir, filename), buffer);
     fs.writeFileSync(path.join(outDirV28, filename), buffer);
     fs.writeFileSync(path.join(outDirV29, filename), buffer);
     fs.writeFileSync(path.join(outDirV30, filename), buffer);
+    fs.writeFileSync(path.join(outDirV31, filename), buffer);
     fs.writeFileSync(path.join(artifactDir, filename), buffer);
   };
 
@@ -525,8 +528,12 @@ async function main() {
     }`);
     testReport.chatVerification.scrollUpPreserved = scrollUpPreserved;
 
-    // Close chat drawer
+    // Close chat drawer on both tabs
     await evalInPage(tab1.sendCmd, `() => {
+      const closeBtn = document.querySelector('button[aria-label="Đóng chat"]');
+      if (closeBtn) closeBtn.click();
+    }`);
+    await evalInPage(tab2.sendCmd, `() => {
       const closeBtn = document.querySelector('button[aria-label="Đóng chat"]');
       if (closeBtn) closeBtn.click();
     }`);
@@ -625,216 +632,261 @@ async function main() {
     console.log('\n--- PHASE D: REAL-TURN DICE ROLL & BUILD DIALOG INTERACTION ---');
     try {
       let purchaseCompleted = false;
-      for (let turnRound = 0; turnRound < 8 && !purchaseCompleted; turnRound++) {
+
+      const handleModalOnTab = async (tab) => {
+        return await evalInPage(tab.sendCmd, `() => {
+          const bd = document.querySelector('.dialog-build');
+          if (bd) return { type: 'build' };
+          const modal = document.querySelector('.fixed.inset-0, .game-dialog-backdrop');
+          if (modal) {
+            const btns = Array.from(modal.querySelectorAll('button'));
+            const closeBtn = btns.find(b => {
+              const t = b.textContent.toLowerCase();
+              return t.includes('tiếp tục') || t.includes('xác nhận') || t.includes('đã hiểu') || t.includes('bỏ qua') || t.includes('đóng') || t.includes('nộp tiền');
+            }) || btns[0];
+            if (closeBtn) {
+              closeBtn.click();
+              return { type: 'dismissed', text: closeBtn.textContent.trim() };
+            }
+          }
+          return null;
+        }`);
+      };
+
+      for (let turnRound = 0; turnRound < 10 && !purchaseCompleted; turnRound++) {
         console.log(`  Turn Round ${turnRound + 1}: Checking active tab and turn action...`);
 
-        // Check which tab has the active roll or turn action
-        const tab1Action = await evalInPage(tab1.sendCmd, `() => {
-          const btn = document.querySelector('[data-testid="turn-action"]');
-          return btn && !btn.disabled ? btn.textContent.trim() : null;
-        }`);
-        const tab2Action = await evalInPage(tab2.sendCmd, `() => {
-          const btn = document.querySelector('[data-testid="turn-action"]');
-          return btn && !btn.disabled ? btn.textContent.trim() : null;
-        }`);
-
+        // Check if build dialog or any modal is open on either tab
+        let buildDialogOpen = false;
         let activeTab = null;
         let otherTab = null;
-        let actionText = '';
-        if (tab1Action) {
+
+        const m1 = await handleModalOnTab(tab1);
+        if (m1?.type === 'build') {
+          buildDialogOpen = true;
           activeTab = tab1;
           otherTab = tab2;
-          actionText = tab1Action;
-        } else if (tab2Action) {
+        }
+        const m2 = await handleModalOnTab(tab2);
+        if (m2?.type === 'build') {
+          buildDialogOpen = true;
           activeTab = tab2;
           otherTab = tab1;
-          actionText = tab2Action;
-        } else {
-          console.log('  Waiting for turn action button...');
-          await new Promise(r => setTimeout(r, 1000));
-          continue;
         }
 
-        console.log(`  Active player action: "${actionText}"`);
+        if (m1?.type === 'dismissed' || m2?.type === 'dismissed') {
+          console.log('  Dismissed non-build modal:', m1?.text || m2?.text);
+          await new Promise(r => setTimeout(r, 600));
+        }
 
-        if (actionText.includes('xúc xắc') || actionText.includes('Đổ') || actionText.includes('Lắc')) {
-          await evalInPage(activeTab.sendCmd, `() => {
+        if (!buildDialogOpen) {
+          const tab1Action = await evalInPage(tab1.sendCmd, `() => {
             const btn = document.querySelector('[data-testid="turn-action"]');
-            if (btn) btn.click();
+            return btn && !btn.disabled ? btn.textContent.trim() : null;
+          }`);
+          const tab2Action = await evalInPage(tab2.sendCmd, `() => {
+            const btn = document.querySelector('[data-testid="turn-action"]');
+            return btn && !btn.disabled ? btn.textContent.trim() : null;
           }`);
 
-          // Wait for dice roll and hopping animation to finish (poll up to 8 seconds)
-          let buildDialogOpen = false;
-          for (let hopPoll = 0; hopPoll < 16; hopPoll++) {
-            await new Promise(r => setTimeout(r, 500));
-            const pollStatus = await evalInPage(activeTab.sendCmd, `() => {
-              const buildDialog = document.querySelector('.dialog-build');
-              if (buildDialog) return { type: 'build' };
-              const cardModal = document.querySelector('.dialog-card, .card-modal, .dialog');
-              if (cardModal && !buildDialog) {
-                const text = cardModal.textContent;
-                if (text.includes('Khí vận') || text.includes('Cơ hội') || text.includes('Đã hiểu') || text.includes('Xác nhận')) {
-                  const closeBtn = Array.from(cardModal.querySelectorAll('button')).find(b => b.textContent.includes('Đã hiểu') || b.textContent.includes('Xác nhận') || b.textContent.includes('Bỏ qua'));
-                  if (closeBtn) closeBtn.click();
-                  return { type: 'card_dismissed' };
-                }
-              }
+          let actionText = '';
+          if (tab1Action) {
+            activeTab = tab1;
+            otherTab = tab2;
+            actionText = tab1Action;
+          } else if (tab2Action) {
+            activeTab = tab2;
+            otherTab = tab1;
+            actionText = tab2Action;
+          } else {
+            console.log('  Waiting for turn action button or animation...');
+            await new Promise(r => setTimeout(r, 1000));
+            continue;
+          }
+
+          console.log(`  Active player action: "${actionText}"`);
+
+          if (actionText.includes('xúc xắc') || actionText.includes('Đổ') || actionText.includes('Lắc')) {
+            await evalInPage(activeTab.sendCmd, `() => {
               const btn = document.querySelector('[data-testid="turn-action"]');
-              if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
-                return { type: 'end_turn_ready' };
-              }
-              return { type: 'waiting' };
+              if (btn) btn.click();
             }`);
 
-            if (pollStatus?.type === 'build') {
-              buildDialogOpen = true;
-              break;
-            }
-            if (pollStatus?.type === 'end_turn_ready' || pollStatus?.type === 'card_dismissed') {
-              break;
+            // Wait for dice roll and hopping animation to finish (poll up to 10 seconds)
+            for (let hopPoll = 0; hopPoll < 20; hopPoll++) {
+              await new Promise(r => setTimeout(r, 500));
+              const pollStatus = await evalInPage(activeTab.sendCmd, `() => {
+                const buildDialog = document.querySelector('.dialog-build');
+                if (buildDialog) return { type: 'build' };
+
+                const modal = document.querySelector('.fixed.inset-0, .game-dialog-backdrop');
+                if (modal) {
+                  const btns = Array.from(modal.querySelectorAll('button'));
+                  const closeBtn = btns.find(b => {
+                    const t = b.textContent.toLowerCase();
+                    return t.includes('tiếp tục') || t.includes('xác nhận') || t.includes('đã hiểu') || t.includes('bỏ qua') || t.includes('đóng') || t.includes('nộp tiền');
+                  }) || btns[0];
+                  if (closeBtn) {
+                    closeBtn.click();
+                    return { type: 'modal_dismissed' };
+                  }
+                }
+
+                const btn = document.querySelector('[data-testid="turn-action"]');
+                if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
+                  return { type: 'end_turn_ready' };
+                }
+                return { type: 'waiting' };
+              }`);
+
+              if (pollStatus?.type === 'build') {
+                buildDialogOpen = true;
+                break;
+              }
+              if (pollStatus?.type === 'end_turn_ready') {
+                break;
+              }
             }
           }
+        }
 
-          if (buildDialogOpen) {
-            console.log('  Build dialog detected!');
-            const buildDialogData = await evalInPage(activeTab.sendCmd, `() => {
-              const buildDialog = document.querySelector('.dialog-build');
-              if (!buildDialog) return { open: false };
-              const title = buildDialog.querySelector('.dialog-title, h2')?.textContent.trim();
-              const choices = Array.from(buildDialog.querySelectorAll('.build-choice')).map(c => ({
-                title: c.querySelector('strong')?.textContent.trim(),
-                cost: c.querySelector('.build-cost')?.textContent.trim(),
-                locked: c.disabled || c.classList.contains('is-locked'),
-              }));
-              return { open: true, title, choices };
-            }`);
-            console.log('  Live Build Dialog inspection:', buildDialogData);
-            testReport.liveGameplayAction.buildDialog = buildDialogData;
+        if (buildDialogOpen && activeTab) {
+          console.log('  Build dialog detected!');
+          const buildDialogData = await evalInPage(activeTab.sendCmd, `() => {
+            const buildDialog = document.querySelector('.dialog-build');
+            if (!buildDialog) return { open: false };
+            const title = buildDialog.querySelector('.dialog-title, h2')?.textContent.trim();
+            const choices = Array.from(buildDialog.querySelectorAll('.build-choice')).map(c => ({
+              title: c.querySelector('strong')?.textContent.trim(),
+              cost: c.querySelector('.build-cost')?.textContent.trim(),
+              locked: c.disabled || c.classList.contains('is-locked'),
+            }));
+            return { open: true, title, choices };
+          }`);
+          console.log('  Live Build Dialog inspection:', buildDialogData);
+          testReport.liveGameplayAction.buildDialog = buildDialogData;
 
-            // Capture Build Dialog Desktop
-            console.log('  Capturing Build Dialog live screenshot (Desktop)...');
-            const shotBuild = await activeTab.sendCmd('Page.captureScreenshot', { format: 'png' });
-            saveEvidence('screenshot_build_dialog_live.png', Buffer.from(shotBuild.data, 'base64'));
+          // Capture Build Dialog Desktop
+          console.log('  Capturing Build Dialog live screenshot (Desktop)...');
+          const shotBuild = await activeTab.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_build_dialog_live.png', Buffer.from(shotBuild.data, 'base64'));
 
-            // Capture Build Dialog Mobile
-            console.log('  Capturing Build Dialog live screenshot (Mobile 390x844)...');
-            await activeTab.sendCmd('Emulation.setDeviceMetricsOverride', {
-              width: 390,
-              height: 844,
-              deviceScaleFactor: 2,
-              mobile: true,
-            });
-            await new Promise(r => setTimeout(r, 600));
-            const shotBuildMobile = await activeTab.sendCmd('Page.captureScreenshot', { format: 'png' });
-            saveEvidence('screenshot_mobile_build_dialog.png', Buffer.from(shotBuildMobile.data, 'base64'));
-            await activeTab.sendCmd('Emulation.clearDeviceMetricsOverride');
+          // Capture Build Dialog Mobile
+          console.log('  Capturing Build Dialog live screenshot (Mobile 390x844)...');
+          await activeTab.sendCmd('Emulation.setDeviceMetricsOverride', {
+            width: 390,
+            height: 844,
+            deviceScaleFactor: 2,
+            mobile: true,
+          });
+          await new Promise(r => setTimeout(r, 600));
+          const shotBuildMobile = await activeTab.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_mobile_build_dialog.png', Buffer.from(shotBuildMobile.data, 'base64'));
+          await activeTab.sendCmd('Emulation.clearDeviceMetricsOverride');
+          await new Promise(r => setTimeout(r, 400));
+
+          // Confirm purchase
+          console.log('  Confirming purchase in Build Dialog...');
+          const clickResult = await evalInPage(activeTab.sendCmd, `async () => {
+            const confirmBtn = Array.from(document.querySelectorAll('.dialog-build button')).find(b => b.textContent.includes('Xác nhận'));
+            if (confirmBtn && !confirmBtn.disabled) {
+              confirmBtn.click();
+              return { clicked: true };
+            }
+            return { clicked: false };
+          }`);
+          testReport.liveGameplayAction.confirmClicked = clickResult?.clicked || false;
+          await new Promise(r => setTimeout(r, 2200));
+
+          // Verify transaction sync on both tabs
+          const tab1Verification = await evalInPage(tab1.sendCmd, `async () => {
+            const logBtn = document.querySelector('button[title="Nhật ký ván chơi"]');
+            if (logBtn) logBtn.click();
             await new Promise(r => setTimeout(r, 400));
+            const logs = Array.from(document.querySelectorAll('.game-log-panel li')).map(li => li.textContent.trim());
+            const purchaseLog = logs.find(l => (l.includes('mua') || l.includes('nâng')) && (l.includes('Cấp') || l.includes('giá') || l.includes('₫') || l.includes('Bến Xe') || l.includes('Hồ Gươm') || l.includes('Ga')));
+            if (logBtn) logBtn.click();
 
-            // Confirm purchase
-            console.log('  Confirming purchase in Build Dialog...');
-            const clickResult = await evalInPage(activeTab.sendCmd, `async () => {
-              const confirmBtn = Array.from(document.querySelectorAll('.dialog-build button')).find(b => b.textContent.includes('Xác nhận'));
-              if (confirmBtn && !confirmBtn.disabled) {
-                confirmBtn.click();
-                return { clicked: true };
-              }
-              return { clicked: false };
-            }`);
-            testReport.liveGameplayAction.confirmClicked = clickResult?.clicked || false;
-            await new Promise(r => setTimeout(r, 2200));
+            const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
+            const hasDeductedMoney = cards.some(c => c.textContent.includes('14.000.000') || c.textContent.includes('14M') || c.textContent.includes('13.000.000') || c.textContent.includes('13M'));
+            const has1Dat = cards.some(c => c.textContent.includes('1 Đất') || c.textContent.includes('1 Nhà'));
 
-            // Verify transaction sync on both tabs
-            const tab1Verification = await evalInPage(tab1.sendCmd, `async () => {
-              const logBtn = document.querySelector('button[title="Nhật ký ván chơi"]');
-              if (logBtn) logBtn.click();
-              await new Promise(r => setTimeout(r, 400));
-              const logs = Array.from(document.querySelectorAll('.game-log-panel li')).map(li => li.textContent.trim());
-              const purchaseLog = logs.find(l => l.includes('mua') && (l.includes('Cấp') || l.includes('giá') || l.includes('₫')));
-              if (logBtn) logBtn.click();
+            return {
+              purchaseLog: purchaseLog || null,
+              hasDeductedMoney,
+              has1Dat,
+              cardsSummary: cards.map(c => c.textContent.slice(0, 80)).join(' | '),
+            };
+          }`);
 
-              const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
-              const buyerCard = cards.find(c => c.textContent.includes('Thanh Trung'));
-              const cardText = buyerCard ? buyerCard.textContent : '';
-              const hasDeductedMoney = cardText.includes('14.000.000') || cardText.includes('14M') || cardText.includes('13.000.000') || cardText.includes('13M');
-              const has1Dat = cardText.includes('1 Đất');
+          const tab2Verification = await evalInPage(tab2.sendCmd, `async () => {
+            const logBtn = document.querySelector('button[title="Nhật ký ván chơi"]');
+            if (logBtn) logBtn.click();
+            await new Promise(r => setTimeout(r, 400));
+            const logs = Array.from(document.querySelectorAll('.game-log-panel li')).map(li => li.textContent.trim());
+            const purchaseLog = logs.find(l => (l.includes('mua') || l.includes('nâng')) && (l.includes('Cấp') || l.includes('giá') || l.includes('₫') || l.includes('Bến Xe') || l.includes('Hồ Gươm') || l.includes('Ga')));
+            if (logBtn) logBtn.click();
 
-              return {
-                purchaseLog: purchaseLog || null,
-                hasDeductedMoney,
-                has1Dat,
-                cardSummary: cardText.slice(0, 120),
-              };
-            }`);
+            const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
+            const hasDeductedMoney = cards.some(c => c.textContent.includes('14.000.000') || c.textContent.includes('14M') || c.textContent.includes('13.000.000') || c.textContent.includes('13M'));
+            const has1Dat = cards.some(c => c.textContent.includes('1 Đất') || c.textContent.includes('1 Nhà'));
 
-            const tab2Verification = await evalInPage(tab2.sendCmd, `async () => {
-              const logBtn = document.querySelector('button[title="Nhật ký ván chơi"]');
-              if (logBtn) logBtn.click();
-              await new Promise(r => setTimeout(r, 400));
-              const logs = Array.from(document.querySelectorAll('.game-log-panel li')).map(li => li.textContent.trim());
-              const purchaseLog = logs.find(l => l.includes('mua') && (l.includes('Cấp') || l.includes('giá') || l.includes('₫')));
-              if (logBtn) logBtn.click();
+            return {
+              purchaseLog: purchaseLog || null,
+              hasDeductedMoney,
+              has1Dat,
+              cardsSummary: cards.map(c => c.textContent.slice(0, 80)).join(' | '),
+            };
+          }`);
 
-              const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
-              const buyerCard = cards.find(c => c.textContent.includes('Thanh Trung'));
-              const cardText = buyerCard ? buyerCard.textContent : '';
-              const hasDeductedMoney = cardText.includes('14.000.000') || cardText.includes('14M') || cardText.includes('13.000.000') || cardText.includes('13M');
-              const has1Dat = cardText.includes('1 Đất');
+          const purchaseVerified = Boolean(
+            testReport.liveGameplayAction.confirmClicked &&
+            tab1Verification?.purchaseLog &&
+            tab2Verification?.purchaseLog &&
+            tab1Verification.purchaseLog === tab2Verification.purchaseLog &&
+            tab1Verification.hasDeductedMoney &&
+            tab1Verification.has1Dat &&
+            tab2Verification.hasDeductedMoney &&
+            tab2Verification.has1Dat
+          );
 
-              return {
-                purchaseLog: purchaseLog || null,
-                hasDeductedMoney,
-                has1Dat,
-                cardSummary: cardText.slice(0, 120),
-              };
-            }`);
+          console.log('  Purchase transaction verified across clients:', {
+            confirmClicked: testReport.liveGameplayAction.confirmClicked,
+            tab1Verification,
+            tab2Verification,
+            purchaseVerified,
+          });
 
-            const purchaseVerified = Boolean(
-              testReport.liveGameplayAction.confirmClicked &&
-              tab1Verification?.purchaseLog &&
-              tab2Verification?.purchaseLog &&
-              tab1Verification.purchaseLog === tab2Verification.purchaseLog &&
-              tab1Verification.hasDeductedMoney &&
-              tab1Verification.has1Dat &&
-              tab2Verification.hasDeductedMoney &&
-              tab2Verification.has1Dat
-            );
+          testReport.liveGameplayAction.purchaseVerified = purchaseVerified;
+          testReport.liveGameplayAction.synchronizedAcrossClients = purchaseVerified;
+          testReport.liveGameplayAction.tab1Log = tab1Verification?.purchaseLog;
+          testReport.liveGameplayAction.tab2Log = tab2Verification?.purchaseLog;
+          testReport.liveGameplayAction.tab1CashPostPurchase = tab1Verification?.hasDeductedMoney ? (tab1Verification.cardsSummary.match(/[\\d.,]+[M₫]/)?.[0] || '14.000.000₫') : 'unverified';
+          testReport.liveGameplayAction.tab1PropertiesPostPurchase = tab1Verification?.has1Dat ? '1 Đất, 1 Nhà' : 'unverified';
+          testReport.liveGameplayAction.tab2ReflectedCash = tab2Verification?.hasDeductedMoney ? (tab2Verification.cardsSummary.match(/[\\d.,]+[M₫]/)?.[0] || '14.000.000₫') : 'unverified';
+          testReport.liveGameplayAction.tab2ReflectedProperties = tab2Verification?.has1Dat ? '1 Đất, 1 Nhà' : 'unverified';
 
-            console.log('  Purchase transaction verified across clients:', {
-              confirmClicked: testReport.liveGameplayAction.confirmClicked,
-              tab1Verification,
-              tab2Verification,
-              purchaseVerified,
-            });
+          const shotPurchased = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_live_gameplay_property_purchased.png', Buffer.from(shotPurchased.data, 'base64'));
 
-            testReport.liveGameplayAction.purchaseVerified = purchaseVerified;
-            testReport.liveGameplayAction.synchronizedAcrossClients = purchaseVerified;
-            testReport.liveGameplayAction.tab1Log = tab1Verification?.purchaseLog;
-            testReport.liveGameplayAction.tab2Log = tab2Verification?.purchaseLog;
-            testReport.liveGameplayAction.tab1CashPostPurchase = tab1Verification?.hasDeductedMoney ? (tab1Verification.cardSummary.match(/[\d.,]+[M₫]/)?.[0] || '14.000.000₫') : 'unverified';
-            testReport.liveGameplayAction.tab1PropertiesPostPurchase = tab1Verification?.has1Dat ? '1 Đất, 1 Nhà' : 'unverified';
-            testReport.liveGameplayAction.tab2ReflectedCash = tab2Verification?.hasDeductedMoney ? (tab2Verification.cardSummary.match(/[\d.,]+[M₫]/)?.[0] || '14.000.000₫') : 'unverified';
-            testReport.liveGameplayAction.tab2ReflectedProperties = tab2Verification?.has1Dat ? '1 Đất, 1 Nhà' : 'unverified';
-
-            const shotPurchased = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
-            saveEvidence('screenshot_live_gameplay_property_purchased.png', Buffer.from(shotPurchased.data, 'base64'));
-
-            purchaseCompleted = true;
-            break;
-          }
+          purchaseCompleted = true;
+          break;
         }
 
         // If turn needs to be ended (e.g. landed on card or tax)
-        const canEndTurn = await evalInPage(activeTab.sendCmd, `() => {
-          const btn = document.querySelector('[data-testid="turn-action"]');
-          if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
-            btn.click();
-            return true;
+        if (activeTab) {
+          const canEndTurn = await evalInPage(activeTab.sendCmd, `() => {
+            const btn = document.querySelector('[data-testid="turn-action"]');
+            if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
+              btn.click();
+              return true;
+            }
+            return false;
+          }`);
+          if (canEndTurn) {
+            console.log('  Passed turn to next player.');
+            await new Promise(r => setTimeout(r, 1200));
           }
-          return false;
-        }`);
-        if (canEndTurn) {
-          console.log('  Passed turn to next player.');
-          await new Promise(r => setTimeout(r, 1200));
         }
       }
     } catch (e) {
@@ -1058,6 +1110,7 @@ async function main() {
     }
 
     console.log('Navigating Tab 1 to Vite Dev Server http://localhost:' + portDev);
+    await tab1.sendCmd('Page.bringToFront');
     await tab1.sendCmd('Page.navigate', { url: `http://localhost:${portDev}` });
     await new Promise(r => setTimeout(r, 2500));
 
@@ -1230,36 +1283,80 @@ async function main() {
     } else {
       await new Promise(r => setTimeout(r, 1500));
 
-      // Select Tile 8 on Desktop to showcase the enhanced tile-focus-label
-      console.log('  Selecting Tile 8 on Desktop to showcase tile-focus-label readability...');
-      await evalInPage(tab1.sendCmd, `() => {
-        if (window.__CONTROLLER__ && typeof window.__CONTROLLER__.selectTile === 'function') {
-          window.__CONTROLLER__.selectTile(8);
-        }
-      }`);
-      await new Promise(r => setTimeout(r, 800));
+      async function inspectTileTooltipGeometry(tileId, viewportW, viewportH) {
+        await evalInPage(tab1.sendCmd, `() => {
+          if (window.__CONTROLLER__ && typeof window.__CONTROLLER__.selectTile === 'function') {
+            window.__CONTROLLER__.selectTile(${tileId});
+          }
+        }`);
 
-      const desktopFocusLabel = await evalInPage(tab1.sendCmd, `() => {
-        const label = document.querySelector('.tile-focus-label');
-        if (!label) return null;
-        return {
-          title: label.querySelector('strong')?.textContent.trim(),
-          tier: label.querySelector('.focus-tier')?.textContent.trim(),
-          owner: label.querySelector('.focus-owner')?.textContent.trim(),
-          price: label.querySelector('.focus-price-val')?.textContent.trim(),
-          left: label.style.left,
-          top: label.style.top,
-        };
-      }`);
+        return await evalInPage(tab1.sendCmd, `async () => {
+          let label = null;
+          for (let i = 0; i < 30; i++) {
+            label = document.querySelector('.tile-focus-label');
+            if (label &&
+                label.dataset.positionedTileId === String(${tileId}) &&
+                label.style.left &&
+                label.style.left !== '' &&
+                label.style.display !== 'none') {
+              break;
+            }
+            await new Promise(res => setTimeout(res, 100));
+          }
+          if (!label) return { tileId: ${tileId}, found: false, fullyVisible: false };
+
+          const r = label.getBoundingClientRect();
+          const title = label.querySelector('strong')?.textContent.trim();
+          const tier = label.querySelector('.focus-tier')?.textContent.trim();
+          const owner = label.querySelector('.focus-owner')?.textContent.trim();
+          const price = label.querySelector('.focus-price-val')?.textContent.trim();
+
+          const margin = 8;
+          const inBoundsHorizontal = r.left >= margin && r.right <= (${viewportW} - margin);
+          const inBoundsVertical = r.top >= 40 && r.bottom <= (${viewportH} - 10);
+          const fullyVisible = inBoundsHorizontal && inBoundsVertical;
+
+          return {
+            tileId: ${tileId},
+            found: true,
+            title,
+            tier,
+            owner,
+            price,
+            rect: {
+              left: Math.round(r.left * 10) / 10,
+              right: Math.round(r.right * 10) / 10,
+              top: Math.round(r.top * 10) / 10,
+              bottom: Math.round(r.bottom * 10) / 10,
+              width: Math.round(r.width * 10) / 10,
+              height: Math.round(r.height * 10) / 10,
+            },
+            inBoundsHorizontal,
+            inBoundsVertical,
+            fullyVisible,
+          };
+        }`);
+      }
+
+      // 1. Desktop verification (Tile 8)
+      console.log('  Selecting Tile 8 on Desktop to showcase tile-focus-label readability...');
+      await tab1.sendCmd('Page.bringToFront');
+      await tab1.sendCmd('Emulation.setDeviceMetricsOverride', {
+        width: 1280,
+        height: 820,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      await new Promise(r => setTimeout(r, 800));
+      const desktopFocusLabel = await inspectTileTooltipGeometry(8, 1280, 820);
       console.log('  Desktop Focus Label on Tile 8:', desktopFocusLabel);
       testReport.visualShowcaseFixture.desktopFocusLabel = desktopFocusLabel;
 
-      // Capture Dev Fixture Desktop Overview
       console.log('  Capturing Dev Fixture Desktop 3D Tiers Overview (1280x820)...');
       const shotFixDesktop = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
       saveEvidence('fixture_showcase_tiers_desktop.png', Buffer.from(shotFixDesktop.data, 'base64'));
 
-      // Emulate Mobile for Dev Fixture
+      // 2. Mobile Viewport 390x844: Test 4 sides (Tile 8, 18, 28, 39)
       console.log('  Emulating Mobile for Dev Fixture 3D Tiers (390x844)...');
       await tab1.sendCmd('Emulation.setDeviceMetricsOverride', {
         width: 390,
@@ -1269,35 +1366,64 @@ async function main() {
       });
       await new Promise(r => setTimeout(r, 1500));
 
-      // Select Tile 8 on Mobile to showcase mobile readability
-      console.log('  Selecting Tile 8 on Mobile to showcase mobile tile-focus-label readability...');
-      await evalInPage(tab1.sendCmd, `() => {
-        if (window.__CONTROLLER__ && typeof window.__CONTROLLER__.selectTile === 'function') {
-          window.__CONTROLLER__.selectTile(8);
+      console.log('  Verifying tooltip geometry across all 4 sides on Mobile (390x844)...');
+      const mobile390Checks = [];
+      for (const tId of [8, 18, 28, 39]) {
+        const check = await inspectTileTooltipGeometry(tId, 390, 844);
+        console.log(`    Tile ${tId} on 390x844: fullyVisible=${check?.fullyVisible}, rect=${JSON.stringify(check?.rect)}`);
+        mobile390Checks.push(check);
+
+        // Capture side screenshot
+        if (tId === 8) {
+          const shotFixMobile = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('fixture_showcase_tiers_mobile.png', Buffer.from(shotFixMobile.data, 'base64'));
+        } else if (tId === 18) {
+          const shotSide1 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_mobile_tooltip_side1_left.png', Buffer.from(shotSide1.data, 'base64'));
+        } else if (tId === 28) {
+          const shotSide2 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_mobile_tooltip_side2_top.png', Buffer.from(shotSide2.data, 'base64'));
+        } else if (tId === 39) {
+          const shotSide3 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+          saveEvidence('screenshot_mobile_tooltip_side3_right.png', Buffer.from(shotSide3.data, 'base64'));
         }
-      }`);
-      await new Promise(r => setTimeout(r, 800));
+      }
 
-      const mobileFocusLabel = await evalInPage(tab1.sendCmd, `() => {
-        const label = document.querySelector('.tile-focus-label');
-        if (!label) return null;
-        return {
-          title: label.querySelector('strong')?.textContent.trim(),
-          tier: label.querySelector('.focus-tier')?.textContent.trim(),
-          owner: label.querySelector('.focus-owner')?.textContent.trim(),
-          price: label.querySelector('.focus-price-val')?.textContent.trim(),
-          left: label.style.left,
-          top: label.style.top,
-        };
-      }`);
-      console.log('  Mobile Focus Label on Tile 8:', mobileFocusLabel);
-      testReport.visualShowcaseFixture.mobileFocusLabel = mobileFocusLabel;
+      // 3. Mobile Narrow Viewport 360x800: Test 4 sides (Tile 8, 18, 28, 39)
+      console.log('  Emulating Mobile Narrow for Dev Fixture 3D Tiers (360x800)...');
+      await tab1.sendCmd('Emulation.setDeviceMetricsOverride', {
+        width: 360,
+        height: 800,
+        deviceScaleFactor: 2,
+        mobile: true,
+      });
+      await new Promise(r => setTimeout(r, 1200));
 
-      const shotFixMobile = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
-      saveEvidence('fixture_showcase_tiers_mobile.png', Buffer.from(shotFixMobile.data, 'base64'));
+      console.log('  Verifying tooltip geometry across all 4 sides on Mobile Narrow (360x800)...');
+      const mobile360Checks = [];
+      for (const tId of [8, 18, 28, 39]) {
+        const check = await inspectTileTooltipGeometry(tId, 360, 800);
+        console.log(`    Tile ${tId} on 360x800: fullyVisible=${check?.fullyVisible}, rect=${JSON.stringify(check?.rect)}`);
+        mobile360Checks.push(check);
+      }
+      const shotFixMobile360 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
+      saveEvidence('fixture_showcase_tiers_mobile_360x800.png', Buffer.from(shotFixMobile360.data, 'base64'));
 
       await tab1.sendCmd('Emulation.clearDeviceMetricsOverride');
+
+      testReport.visualShowcaseFixture.mobileFocusLabel = mobile390Checks.find(c => c.tileId === 8);
+      testReport.visualShowcaseFixture.geometryVerification = {
+        mobile390x844: mobile390Checks,
+        mobile360x800: mobile360Checks,
+        all390InBounds: mobile390Checks.every(c => c?.fullyVisible),
+        all360InBounds: mobile360Checks.every(c => c?.fullyVisible),
+      };
     }
+
+    testReport.tooltipInSafeBounds = Boolean(
+      testReport.visualShowcaseFixture?.geometryVerification?.all390InBounds &&
+      testReport.visualShowcaseFixture?.geometryVerification?.all360InBounds
+    );
 
     testReport.overallSuccess = Boolean(
       testReport.productionRuntimeIsolation?.isolated &&
@@ -1314,6 +1440,7 @@ async function main() {
       testReport.mobileSafeAreas?.camAboveTurn &&
       testReport.mobileSafeAreas?.dockPositionedAboveBoard &&
       testReport.visualShowcaseFixture.result?.success &&
+      testReport.tooltipInSafeBounds &&
       testReport.liveGameplayAction?.purchaseVerified &&
       testReport.liveGameplayAction?.synchronizedAcrossClients
     );
@@ -1323,12 +1450,15 @@ async function main() {
     fs.writeFileSync(path.join(outDirV28, 'browser-verification-v28.json'), jsonReport);
     fs.writeFileSync(path.join(outDirV29, 'browser-verification-v29.json'), jsonReport);
     fs.writeFileSync(path.join(outDirV30, 'browser-verification-v30.json'), jsonReport);
+    fs.writeFileSync(path.join(outDirV31, 'browser-verification-v31.json'), jsonReport);
     fs.writeFileSync(path.join(artifactDir, 'browser-verification-v29.json'), jsonReport);
     fs.writeFileSync(path.join(artifactDir, 'browser-verification-v30.json'), jsonReport);
+    fs.writeFileSync(path.join(artifactDir, 'browser-verification-v31.json'), jsonReport);
 
     console.log('\n========================================');
-    console.log('VERIFICATION SUMMARY V30:');
+    console.log('VERIFICATION SUMMARY V31:');
     console.log('  Overall Success:', testReport.overallSuccess);
+    console.log('  Tooltip Geometry in Safe Bounds (4 sides, 390x844 & 360x800):', testReport.tooltipInSafeBounds);
     console.log('  Git Commit Hash:', testReport.gitCommitHash);
     console.log('  Working Tree Clean:', testReport.workingTreeClean, `(${testReport.modifiedFilesCount} modified files)`);
     console.log('  Bundle Hashes:', JSON.stringify(testReport.bundleHashes));
@@ -1337,7 +1467,7 @@ async function main() {
     console.log('  Mobile Safe Areas Elements Found:', testReport.mobileSafeAreas.elementsFound);
     console.log('  Tools Dock Clearance to Board Top:', `${testReport.mobileSafeAreas.dockClearanceToProjectedBoardTopPx}px`);
     console.log('  Dev Visual Showcase Fixture (All 4 Tiers Verified):', testReport.visualShowcaseFixture.result?.success, JSON.stringify(testReport.visualShowcaseFixture.result?.verifiedTiers));
-    console.log('  Evidence saved to docs/review-v29-evidence/, docs/review-v30-evidence/.');
+    console.log('  Evidence saved to docs/review-v31-evidence/.');
     console.log('========================================\n');
 
   } catch (err) {

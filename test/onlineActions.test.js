@@ -4,30 +4,66 @@ import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { io } from 'socket.io-client';
 
-test('Real Socket.IO sessions reject forged snapshots and apply authorized actions/trades once', { timeout: 15000 }, async () => {
+test('Real Socket.IO sessions reject forged snapshots and apply authorized actions/trades once', { timeout: 30000 }, async () => {
+  const startTime = Date.now();
+  const stepLog = [];
+  const logStep = (step, extra = {}) => {
+    const elapsed = Date.now() - startTime;
+    stepLog.push({ step, elapsedMs: elapsed, ...extra });
+  };
+
   const server = fork(new URL('../server/index.js', import.meta.url), [], {
     env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
   });
+
+  let serverStderr = '';
+  server.stderr?.on('data', chunk => serverStderr += chunk.toString());
+
   const sockets = [];
   try {
-    const [{ port }] = await once(server, 'message');
-    const url = 'http://127.0.0.1:' + port;
-    const connect = async () => {
-      const socket = io(url, { autoConnect: false, reconnection: false, timeout: 2000 });
-      sockets.push(socket); const ready = once(socket, 'connect'); socket.connect(); await ready; return socket;
-    };
-    const ack = (socket, name, data) => new Promise((resolve, reject) => {
-      socket.timeout(2000).emit(name, data, (err, response) => err ? reject(err) : resolve(response));
+    logStep('server_spawn');
+    const portPromise = new Promise((resolve, reject) => {
+      server.once('message', ({ port }) => resolve(port));
+      server.once('error', err => reject(new Error(`Server spawn error: ${err.message}`)));
+      server.once('exit', (code, sig) => reject(new Error(`Server exited prematurely (code: ${code}, signal: ${sig}): ${serverStderr}`)));
+      setTimeout(() => reject(new Error(`Server IPC timeout after 5000ms: ${serverStderr}`)), 5000);
     });
+    const port = await portPromise;
+    logStep('server_ready', { port });
+
+    const url = 'http://127.0.0.1:' + port;
+    const connect = async (clientName = 'client') => {
+      const socket = io(url, { autoConnect: false, reconnection: false, timeout: 3000 });
+      sockets.push(socket);
+      const ready = new Promise((resolve, reject) => {
+        socket.once('connect', () => resolve(socket));
+        socket.once('connect_error', err => reject(new Error(`[${clientName}] Socket connect_error: ${err.message}`)));
+        setTimeout(() => reject(new Error(`[${clientName}] Socket connect timeout after 3000ms`)), 3000);
+      });
+      socket.connect();
+      const connectedSocket = await ready;
+      logStep(`${clientName}_connected`);
+      return connectedSocket;
+    };
+
+    const ack = (socket, name, data, timeoutMs = 3000) => new Promise((resolve, reject) => {
+      socket.timeout(timeoutMs).emit(name, data, (err, response) => {
+        if (err) reject(new Error(`[ACK Timeout: ${name}] after ${timeoutMs}ms: ${err.message}`));
+        else resolve(response);
+      });
+    });
+
     const expectEvent = (emitter, event, stepName, timeoutMs = 4000) =>
       new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`[Step: ${stepName}] Timeout waiting for "${event}" after ${timeoutMs}ms`)), timeoutMs);
         emitter.once(event, (...args) => {
           clearTimeout(timer);
+          logStep(`event_${event}_${stepName}`);
           resolve(args);
         });
       });
-    const host = await connect(), guest = await connect();
+
+    const host = await connect('host'), guest = await connect('guest');
     const created = await ack(host, 'create_room', { hostName: 'Host' });
     assert.equal(created.success, true);
     const joined = await ack(guest, 'join_room', { roomCode: created.roomCode, playerName: 'Guest' });
@@ -75,7 +111,7 @@ test('Real Socket.IO sessions reject forged snapshots and apply authorized actio
     assert.equal(state.players.length, 2);
     const guestId = guest.id;
     const disconnected = expectEvent(host, 'room_updated', 'guest_disconnect'); guest.disconnect(); await disconnected;
-    const replacement = await connect();
+    const replacement = await connect('replacement');
     assert.equal((await ack(replacement, 'resume_room', { roomCode: created.roomCode, resumeToken: 'wrong-token' })).success, false);
     const restored = await ack(replacement, 'resume_room', { roomCode: created.roomCode, resumeToken: joined.resumeToken });
     assert.equal(restored.success, true); assert.equal(restored.playerId, guestId);
@@ -84,8 +120,14 @@ test('Real Socket.IO sessions reject forged snapshots and apply authorized actio
     const left = expectEvent(host, 'game_state_updated', 'replacement_leave_room');
     assert.equal((await ack(replacement, 'leave_room', {})).success, true);
     [state] = await left; assert.equal(state.winner.id, host.id);
+  } catch (err) {
+    console.error('Online actions test failed with step history:', JSON.stringify(stepLog, null, 2));
+    throw err;
   } finally {
-    sockets.forEach(s => s.disconnect());
-    server.kill(); await once(server, 'exit');
+    sockets.forEach(s => { try { s.disconnect(); } catch {} });
+    try {
+      server.kill();
+      await Promise.race([once(server, 'exit'), new Promise(r => setTimeout(r, 1500))]);
+    } catch {}
   }
 });

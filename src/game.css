@@ -827,6 +827,23 @@
   background: rgba(52, 211, 153, 0.15);
 }
 
+@media (max-width: 640px) {
+  .tile-focus-label {
+    min-width: 120px;
+    max-width: min(210px, calc(100vw - 24px));
+    padding: 6px 10px;
+    border-radius: 10px;
+    gap: 2px;
+  }
+  .tile-focus-label strong {
+    font-size: 12px;
+  }
+  .tile-focus-label .focus-meta,
+  .tile-focus-label .focus-price {
+    font-size: 10px;
+  }
+}
+
 /* THÔNG BÁO LỖI / NOTICE */
 .game-notice {
   position: fixed;
