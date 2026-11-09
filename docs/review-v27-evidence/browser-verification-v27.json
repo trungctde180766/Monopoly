@@ -1,0 +1,228 @@
+{
+  "timestamp": "2026-11-08T14:11:40.634Z",
+  "gitCommitHash": "b5da0678fa245ab5ec527747b9f93371da226fcb",
+  "workingTreeClean": false,
+  "modifiedFilesCount": 65,
+  "bundleHashes": {
+    "Board3D-Bj_XohnI.js": "cee7b2c032a46649",
+    "index-DnTpCz7j.js": "de93eced9c444019"
+  },
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 820,
+      "deviceScaleFactor": 1
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2
+    }
+  },
+  "productionRuntimeIsolation": {
+    "windowHasController": false,
+    "controllerType": "undefined",
+    "hasInject": false,
+    "isolated": true
+  },
+  "chatVerification": {
+    "hostSentMessage": {
+      "success": true,
+      "inputCleared": false
+    },
+    "guestUnreadBadge": {
+      "hasBadge": true,
+      "badgeText": "1"
+    },
+    "disambiguationBySenderId": {
+      "count": 2,
+      "myMsgHasBan": true,
+      "guestMsgNoBan": true,
+      "timeFormatValid": true,
+      "parsed": [
+        {
+          "strong": "Thanh Trung (Bạn)",
+          "body": "Xin chào từ Host Thanh Trung!",
+          "time": "21:12"
+        },
+        {
+          "strong": "Thanh Trung",
+          "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
+          "time": "21:12"
+        }
+      ]
+    },
+    "tallMessageAutoScrollPin": {
+      "distanceFromBottom": 0,
+      "pinnedToBottom": true,
+      "scrollHeight": 310,
+      "scrollTop": 35,
+      "clientHeight": 275
+    },
+    "scrollUpPreserved": {
+      "currentScrollTop": 96,
+      "preservedReadingPosition": false
+    }
+  },
+  "interactiveInspection": {
+    "tileInspector": {
+      "title": "Bến Xe Miền Tây",
+      "statusBadge": "#01Chưa có chủ",
+      "price": "600k₫",
+      "hasDetailBtn": true
+    },
+    "deedModal": {
+      "title": "Bến Xe Miền Tây",
+      "rowCount": 5,
+      "rows": [
+        {
+          "label": "Đất trống",
+          "rent": "20k₫"
+        },
+        {
+          "label": "Nhà cấp 1",
+          "rent": "100k₫"
+        },
+        {
+          "label": "Nhà cấp 2",
+          "rent": "300k₫"
+        },
+        {
+          "label": "Biệt thự",
+          "rent": "900k₫"
+        },
+        {
+          "label": "Khách sạn Landmark",
+          "rent": "1.60M₫"
+        }
+      ]
+    }
+  },
+  "liveGameplayAction": {
+    "buildDialog": {
+      "open": false
+    }
+  },
+  "boardVerification": {
+    "canvasPresent": true,
+    "canvasRect": {
+      "top": 0,
+      "bottom": 728,
+      "left": 0,
+      "right": 1256,
+      "width": 1256,
+      "height": 728
+    },
+    "webglContextActive": true
+  },
+  "mobileSafeAreas": {
+    "elementsFound": true,
+    "camRect": {
+      "top": 148,
+      "bottom": 180,
+      "left": 8,
+      "right": 94,
+      "width": 86,
+      "height": 32
+    },
+    "hudRect": {
+      "top": 56,
+      "bottom": 133,
+      "left": 8,
+      "right": 382,
+      "width": 374,
+      "height": 77
+    },
+    "turnRect": {
+      "top": 764,
+      "bottom": 836,
+      "left": 15.6,
+      "right": 374.4,
+      "width": 358.8,
+      "height": 72
+    },
+    "dockRect": {
+      "top": 148,
+      "bottom": 198,
+      "left": 56,
+      "right": 382,
+      "width": 326,
+      "height": 50
+    },
+    "camBelowHud": true,
+    "camAboveTurn": true,
+    "dockPositionedAboveBoard": true,
+    "dockClearanceToProjectedBoardTopPx": 96
+  },
+  "visualShowcaseFixture": {
+    "fixtureType": "visual_showcase_dev_fixture",
+    "label": "[FIXTURE_VISUAL_SHOWCASE - NOT TRANSACTIONAL GAMEPLAY]",
+    "description": "Dedicated development fixture rendering all 4 architectural building tiers (Cottage, Townhouse, Resort Villa, Royal Landmark Castle) and contact shadows on the 3D board canvas.",
+    "result": {
+      "success": true,
+      "verifiedTiers": {
+        "1": {
+          "tileId": 1,
+          "houses": 1,
+          "owner": "player_user",
+          "tierName": "Cottage (Tier 1)"
+        },
+        "3": {
+          "tileId": 3,
+          "houses": 2,
+          "owner": "player_user",
+          "tierName": "Townhouse (Tier 2)"
+        },
+        "6": {
+          "tileId": 6,
+          "houses": 3,
+          "owner": "bot_1",
+          "tierName": "Resort Villa (Tier 3)"
+        },
+        "8": {
+          "tileId": 8,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "18": {
+          "tileId": 18,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "28": {
+          "tileId": 28,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "39": {
+          "tileId": 39,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        }
+      },
+      "canvasReady": true,
+      "webglContextActive": true
+    },
+    "desktopFocusLabel": {
+      "title": "Phố Cổ Hội An",
+      "tier": "🏨 Cấp 4 (Landmark)",
+      "owner": "👤 Đối thủ AI",
+      "price": "4M₫",
+      "left": "",
+      "top": ""
+    },
+    "mobileFocusLabel": {
+      "title": "Phố Cổ Hội An",
+      "tier": "🏨 Cấp 4 (Landmark)",
+      "owner": "👤 Đối thủ AI",
+      "price": "4M₫",
+      "left": "316.97px",
+      "top": "270.694px"
+    }
+  },
+  "overallSuccess": false
+}

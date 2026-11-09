@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-11-09T07:30:52.442Z",
+  "mode": "actual fixture callback with controlled fake controller/DOM; no browser launch",
+  "injectFunctionPresent": false,
+  "gameStatePresent": false,
+  "startCalls": 0,
+  "reportedResult": {
+    "success": false,
+    "reason": "injectVisualShowcaseState method is missing on controller in DEV mode"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "mode": "layout arithmetic counterexample; not React or browser execution",
+  "before": {
+    "scrollHeight": 1000,
+    "clientHeight": 300,
+    "scrollTop": 700
+  },
+  "after": {
+    "scrollHeight": 1120,
+    "clientHeight": 300,
+    "scrollTop": 700
+  },
+  "threshold": 80,
+  "wasAtBottom": true,
+  "distanceAfter": 120,
+  "currentConditionWouldScroll": false
+}

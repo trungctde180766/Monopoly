@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-11-08T05:07:55.904Z",
+  "url": "https://monopoly-silk-ten.vercel.app",
+  "commit": "b5da067",
+  "redisPlan": "Free 30 MB ($0/month)",
+  "vercelPlan": "Hobby",
+  "health": {
+    "status": "ok",
+    "edition": "Business Tour 3D Monopoly Vietnam",
+    "protocol": "actions-v1",
+    "backend": "redis",
+    "activeRooms": 0,
+    "timestamp": "2026-11-08T05:07:56.784Z"
+  },
+  "passed": [
+    "public Redis health",
+    "two WebSocket clients",
+    "create/join/ready/start",
+    "chat",
+    "trade and persisted balances",
+    "roll/decisions/end turn",
+    "resume and superseded-session fencing"
+  ],
+  "healthAfterCleanup": {
+    "status": "ok",
+    "edition": "Business Tour 3D Monopoly Vietnam",
+    "protocol": "actions-v1",
+    "backend": "redis",
+    "activeRooms": 0,
+    "timestamp": "2026-11-08T05:08:05.983Z"
+  }
+}

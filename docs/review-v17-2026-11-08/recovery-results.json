@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-11-08T06:17:39.006Z",
+  "middlewareRecovery": {
+    "firstError": "Chưa kết nối được kho dữ liệu phòng chơi.",
+    "activeAfterRejection": false,
+    "connectedAfterStoreRestored": false,
+    "connectedAfterExplicitConnect": true
+  },
+  "resumeTimeout": {
+    "mode": "actual hook body with controlled hooks/socket/storage",
+    "tokenPresentBefore": true,
+    "tokenPresentAfter": false,
+    "screenAfter": "lobby",
+    "errorAfter": "Không khôi phục được phiên chơi."
+  }
+}

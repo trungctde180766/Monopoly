@@ -1,0 +1,7 @@
+{
+  "checkedAt": "2026-11-08T11:12:55.618Z",
+  "mode": "actual scroll handler and effect extracted from source; DOM dimensions controlled, not browser/React render",
+  "tallMessageAtBottomTriggersScroll": true,
+  "readingHistoryDoesNotTriggerAdditionalScroll": true,
+  "onScrollWired": true
+}

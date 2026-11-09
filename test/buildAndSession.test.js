@@ -176,3 +176,41 @@ test('Hops finish exactly at the newest destination slot across frame rates and 
     assert.equal(frame.done, true); assert.equal(frame.x, hop.targetLayout.x); assert.equal(frame.z, hop.targetLayout.z); assert.equal(frame.y, 0.25);
   }
 });
+test('R01 & Q01 Fix: Production bundle excludes window.__CONTROLLER__ and injectVisualShowcaseState', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const crypto = await import('node:crypto');
+  const assetsDir = path.resolve('dist/assets');
+
+  if (!fs.existsSync(assetsDir)) {
+    if (process.env.REQUIRE_PRODUCTION_BUILD) {
+      assert.fail('dist/assets directory is missing. Run `npm run build` before release verification.');
+    } else {
+      t.skip('Skipping: dist/assets not found. Run `npm run build` first to verify production bundle tree-shaking.');
+      return;
+    }
+  }
+
+  const jsFiles = fs.readdirSync(assetsDir).filter(f => f.endsWith('.js'));
+  assert.ok(jsFiles.length > 0, 'dist/assets must contain built javascript bundles');
+  for (const file of jsFiles) {
+    const filePath = path.join(assetsDir, file);
+    const code = fs.readFileSync(filePath, 'utf8');
+    const sha256 = crypto.createHash('sha256').update(code).digest('hex').slice(0, 16);
+    assert.equal(
+      code.includes('__CONTROLLER__'),
+      false,
+      `${file} (SHA256: ${sha256}) must not contain __CONTROLLER__`
+    );
+    assert.equal(
+      code.includes('injectVisualShowcaseState'),
+      false,
+      `${file} (SHA256: ${sha256}) must not contain injectVisualShowcaseState`
+    );
+    assert.equal(
+      code.includes('getDevState'),
+      false,
+      `${file} (SHA256: ${sha256}) must not contain getDevState`
+    );
+  }
+});

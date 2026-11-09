@@ -1,0 +1,7 @@
+{
+  "bundle": "index-BtSyCalT.js",
+  "controllerGlobalPresent": true,
+  "showcaseSetterPresent": true,
+  "controllerSnippet": ".props.children}};function Si(){let e=Wr();typeof window<`u`&&typeof process>`u`&&(window.__CONTROLLER__=e);let{game:t,screen:n,mode:r,myId:i,busy:a,animat",
+  "productionGuardResultWithoutNodeProcess": true
+}

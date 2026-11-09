@@ -22,6 +22,7 @@ export class RedisRoomStore extends EventEmitter {
   constructor({ endpoint = process.env.REDIS_URL, prefix = process.env.REDIS_KEY_PREFIX || 'cotyphu', ttlSeconds = 86400 } = {}) {
     super();
     if (!endpoint || !/^rediss?:\/\//.test(endpoint)) throw new Error('Cần REDIS_URL dạng redis:// hoặc rediss://; REST URL không phải Redis TCP URL.');
+    this.endpoint = endpoint;
     this.backend = 'redis';
     this.base = `${prefix}:{rooms}:`;
     this.channel = this.base + 'events';
@@ -30,28 +31,83 @@ export class RedisRoomStore extends EventEmitter {
     this.instanceId = randomUUID();
     this.rooms = new Map();
     this.seen = new Set();
-    this.client = createClient({ url: endpoint, socket: { connectTimeout: 2000, reconnectStrategy: false } });
-    this.subscriber = this.client.duplicate();
-    for (const client of [this.client, this.subscriber]) client.on('error', () => {
-      this.emit('store_error', new Error('Mất kết nối kho dữ liệu Redis.'));
-    });
     this.connection = null;
     this.closed = false;
+    this._initClients();
+  }
+
+  _initClients() {
+    this.hasConnected = false;
+    this.subscribed = false;
+    this.client = createClient({
+      url: this.endpoint,
+      socket: {
+        connectTimeout: 2000,
+        reconnectStrategy: retries => {
+          if (this.closed || !this.hasConnected) return false;
+          return Math.min(retries * 50, 1000);
+        }
+      }
+    });
+    this.subscriber = this.client.duplicate();
+    for (const c of [this.client, this.subscriber]) {
+      c.on('ready', () => { this.hasConnected = true; });
+      c.on('error', () => {
+        this.emit('store_error', new Error('Mất kết nối kho dữ liệu Redis.'));
+      });
+    }
+    this.subscriber.on('error', () => { this.subscribed = false; });
+    this.subscriber.on('end', () => { this.subscribed = false; });
   }
 
   ready() {
     if (this.closed) return Promise.reject(new Error('Kho dữ liệu đã đóng.'));
+    if (this.client?.isReady && this.subscriber?.isReady && this.subscribed) return Promise.resolve();
+
     if (!this.connection) {
       this.connection = (async () => {
         try {
-          await Promise.all([this.client.connect(), this.subscriber.connect()]);
-          await this.subscriber.subscribe(this.channel, raw => {
-            try { this.receive(JSON.parse(raw)); } catch { /* Invalid pub/sub payload is not a state commit. */ }
-          });
-        } catch {
-          for (const client of [this.client, this.subscriber]) if (client.isOpen) client.destroy();
-          this.connection = null;
+          if (!this.client.isOpen) await this.client.connect();
+          if (!this.subscriber.isOpen) await this.subscriber.connect();
+
+          const waitForReady = (c) => {
+            if (c.isReady) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+              const onReady = () => { cleanup(); resolve(); };
+              const onError = (err) => { cleanup(); reject(err); };
+              const onEnd = () => { cleanup(); reject(new Error('Redis connection ended')); };
+              const timer = setTimeout(() => { cleanup(); reject(new Error('Redis connection timeout')); }, 2500);
+              const cleanup = () => {
+                clearTimeout(timer);
+                c.off('ready', onReady);
+                c.off('error', onError);
+                c.off('end', onEnd);
+              };
+              c.once('ready', onReady);
+              c.once('error', onError);
+              c.once('end', onEnd);
+            });
+          };
+
+          await Promise.all([waitForReady(this.client), waitForReady(this.subscriber)]);
+
+          if (!this.subscribed) {
+            await this.subscriber.subscribe(this.channel, raw => {
+              try { this.receive(JSON.parse(raw)); } catch { /* Invalid pub/sub payload is not a state commit. */ }
+            });
+            this.subscribed = true;
+            this.emit('store_reconnected');
+          }
+        } catch (error) {
+          this.subscribed = false;
+          if (!this.client?.isOpen || !this.subscriber?.isOpen) {
+            try { if (this.client?.isOpen) this.client.destroy(); } catch {}
+            try { if (this.subscriber?.isOpen) this.subscriber.destroy(); } catch {}
+            this._initClients();
+          }
           throw new Error('Không kết nối được Redis. Kiểm tra REDIS_URL, TLS và thông tin đăng nhập.');
+        } finally {
+          this.connection = null;
         }
       })();
     }

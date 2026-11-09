@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: R01 & Q01 Fix: Production bundle excludes window.__CONTROLLER__ and injectVisualShowcaseState
+ok 1 - R01 & Q01 Fix: Production bundle excludes window.__CONTROLLER__ and injectVisualShowcaseState # SKIP Skipping: dist/assets not found. Run `npm run build` first to verify production bundle tree-shaking.
+  ---
+  duration_ms: 5.9323
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 226.908

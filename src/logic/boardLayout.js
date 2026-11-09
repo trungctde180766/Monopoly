@@ -12,10 +12,13 @@ export function getTile3DTransform(tileId) {
 
 export function getBoardCameraPose({ theta, phi, radius }, aspect = 1) {
   const topView = phi < 0.15;
-  const effectiveRadius = radius * Math.max(1, (topView ? 1 : 1.42) / Math.max(0.1, aspect));
+  const isPortrait = aspect < 0.85;
+  const portraitFactor = topView ? 0.98 : 1.25;
+  const effectiveRadius = radius * Math.max(1, (isPortrait ? portraitFactor : (topView ? 1 : 1.30)) / Math.max(0.1, aspect));
+  const targetY = topView ? 0 : (isPortrait ? 1.2 : -radius / 6);
   return {
     position: { x: effectiveRadius * Math.sin(phi) * Math.sin(theta), y: effectiveRadius * Math.cos(phi), z: effectiveRadius * Math.sin(phi) * Math.cos(theta) },
-    target: { x: 0, y: topView ? 0 : -radius / 6, z: 0 },
+    target: { x: 0, y: targetY, z: 0 },
   };
 }
 export function getTileLayoutVectors(side) {

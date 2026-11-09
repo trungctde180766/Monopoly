@@ -9,7 +9,7 @@
     "start": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test/gameRules.test.js && node --import ./test/setup.mjs --test test/buildAndSession.test.js test/onlineActions.test.js test/reviewV6.test.js test/reviewV7.test.js test/reviewV9.test.js test/reviewV10.test.js test/reviewV11.test.js test/reviewV12.test.js test/reviewV13.test.js test/reviewV14.test.js",
+    "test": "node test/gameRules.test.js && node --import ./test/setup.mjs --test --test-concurrency=1 test/buildAndSession.test.js test/onlineActions.test.js test/reviewV6.test.js test/reviewV7.test.js test/reviewV9.test.js test/reviewV10.test.js test/reviewV11.test.js test/reviewV12.test.js test/reviewV13.test.js test/reviewV14.test.js test/reviewV15.test.js test/reviewV16.test.js test/reviewV17.test.js test/reviewV18.test.js test/reviewV19.test.js test/reviewV20.test.js test/reviewV21.test.js test/reviewV22.test.js",
     "test:redis": "node --import ./test/setup.mjs --test test/redisIntegration.test.js"
   },
   "dependencies": {

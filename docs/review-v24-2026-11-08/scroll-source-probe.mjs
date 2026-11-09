@@ -1,0 +1,18 @@
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const source=await fs.readFile(new URL('../../src/components/GameInterface.jsx',import.meta.url),'utf8');
+const start=source.indexOf('  const handleChatScroll =');
+const end=source.indexOf('  const unreadCount =',start);
+assert.ok(start>0&&end>start);
+const container={scrollHeight:1000,scrollTop:700,clientHeight:300};
+const effects=[],calls=[],pinned={current:true};
+const context={chatContainerRef:{current:container},isAtBottomRef:pinned,isChatOpen:true,chatMessages:[{}],messagesEndRef:{current:{scrollIntoView(options){calls.push(options);}}},setLastReadCount(){},useEffect(fn){effects.push(fn);},setTimeout(fn){fn();return 1;},clearTimeout(){}};
+const handle=vm.runInNewContext(source.slice(start,end)+'\nhandleChatScroll;',context);
+handle();container.scrollHeight=1120;effects[1]();
+assert.equal(calls.length,1);
+container.scrollTop=200;handle();container.scrollHeight+=120;effects[1]();
+assert.equal(calls.length,1);
+const result={checkedAt:new Date().toISOString(),mode:'actual scroll handler and effect extracted from source; DOM dimensions controlled, not browser/React render',tallMessageAtBottomTriggersScroll:true,readingHistoryDoesNotTriggerAdditionalScroll:true,onScrollWired:source.includes('onScroll={handleChatScroll}')};
+assert.equal(result.onScrollWired,true);
+await fs.writeFile(new URL('./scroll-source-results.json',import.meta.url),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));

@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-08T13:17:10.684Z",
+  "images": [
+    {
+      "source": "docs/review-v28-evidence/fixture_showcase_tiers_desktop.png",
+      "capturedCopy": "docs/review-v29-2026-11-08/fixture_showcase_tiers_desktop.png",
+      "sha256": "bccfe97b466043fa99fc9a751ea7e88c62d145a74f03fb1380d4cc09168bfc25"
+    },
+    {
+      "source": "docs/review-v28-evidence/screenshot_build_dialog_live.png",
+      "capturedCopy": "docs/review-v29-2026-11-08/screenshot_build_dialog_live.png",
+      "sha256": "b8752467f658b7892ce1373493ff2c738c48b946a2a02e405953ad6fa4a51e29"
+    },
+    {
+      "source": "docs/review-v28-evidence/screenshot_live_gameplay_property_purchased.png",
+      "capturedCopy": "docs/review-v29-2026-11-08/screenshot_live_gameplay_property_purchased.png",
+      "sha256": "d1fd39de14b1f093f3255d06e5f4ebe58fe2c8a03dfc4d26f8c27e2822916dae"
+    }
+  ]
+}

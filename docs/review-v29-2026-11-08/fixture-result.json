@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-11-08T13:18:46.626Z",
+  "mode": "actual fixture callback with controlled fake controller/DOM; no browser launch",
+  "injectFunctionPresent": false,
+  "gameStatePresent": false,
+  "startCalls": 1,
+  "reportedResult": {
+    "success": true,
+    "injectedTiers": {
+      "1": "Cottage (Tier 1)",
+      "3": "Townhouse (Tier 2)",
+      "6": "Resort Villa (Tier 3)",
+      "8": "Royal Landmark Castle (Tier 4)"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "checkedAt": "2026-11-08T05:56:24.777Z",
+  "mode": "fault injection with in-memory transport doubles",
+  "subscriptionAttempted": true,
+  "subscriptionSucceeded": false,
+  "readyResolves": true
+}

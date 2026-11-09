@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-08T05:54:11.015Z",
+  "requestedEndpoint": "redis://127.0.0.1:16391",
+  "storedEndpointType": "undefined",
+  "clientOptionUrl": null,
+  "controlPing": "PONG",
+  "connectionErrors": [
+    {
+      "code": "ECONNREFUSED",
+      "address": "::1",
+      "port": 6379
+    },
+    {
+      "code": "ECONNREFUSED",
+      "address": "127.0.0.1",
+      "port": 6379
+    }
+  ],
+  "storeReady": false,
+  "storeError": "Không kết nối được Redis. Kiểm tra REDIS_URL, TLS và thông tin đăng nhập."
+}

@@ -23,8 +23,12 @@ class BoardErrorBoundary extends React.Component {
 
 export default function App() {
   const controller = useGameController();
-  const { game, screen, mode, myId, busy, animation } = controller;
   const [viewMode, setViewMode] = useState('3d'), [selectedTileId, setSelectedTileId] = useState(null);
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+    window.__CONTROLLER__ = controller;
+    controller.selectTile = setSelectedTileId;
+  }
+  const { game, screen, mode, myId, busy, animation } = controller;
   const [deedTile, setDeedTile] = useState(null), [showManage, setShowManage] = useState(false), [showTrade, setShowTrade] = useState(false);
   const [showLog, setShowLog] = useState(false), [buildPreview, setBuildPreview] = useState(null);
   const [isMuted, setIsMuted] = useState(false), [musicPlaying, setMusicPlaying] = useState(false), [now, setNow] = useState(Date.now());
@@ -41,7 +45,22 @@ export default function App() {
   useEffect(() => { if (buildPreview) setViewMode('3d'); }, [buildPreview]);
   const toggleMute = () => setIsMuted(soundFX.toggleMute());
   const toggleMusic = () => setMusicPlaying(soundFX.toggleBGM());
-  const notice = controller.error && <div className="game-notice" role="alert"><span>{controller.error}</span><button onClick={controller.clearError} aria-label="Đóng thông báo"><X size={18} /></button></div>;
+  const notice = controller.error && (
+    <div className="game-notice" role="alert">
+      <span>{controller.error}</span>
+      {controller.isReconnecting && (
+        <button
+          type="button"
+          onClick={controller.retryConnect}
+          className="ml-2 px-2 py-0.5 bg-amber-500/30 hover:bg-amber-500/50 rounded text-xs text-amber-200 border border-amber-400/40 cursor-pointer"
+          aria-label="Thử kết nối lại"
+        >
+          Thử lại
+        </button>
+      )}
+      <button onClick={controller.clearError} aria-label="Đóng thông báo"><X size={18} /></button>
+    </div>
+  );
   if (screen === 'lobby') return <><Lobby
     onStartPassAndPlay={({ players, customRules }) => controller.startLocal(players, customRules)}
     onStartQuickBot={({ freeParkingJackpot }) => controller.startLocal([
@@ -53,10 +72,12 @@ export default function App() {
     onStartOnlineHost={controller.createRoom} onStartOnlineJoin={controller.joinRoom}
     isMuted={isMuted} onToggleMute={toggleMute} isSocketConnected={controller.connected}
   />{notice}</>;
-  if (screen === 'online_waiting') return <><OnlineRoom room={controller.room} currentSocketId={myId} disabled={busy || !controller.connected} onToggleReady={controller.toggleReady} onStartGame={controller.startOnline} onLeaveRoom={controller.leave} onSendChat={controller.sendChat} chatMessages={controller.chatMessages} />{notice}</>;
+  if (screen === 'online_waiting') return <><OnlineRoom room={controller.room} currentSocketId={myId} disabled={busy || !controller.connected || controller.isResuming} onToggleReady={controller.toggleReady} onStartGame={controller.startOnline} onLeaveRoom={controller.leave} onSendChat={controller.sendChat} chatMessages={controller.chatMessages} />{notice}</>;
   if (!game) return notice;
   const player = game.players[game.turnIndex], myTurn = mode !== 'online' || player.id === myId;
-  const canAct = myTurn && !player.isBot && !busy && !animation.rolling && !animation.hopping && !game.winner;
+  const isOnlineConnected = mode !== 'online' || (controller.connected && !controller.isResuming);
+  const canAct = isOnlineConnected && myTurn && !player.isBot && !busy && !animation.rolling && !animation.hopping && !game.winner;
+  const canTrade = canAct && player.money >= 0 && !game.pendingDecision && !controller.pendingTrade;
   const decision = canAct && !player.isBot ? game.pendingDecision : null;
   const managedPlayer = mode === 'online' ? game.players.find(p => p.id === myId) : player;
   const elapsed = Math.max(0, Math.floor((now - game.startedAt) / 1000));
@@ -66,10 +87,10 @@ export default function App() {
   const pendingTile = decision?.tileId !== undefined ? BOARD_TILES[decision.tileId] : null;
   return <>
     <GameInterface controller={controller} selectedTileId={selectedTileId} onSelectTile={setSelectedTileId} onDetails={setDeedTile}
-      onManage={() => { setShowManage(true); setShowTrade(false); }} onTrade={() => { if (canAct) { setShowTrade(true); setShowManage(false); } }}
+      onManage={() => { setShowManage(true); setShowTrade(false); }} onTrade={() => { if (canTrade) { setShowTrade(true); setShowManage(false); } }}
       onToggleLog={() => setShowLog(open => !open)} isLogOpen={showLog} onViewMode={() => setViewMode(view => view === '3d' ? '2d' : '3d')}
       viewMode={viewMode} isMuted={isMuted} onToggleMute={toggleMute} musicPlaying={musicPlaying} onToggleMusic={toggleMusic} elapsed={clock} onLeave={controller.leave}>
-      {viewMode === '3d' ? <BoardErrorBoundary fallback={flatBoard}><Suspense fallback={<div className="board-loading" role="status">Đang dựng bàn chơi…</div>}><Board3D {...boardProps} dice={game.dice} isRolling={animation.rolling} selectedTileId={selectedTileId ?? player.position} buildPreview={buildPreview} /></Suspense></BoardErrorBoundary> : flatBoard}
+      {viewMode === '3d' ? <BoardErrorBoundary fallback={flatBoard}><Suspense fallback={<div className="board-loading" role="status">Đang dựng bàn chơi…</div>}><Board3D {...boardProps} dice={game.dice} isRolling={animation.rolling} selectedTileId={selectedTileId} buildPreview={buildPreview} /></Suspense></BoardErrorBoundary> : flatBoard}
     </GameInterface>
     {notice}
     {deedTile && <DeedModal tile={deedTile} propertiesState={game.propertiesState} players={game.players} dice={game.dice} onClose={() => setDeedTile(null)} />}

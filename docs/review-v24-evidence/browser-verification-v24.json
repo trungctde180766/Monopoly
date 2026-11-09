@@ -1,0 +1,154 @@
+{
+  "timestamp": "2026-11-08T12:26:13.035Z",
+  "gitCommitHash": "b5da0678fa245ab5ec527747b9f93371da226fcb",
+  "workingTreeClean": false,
+  "modifiedFilesCount": 53,
+  "bundleHashes": {
+    "Board3D-D9HDSj6O.js": "388621508fd70a1d",
+    "index-C_2XOu1A.js": "e56065259c8be049"
+  },
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 820,
+      "deviceScaleFactor": 1
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2
+    }
+  },
+  "productionRuntimeIsolation": {
+    "windowHasController": false,
+    "controllerType": "undefined",
+    "hasInject": false,
+    "isolated": true
+  },
+  "visualShowcase": {
+    "fixtureType": "visual_showcase",
+    "description": "Visual rendering showcase fixture to verify 3D building tiers (Cottage, Townhouse, Resort Villa, Royal Landmark Castle) and contact shadows across desktop and mobile screens. Distinct from transactional gameplay rules verification.",
+    "appliedTiers": {
+      "1": "Cottage (Tier 1)",
+      "3": "Townhouse (Tier 2)",
+      "6": "Resort Villa (Tier 3)",
+      "8": "Royal Landmark Castle (Tier 4)",
+      "11": "Cottage (Tier 1)",
+      "13": "Townhouse (Tier 2)",
+      "16": "Resort Villa (Tier 3)",
+      "18": "Royal Landmark Castle (Tier 4)"
+    },
+    "runtimeProductionProtected": true,
+    "note": "In production builds (V26 R01 fix), debug hooks (window.__CONTROLLER__, injectVisualShowcaseState) are stripped at compile-time by Vite tree-shaking via import.meta.env.DEV. The board rendered is the live multiplayer game board synchronized via server WebSocket.",
+    "appliedInRuntime": false
+  },
+  "boardVerification": {
+    "canvasPresent": true,
+    "canvasRect": {
+      "top": 0,
+      "bottom": 728,
+      "left": 0,
+      "right": 1256,
+      "width": 1256,
+      "height": 728
+    },
+    "webglContextActive": true
+  },
+  "mobileSafeAreas": {
+    "elementsFound": true,
+    "camRect": {
+      "top": 148,
+      "bottom": 180,
+      "left": 8,
+      "right": 94,
+      "width": 86,
+      "height": 32
+    },
+    "hudRect": {
+      "top": 56,
+      "bottom": 133,
+      "left": 8,
+      "right": 382,
+      "width": 374,
+      "height": 77
+    },
+    "turnRect": {
+      "top": 764,
+      "bottom": 836,
+      "left": 15.6,
+      "right": 374.4,
+      "width": 358.8,
+      "height": 72
+    },
+    "dockRect": {
+      "top": 148,
+      "bottom": 198,
+      "left": 56,
+      "right": 382,
+      "width": 326,
+      "height": 50
+    },
+    "camBelowHud": true,
+    "camAboveTurn": true,
+    "dockPositionedAboveBoard": true,
+    "dockClearOfBoard": true,
+    "dockClearanceToProjectedBoardTopPx": 96,
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "devicePixelRatio": 2
+    }
+  },
+  "chatVerification": {
+    "hostSentMessage": {
+      "success": true,
+      "inputCleared": true
+    },
+    "guestUnreadBadge": {
+      "hasBadge": true,
+      "badgeText": "1"
+    },
+    "guestReceivedHostMessage": {
+      "bubbleCount": 1,
+      "badgeCleared": true,
+      "messages": [
+        "Thanh Trung 19:26Xin chào từ Host Thanh Trung!"
+      ]
+    },
+    "disambiguationBySenderId": {
+      "count": 2,
+      "myMsgHasBan": true,
+      "guestMsgNoBan": true,
+      "timeFormatValid": true,
+      "parsed": [
+        {
+          "strong": "Thanh Trung (Bạn)",
+          "body": "Xin chào từ Host Thanh Trung!",
+          "time": "19:26"
+        },
+        {
+          "strong": "Thanh Trung",
+          "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
+          "time": "19:26"
+        }
+      ]
+    },
+    "tallMessageAutoScrollPin": {
+      "distanceFromBottom": 0,
+      "pinnedToBottom": true,
+      "scrollHeight": 387,
+      "scrollTop": 112,
+      "clientHeight": 275
+    },
+    "scrollUpPreserved": {
+      "currentScrollTop": 10,
+      "preservedReadingPosition": true,
+      "distanceFromBottom": 162
+    },
+    "drawerMutualExclusion": {
+      "chatClosedWhenLogOpened": true,
+      "logClosedWhenChatOpened": true
+    }
+  },
+  "overallSuccess": true
+}

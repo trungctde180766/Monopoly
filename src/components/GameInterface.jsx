@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight, Building2, Handshake, History, Volume2, VolumeX, Music2,
-  LogOut, ChevronDown, Info, Expand, MapPin, X
+  LogOut, ChevronDown, Info, Expand, MapPin, X, MessageSquare, Send
 } from 'lucide-react';
 import { BOARD_TILES, TOKENS } from '../data/boardData.js';
 import { formatVND } from '../logic/gameEngine.js';
@@ -80,6 +80,84 @@ export default function GameInterface({
   const modeLabel = mode === 'online' ? 'Online' : mode === 'quick' ? 'AI Bots' : 'Pass & Play';
   const mainAction = () => turn.action === 'manage' ? onManage() : controller.dispatch(turn.action);
 
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [lastReadCount, setLastReadCount] = useState(0);
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const [chatSendError, setChatSendError] = useState('');
+  const chatMessages = controller.chatMessages || [];
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+
+  // Monitor user scrolling: when user is within 30px of bottom, mark as pinned to bottom.
+  // When user scrolls up to read history, unpin so incoming messages don't interrupt reading.
+  const handleChatScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isAtBottomRef.current = distanceFromBottom <= 30;
+  };
+
+  // When drawer opens, reset to bottom and scroll to newest messages
+  useEffect(() => {
+    if (isChatOpen) {
+      isAtBottomRef.current = true;
+      setLastReadCount(chatMessages.length);
+      const timer = setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [isChatOpen]);
+
+  // When new messages arrive while chat is open:
+  // If user was already pinned to bottom before the new message rendered,
+  // continue pinning them to the bottom regardless of how tall the new message is!
+  useEffect(() => {
+    if (isChatOpen) {
+      setLastReadCount(chatMessages.length);
+      if (isAtBottomRef.current) {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }
+    }
+  }, [chatMessages.length, isChatOpen]);
+
+  const unreadCount = isChatOpen ? 0 : Math.max(0, chatMessages.length - lastReadCount);
+
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    const trimmed = chatInput.trim();
+    if (!trimmed || !connected || controller.isResuming || isSendingChat) return;
+    setIsSendingChat(true);
+    setChatSendError('');
+    try {
+      const res = await controller.sendChat?.(trimmed);
+      if (res?.success !== false) {
+        setChatInput('');
+        isAtBottomRef.current = true;
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 50);
+      } else {
+        setChatSendError(res?.message || 'Không thể gửi tin nhắn.');
+      }
+    } catch {
+      setChatSendError('Lỗi kết nối khi gửi.');
+    } finally {
+      setIsSendingChat(false);
+    }
+  };
+
   return (
     <main className="game-shell">
       {/* 1. SÂN KHẤU BÀN CHƠI CHÍNH (FULL VIEWPORT ARENA) */}
@@ -94,6 +172,7 @@ export default function GameInterface({
         propertiesState={state.propertiesState}
         onOpenManage={onManage}
         onOpenTrade={onTrade}
+        canTrade={canTrade}
         gameLog={state.gameLog}
         isLogOpen={isLogOpen}
         onToggleLog={onToggleLog}
@@ -142,11 +221,35 @@ export default function GameInterface({
         </button>
         <button
           className={`tool-btn ${isLogOpen ? 'is-active' : ''}`}
-          onClick={onToggleLog}
+          onClick={() => {
+            if (!isLogOpen && isChatOpen) setIsChatOpen(false);
+            onToggleLog();
+          }}
           title="Nhật ký ván chơi"
         >
           <History size={16} />
         </button>
+        {mode === 'online' && (
+          <button
+            className={`tool-btn ${isChatOpen ? 'is-active' : ''} relative`}
+            onClick={() => {
+              setIsChatOpen(open => {
+                if (!open) {
+                  setLastReadCount(chatMessages.length);
+                  if (isLogOpen) onToggleLog();
+                }
+                return !open;
+              });
+            }}
+            title="Trò chuyện trong ván"
+            aria-label="Trò chuyện trong ván"
+          >
+            <MessageSquare size={16} />
+            {unreadCount > 0 && !isChatOpen && (
+              <span className="chat-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+            )}
+          </button>
+        )}
         <button
           className="tool-btn"
           onClick={onManage}
@@ -225,6 +328,74 @@ export default function GameInterface({
             ))}
           </ol>
         </section>
+      )}
+      {/* 8. IN-GAME CHAT DRAWER */}
+      {mode === 'online' && isChatOpen && (
+        <aside className="in-game-chat-drawer" aria-label="Khung trò chuyện trong ván">
+          <div className="chat-drawer-header">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={15} className="text-cyan-400" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Trò chuyện trong ván</h3>
+            </div>
+            <button
+              onClick={() => setIsChatOpen(false)}
+              className="p-1 hover:bg-slate-800 rounded text-slate-400 transition"
+              aria-label="Đóng chat"
+            >
+              <X size={15} />
+            </button>
+          </div>
+          <div ref={chatContainerRef} onScroll={handleChatScroll} className="chat-drawer-messages">
+            {chatMessages.length === 0 ? (
+              <div className="text-center py-10 text-slate-500 text-xs italic">
+                Chưa có tin nhắn nào trong trận.
+              </div>
+            ) : (
+              chatMessages.map(msg => {
+                const isMe = (msg.senderId && msg.senderId === myId) || (!msg.senderId && state.players.find(p => p.id === myId)?.name === msg.senderName);
+                const timeStr = msg.time || (msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '');
+                return (
+                  <div key={msg.id} className="chat-msg-bubble">
+                    <div className="flex items-center justify-between text-[11px] mb-0.5">
+                      <strong className={isMe ? 'text-cyan-400' : 'text-amber-400'}>
+                        {msg.senderName} {isMe ? '(Bạn)' : ''}
+                      </strong>
+                      <span className="text-[10px] text-slate-500">
+                        {timeStr}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-200 break-words">{msg.message}</p>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          {chatSendError && (
+            <div className="text-[11px] text-rose-400 px-3 py-1 bg-rose-950/60 border-t border-rose-900/40">
+              {chatSendError}
+            </div>
+          )}
+          <form onSubmit={handleSendChat} className="chat-drawer-input">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={e => { setChatInput(e.target.value); setChatSendError(''); }}
+              placeholder={controller.isResuming ? 'Đang đồng bộ...' : 'Nhập tin nhắn...'}
+              maxLength={120}
+              disabled={!connected || controller.isResuming || isSendingChat}
+              className="chat-input-field"
+            />
+            <button
+              type="submit"
+              disabled={!connected || controller.isResuming || isSendingChat || !chatInput.trim()}
+              className="chat-send-btn"
+              aria-label="Gửi tin nhắn"
+            >
+              <Send size={14} />
+            </button>
+          </form>
+        </aside>
       )}
     </main>
   );

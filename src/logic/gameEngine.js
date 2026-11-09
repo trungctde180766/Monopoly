@@ -323,16 +323,16 @@ export function calculateMaxLiquidatable(player, propertiesState) {
   return currentCash + assetValue;
 }
 
-// Format tiền tệ Việt Nam hiển thị đẹp mắt
+// Format tiền tệ Việt Nam hiển thị gọn gàng, không bị ngắt dòng ký hiệu ₫ trên mobile
 export function formatVND(amount) {
   if (amount === undefined || amount === null) return '0₫';
   if (Math.abs(amount) >= 1000000) {
     const m = (amount / 1000000).toFixed(2).replace(/\.00$/, '');
-    return `${m} Triệu ₫`;
+    return `${m}M₫`;
   }
   if (Math.abs(amount) >= 1000) {
     const k = (amount / 1000).toFixed(0);
-    return `${k}k ₫`;
+    return `${k}k₫`;
   }
   return `${amount.toLocaleString('vi-VN')}₫`;
 }

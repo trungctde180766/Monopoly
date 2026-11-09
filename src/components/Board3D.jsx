@@ -74,7 +74,6 @@ function createTileTexture(tile, isMortgaged, ownerColor, displayPrice = tile.pr
       icon = '🎪';
       bannerColor = '#e11d48';
     } else if (tile.id === 30) {
-      // R07 Fix: Ô 30 là Vào Tù theo đúng logic boardData & App.jsx
       title = 'VÀO TÙ (BỊ BẮT)';
       icon = '🚨';
       bannerColor = '#dc2626';
@@ -85,88 +84,132 @@ function createTileTexture(tile, isMortgaged, ownerColor, displayPrice = tile.pr
     ctx.fillStyle = '#ffffff';
     ctx.font = '900 36px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(title, canvas.width / 2, 75);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, canvas.width / 2, 63);
 
-    ctx.font = '140px sans-serif';
-    ctx.fillText(icon, canvas.width / 2, 300);
+    ctx.font = '130px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, canvas.width / 2, 275);
 
     if (tile.salary) {
+      ctx.beginPath();
+      ctx.roundRect(40, 395, canvas.width - 80, 85, 18);
       ctx.fillStyle = '#16a34a';
-      ctx.font = 'bold 44px sans-serif';
-      ctx.fillText(`+${formatShortPrice(tile.salary)}₫`, canvas.width / 2, 450);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 48px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`+${formatShortPrice(tile.salary)}₫`, canvas.width / 2, 437);
     } else if (tile.id === 30) {
+      ctx.beginPath();
+      ctx.roundRect(40, 395, canvas.width - 80, 85, 18);
       ctx.fillStyle = '#dc2626';
-      ctx.font = 'bold 36px sans-serif';
-      ctx.fillText('BỊ BẮT GIAM', canvas.width / 2, 450);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 42px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('BỊ BẮT GIAM', canvas.width / 2, 437);
     }
   } else {
-    // Dải màu nhóm đất ở trên cùng chuẩn Business Tour
+    // 1. Dải màu nhóm đất ở trên cùng chuẩn Business Tour (Inward Header)
     if (groupInfo) {
       ctx.fillStyle = groupInfo.color;
-      ctx.fillRect(16, 16, canvas.width - 32, 140);
+      ctx.fillRect(16, 16, canvas.width - 32, 136);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = '900 36px sans-serif';
+      ctx.font = '900 40px "Segoe UI", system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(groupInfo.name.toUpperCase(), canvas.width / 2, 98);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(groupInfo.name.toUpperCase(), canvas.width / 2, 84);
     } else {
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(16, 16, canvas.width - 32, 140);
+      ctx.fillRect(16, 16, canvas.width - 32, 136);
 
-      ctx.fillStyle = '#334155';
-      ctx.font = 'bold 34px sans-serif';
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 36px "Segoe UI", system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tile.type.toUpperCase(), canvas.width / 2, 98);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tile.type.toUpperCase(), canvas.width / 2, 84);
     }
 
-    // Tên đường / thành phố (Chữ đen đậm rõ nét kích thước lớn)
-    ctx.fillStyle = '#0f172a';
-    ctx.font = '900 48px sans-serif';
+    // 2. Vùng đặt mô hình 3D (y=150..340) được để trống, nền cẩm thạch trắng sáng
+
+    // 3. Tên đường / thành phố (Chữ đen đậm rõ nét kích thước lớn 54px ở dải giữa)
+    ctx.fillStyle = '#090d16';
+    ctx.font = '900 54px "Segoe UI", system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 385, 460);
 
-    // The inward zone belongs to buildings; the central strip keeps the city name clear.
-    ctx.fillText(tile.shortName || tile.name, canvas.width / 2, 410, 460);
+    // Biểu tượng loại tài sản
+    let iconChar = '';
+    if (tile.type === 'railroad') iconChar = '🚂';
+    else if (tile.type === 'utility') iconChar = tile.id === 12 ? '⚡' : '💧';
+    else if (tile.type === 'chance') iconChar = '❓';
+    else if (tile.type === 'community_chest') iconChar = '🎁';
+    else if (tile.type === 'tax') iconChar = '💸';
 
-    if (tile.type === 'railroad') {
-      ctx.font = '100px sans-serif';
-      ctx.fillText('🚂', canvas.width / 2, 470);
-    } else if (tile.type === 'utility') {
-      ctx.font = '100px sans-serif';
-      ctx.fillText(tile.id === 12 ? '⚡' : '💧', canvas.width / 2, 470);
-    } else if (tile.type === 'chance') {
-      ctx.font = '100px sans-serif';
-      ctx.fillText('❓', canvas.width / 2, 470);
-    } else if (tile.type === 'community_chest') {
-      ctx.font = '100px sans-serif';
-      ctx.fillText('🎁', canvas.width / 2, 470);
-    } else if (tile.type === 'tax') {
-      ctx.font = '100px sans-serif';
-      ctx.fillText('💸', canvas.width / 2, 470);
+    if (iconChar) {
+      ctx.font = '96px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(iconChar, canvas.width / 2, 495);
     }
 
-    // Giá tiền ô đất ở mép ngoài (Chữ đen đậm cực lớn chuẩn Image 1: 200K, 495K, 2.4M)
-    if (displayPrice !== undefined && displayPrice !== null) {
-      ctx.fillStyle = '#000000';
-      ctx.font = '900 68px sans-serif';
-      ctx.fillText(displayPrice === 0 ? '0' : formatShortPrice(displayPrice), canvas.width / 2, 746);
-    } else if (tile.taxAmount) {
-      ctx.fillStyle = '#dc2626';
-      ctx.font = '900 60px sans-serif';
-      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 705);
-    }
-
+    // 4. Dải giá tiền ô đất ở mép ngoài (G01 Fix: Dải giá tương phản cao, lề an toàn 28px)
     if (isMortgaged) {
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.92)';
-      ctx.fillRect(16, 280, canvas.width - 32, 120);
+      ctx.beginPath();
+      ctx.roundRect(28, 616, canvas.width - 56, 114, 22);
+      ctx.fillStyle = '#dc2626';
+      ctx.fill();
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 48px sans-serif';
-      ctx.fillText('THẾ CHẤP', canvas.width / 2, 355);
+      ctx.font = '900 62px "Segoe UI", system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('THẾ CHẤP', canvas.width / 2, 673);
+
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.88)';
+      ctx.fillRect(16, 270, canvas.width - 32, 110);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 48px "Segoe UI", system-ui, -apple-system, sans-serif';
+      ctx.fillText('ĐÃ THẾ CHẤP', canvas.width / 2, 325);
+    } else if (displayPrice !== undefined && displayPrice !== null) {
+      ctx.beginPath();
+      ctx.roundRect(28, 616, canvas.width - 56, 114, 22);
+      ctx.fillStyle = ownerColor ? '#0f172a' : '#090d16';
+      ctx.fill();
+      ctx.strokeStyle = ownerColor || 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 74px "Segoe UI", system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(displayPrice === 0 ? '0' : formatShortPrice(displayPrice), canvas.width / 2, 673);
+    } else if (tile.taxAmount) {
+      ctx.beginPath();
+      ctx.roundRect(28, 616, canvas.width - 56, 114, 22);
+      ctx.fillStyle = '#991b1b';
+      ctx.fill();
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 66px "Segoe UI", system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`-${formatShortPrice(tile.taxAmount)}`, canvas.width / 2, 673);
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = 16;
   return texture;
 }
 
@@ -329,198 +372,358 @@ function createDiceMaterials(topValue) {
   }));
 }
 
-// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 1 (Cottage 1 tầng rõ khối, mái dốc ấm cúng + ống khói gạch)
+// Tạo bóng tiếp xúc (Contact Shadow decal) mềm mại dưới chân công trình chuẩn Business Tour
+function createContactShadow(width, depth, opacity = 0.32) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 31);
+  grad.addColorStop(0, `rgba(15, 23, 42, ${opacity})`);
+  grad.addColorStop(0.65, `rgba(15, 23, 42, ${opacity * 0.4})`);
+  grad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  const geo = new THREE.PlaneGeometry(width, depth);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.005;
+  return mesh;
+}
+
+// G04 & V24 Fix: MÔ HÌNH NHÀ CẤP 1 (Cottage 1 tầng rõ khối, mái lăng trụ tam giác beveled + ống khói gạch)
 function createTier1CottageMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  const bodyGeo = new THREE.BoxGeometry(0.68, 0.52, 0.56);
+  // Bóng tiếp xúc chân nhà
+  group.add(createContactShadow(0.85, 0.75, 0.35));
+
+  // Thân nhà 1 tầng ấm cúng
+  const bodyGeo = new THREE.BoxGeometry(0.68, 0.48, 0.54);
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    roughness: 0.3,
+    color: 0xfafaf9,
+    roughness: 0.35,
     metalness: 0.05,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.26;
+  body.position.y = 0.24;
   body.castShadow = true;
+  body.receiveShadow = true;
   group.add(body);
 
-  // Cửa gỗ nhỏ phía trước
+  // Cửa gỗ nhỏ màu nâu trầm phía trước
   const doorGeo = new THREE.BoxGeometry(0.18, 0.28, 0.04);
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 });
   const door = new THREE.Mesh(doorGeo, doorMat);
-  door.position.set(0, 0.14, 0.285);
+  door.position.set(0, 0.14, 0.275);
   group.add(door);
 
-  const roofGeo = new THREE.ConeGeometry(0.58, 0.42, 4);
+  // Mái nhà lăng trụ tam giác 2 mái dốc beveled đặc trưng Cottage
+  const roofShape = new THREE.Shape();
+  roofShape.moveTo(-0.38, 0);
+  roofShape.lineTo(0, 0.34);
+  roofShape.lineTo(0.38, 0);
+  roofShape.closePath();
+
+  const roofGeo = new THREE.ExtrudeGeometry(roofShape, {
+    depth: 0.60,
+    bevelEnabled: true,
+    bevelSegments: 1,
+    steps: 1,
+    bevelSize: 0.02,
+    bevelThickness: 0.02,
+  });
+  roofGeo.center();
+
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.25,
+    metalness: 0.1,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.52 + 0.21;
-  roof.rotation.y = Math.PI / 4;
+  roof.position.set(0, 0.48 + 0.17, 0);
   roof.castShadow = true;
   group.add(roof);
 
-  const chimneyGeo = new THREE.BoxGeometry(0.12, 0.30, 0.12);
-  const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
+  // Ống khói gạch đỏ nung
+  const chimneyGeo = new THREE.BoxGeometry(0.12, 0.28, 0.12);
+  const chimneyMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.6 });
   const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
-  chimney.position.set(0.18, 0.65, 0.15);
+  chimney.position.set(0.20, 0.65, -0.05);
   chimney.castShadow = true;
   group.add(chimney);
 
   return group;
 }
 
-// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 2 (Nhà Phố 2 Tầng cao ráo + ban công tầng 2)
+// G04 & V24 Fix: MÔ HÌNH NHÀ CẤP 2 (Nhà Phố 2 Tầng Hiện Đại + Phào chỉ chia tầng + Ban công kính)
 function createTier2TownhouseMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  const bodyGeo = new THREE.BoxGeometry(0.76, 0.95, 0.62);
-  const bodyMat = new THREE.MeshStandardMaterial({
+  // Bóng tiếp xúc chân nhà
+  group.add(createContactShadow(0.95, 0.85, 0.38));
+
+  // Tầng 1: Khối tường đá cát sáng
+  const f1Geo = new THREE.BoxGeometry(0.74, 0.50, 0.60);
+  const f1Mat = new THREE.MeshStandardMaterial({
     color: 0xf1f5f9,
     roughness: 0.25,
-    metalness: 0.1,
+    metalness: 0.08,
   });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.475;
-  body.castShadow = true;
-  group.add(body);
+  const f1 = new THREE.Mesh(f1Geo, f1Mat);
+  f1.position.y = 0.25;
+  f1.castShadow = true;
+  f1.receiveShadow = true;
+  group.add(f1);
 
-  // Ban công tầng 2 với lan can
-  const balconyGeo = new THREE.BoxGeometry(0.58, 0.10, 0.16);
-  const balconyMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3 });
+  // Phào chỉ chia tầng (Cornice beltline)
+  const beltGeo = new THREE.BoxGeometry(0.78, 0.06, 0.64);
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
+  const belt = new THREE.Mesh(beltGeo, beltMat);
+  belt.position.y = 0.50;
+  belt.castShadow = true;
+  group.add(belt);
+
+  // Tầng 2: Khối nhà tầng trên
+  const f2Geo = new THREE.BoxGeometry(0.68, 0.46, 0.54);
+  const f2Mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.25,
+    metalness: 0.08,
+  });
+  const f2 = new THREE.Mesh(f2Geo, f2Mat);
+  f2.position.y = 0.53 + 0.23;
+  f2.castShadow = true;
+  group.add(f2);
+
+  // Cửa sổ kính ban công tầng 2 phản quang
+  const winGeo = new THREE.BoxGeometry(0.42, 0.26, 0.02);
+  const winMat = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    emissive: 0x0284c7,
+    emissiveIntensity: 0.2,
+    roughness: 0.1,
+    metalness: 0.8,
+  });
+  const win = new THREE.Mesh(winGeo, winMat);
+  win.position.set(0, 0.72, 0.275);
+  group.add(win);
+
+  // Ban công tầng 2 lan can kim loại
+  const balconyGeo = new THREE.BoxGeometry(0.60, 0.12, 0.16);
+  const balconyMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 });
   const balcony = new THREE.Mesh(balconyGeo, balconyMat);
-  balcony.position.set(0, 0.55, 0.35);
+  balcony.position.set(0, 0.60, 0.35);
   balcony.castShadow = true;
   group.add(balcony);
 
-  // Mái dốc cao phong cách nhà phố
-  const roofGeo = new THREE.ConeGeometry(0.64, 0.46, 4);
+  // Mái nhà phố phong cách hip-mansard hiện đại
+  const roofGeo = new THREE.ConeGeometry(0.62, 0.36, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.2,
+    metalness: 0.15,
   });
   const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.95 + 0.23;
+  roof.position.y = 0.99 + 0.18;
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
   group.add(roof);
 
+  // Chóp nóc mái kim loại sáng
+  const capGeo = new THREE.BoxGeometry(0.20, 0.06, 0.20);
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
+  const cap = new THREE.Mesh(capGeo, capMat);
+  cap.position.y = 1.35;
+  group.add(cap);
+
   return group;
 }
 
-// G04 & V7 Fix: MÔ HÌNH NHÀ CẤP 3 (Biệt Thự Sang Trọng + Cặp cột sảnh hiên đá cẩm thạch)
+// G04 & V24 Fix: MÔ HÌNH NHÀ CẤP 3 (Biệt Thự Resort Sang Trọng + Cánh phụ + Cột sảnh + Hồ bơi mini)
 function createTier3VillaMesh(roofColor = 0xef4444) {
   const group = new THREE.Group();
 
-  // Khối nhà biệt thự bề thế
-  const bodyGeo = new THREE.BoxGeometry(1.05, 0.82, 0.78);
-  const bodyMat = new THREE.MeshStandardMaterial({
+  // Bóng tiếp xúc chân biệt thự
+  group.add(createContactShadow(1.30, 1.05, 0.42));
+
+  // Khối nhà chính biệt thự bề thế
+  const mainGeo = new THREE.BoxGeometry(0.74, 0.78, 0.72);
+  const wallMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.2,
-    metalness: 0.08,
+    metalness: 0.05,
   });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.41;
-  body.castShadow = true;
-  group.add(body);
+  const mainBody = new THREE.Mesh(mainGeo, wallMat);
+  mainBody.position.set(-0.16, 0.39, 0);
+  mainBody.castShadow = true;
+  mainBody.receiveShadow = true;
+  group.add(mainBody);
 
-  // 2 Cột trụ sảnh hiên đá cẩm thạch
-  [-0.36, 0.36].forEach(x => {
-    const colGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.75, 12);
-    const colMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2 });
+  // Cánh nhà bên phụ (Side Wing Pavilion) tạo hình khối L-Shape sang trọng
+  const wingGeo = new THREE.BoxGeometry(0.38, 0.54, 0.58);
+  const wing = new THREE.Mesh(wingGeo, wallMat);
+  wing.position.set(0.38, 0.27, -0.04);
+  wing.castShadow = true;
+  wing.receiveShadow = true;
+  group.add(wing);
+
+  // Cột sảnh hiên đá cẩm thạch
+  [-0.42, 0.10].forEach(x => {
+    const colGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.70, 12);
+    const colMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.2 });
     const col = new THREE.Mesh(colGeo, colMat);
-    col.position.set(x, 0.375, 0.44);
+    col.position.set(x, 0.35, 0.42);
     col.castShadow = true;
     group.add(col);
   });
 
-  // Mái hiên sảnh
-  const porchGeo = new THREE.BoxGeometry(0.92, 0.08, 0.26);
+  // Mái hiên sảnh đón
+  const porchGeo = new THREE.BoxGeometry(0.62, 0.08, 0.24);
   const porchMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.25 });
   const porch = new THREE.Mesh(porchGeo, porchMat);
-  porch.position.set(0, 0.76, 0.44);
+  porch.position.set(-0.16, 0.72, 0.42);
   porch.castShadow = true;
   group.add(porch);
 
+  // Hồ bơi mini / Thềm sân trước lát đá turquoise
+  const poolBaseGeo = new THREE.BoxGeometry(0.40, 0.05, 0.30);
+  const poolBaseMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 });
+  const poolBase = new THREE.Mesh(poolBaseGeo, poolBaseMat);
+  poolBase.position.set(0.36, 0.025, 0.32);
+  group.add(poolBase);
+
+  const waterGeo = new THREE.PlaneGeometry(0.34, 0.24);
+  const waterMat = new THREE.MeshStandardMaterial({
+    color: 0x06b6d4,
+    metalness: 0.9,
+    roughness: 0.05,
+    emissive: 0x0891b2,
+    emissiveIntensity: 0.35,
+  });
+  const water = new THREE.Mesh(waterGeo, waterMat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0.36, 0.052, 0.32);
+  group.add(water);
+
   // Mái chính biệt thự
-  const roofGeo = new THREE.ConeGeometry(0.88, 0.55, 4);
+  const mainRoofGeo = new THREE.ConeGeometry(0.72, 0.46, 4);
   const roofMat = new THREE.MeshStandardMaterial({
     color: roofColor,
     roughness: 0.2,
+    metalness: 0.1,
   });
-  const roof = new THREE.Mesh(roofGeo, roofMat);
-  roof.position.y = 0.82 + 0.275;
-  roof.rotation.y = Math.PI / 4;
-  roof.castShadow = true;
-  group.add(roof);
+  const mainRoof = new THREE.Mesh(mainRoofGeo, roofMat);
+  mainRoof.position.set(-0.16, 0.78 + 0.23, 0);
+  mainRoof.rotation.y = Math.PI / 4;
+  mainRoof.castShadow = true;
+  group.add(mainRoof);
+
+  // Mái cánh phụ
+  const wingRoofGeo = new THREE.ConeGeometry(0.38, 0.30, 4);
+  const wingRoof = new THREE.Mesh(wingRoofGeo, roofMat);
+  wingRoof.position.set(0.38, 0.54 + 0.15, -0.04);
+  wingRoof.rotation.y = Math.PI / 4;
+  wingRoof.castShadow = true;
+  group.add(wingRoof);
 
   return group;
 }
 
-// Mô hình Khách Sạn / Kỳ Quan Cấp 4 (Landmark Castle Bất Khả Xâm Phạm chuẩn Business Tour)
-// Kích thước 1.30 x 0.90 nằm gọn trong ô đất, chiều cao nổi bật ~2.2 world units
+// G04 & V24 Fix: MÔ HÌNH LÂU ĐÀI KỲ QUAN CẤP 4 (Royal Landmark Castle Bất Khả Xâm Phạm)
 function createLandmarkMesh(roofColor = 0x3b82f6) {
   const group = new THREE.Group();
 
-  // Đế vàng phát sáng báo hiệu đất Landmark
-  const baseGeo = new THREE.BoxGeometry(1.30, 0.12, 0.90);
+  // Bóng tiếp xúc chân lâu đài rộng bề thế
+  group.add(createContactShadow(1.55, 1.20, 0.48));
+
+  // Đế vàng hoàng gia phát sáng
+  const baseGeo = new THREE.BoxGeometry(1.30, 0.14, 0.90);
   const baseMat = new THREE.MeshStandardMaterial({
     color: 0xf59e0b,
-    metalness: 0.9,
+    metalness: 0.95,
     roughness: 0.1,
     emissive: 0xf59e0b,
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.45,
   });
   const base = new THREE.Mesh(baseGeo, baseMat);
-  base.position.y = 0.06;
+  base.position.y = 0.07;
+  base.castShadow = true;
+  base.receiveShadow = true;
   group.add(base);
 
-  // Thân lâu đài / khách sạn trắng sứ
-  const bodyGeo = new THREE.BoxGeometry(0.95, 0.90, 0.70);
+  // Khối lâu đài / khách sạn trắng sứ
+  const bodyGeo = new THREE.BoxGeometry(0.96, 0.95, 0.72);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.25,
-    metalness: 0.1,
+    roughness: 0.2,
+    metalness: 0.05,
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.57;
+  body.position.y = 0.14 + 0.475;
   body.castShadow = true;
+  body.receiveShadow = true;
   group.add(body);
 
-  // 2 Tháp trụ tròn bên hông
-  [-0.45, 0.45].forEach((x) => {
-    const towerGeo = new THREE.CylinderGeometry(0.18, 0.20, 1.15, 12);
-    const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 });
+  // 2 Tháp trụ pháo đài bên hông
+  [-0.48, 0.48].forEach(x => {
+    const towerGeo = new THREE.CylinderGeometry(0.18, 0.20, 1.25, 12);
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25 });
     const tower = new THREE.Mesh(towerGeo, towerMat);
-    tower.position.set(x, 0.65, 0);
+    tower.position.set(x, 0.14 + 0.625, 0);
     tower.castShadow = true;
     group.add(tower);
 
-    const coneGeo = new THREE.ConeGeometry(0.24, 0.40, 12);
-    const coneMat = new THREE.MeshStandardMaterial({ color: roofColor, metalness: 0.5, roughness: 0.2 });
+    // Chóp mái nón tháp trụ mạ màu chủ đất
+    const coneGeo = new THREE.ConeGeometry(0.24, 0.42, 12);
+    const coneMat = new THREE.MeshStandardMaterial({ color: roofColor, metalness: 0.6, roughness: 0.2 });
     const cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(x, 1.22 + 0.20, 0);
+    cone.position.set(x, 0.14 + 1.25 + 0.21, 0);
     cone.castShadow = true;
     group.add(cone);
   });
 
   // Tháp trung tâm mạ vàng hoàng gia
-  const centerSpireGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.45, 16);
+  const centerSpireGeo = new THREE.CylinderGeometry(0.24, 0.28, 1.55, 16);
   const centerSpireMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
   const centerSpire = new THREE.Mesh(centerSpireGeo, centerSpireMat);
-  centerSpire.position.set(0, 0.85, 0);
+  centerSpire.position.set(0, 0.14 + 0.775, 0);
   centerSpire.castShadow = true;
   group.add(centerSpire);
 
-  // Mái vòm vàng & Đỉnh kim cương Landmark
-  const domeGeo = new THREE.ConeGeometry(0.34, 0.50, 16);
-  const domeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
+  // Mái vòm vàng hoàng gia (Royal Gold Dome)
+  const domeGeo = new THREE.SphereGeometry(0.32, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.95, roughness: 0.1 });
   const dome = new THREE.Mesh(domeGeo, domeMat);
-  dome.position.set(0, 1.57 + 0.25, 0);
+  dome.position.set(0, 0.14 + 1.55, 0);
   dome.castShadow = true;
   group.add(dome);
+
+  // Ngọn tháp đỉnh vòm + Ngôi sao / Kim cương Landmark
+  const finialGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.35, 8);
+  const finialMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 });
+  const finial = new THREE.Mesh(finialGeo, finialMat);
+  finial.position.set(0, 0.14 + 1.55 + 0.32 + 0.175, 0);
+  group.add(finial);
+
+  const starGeo = new THREE.OctahedronGeometry(0.14);
+  const starMat = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    emissive: 0x0284c7,
+    emissiveIntensity: 0.8,
+    metalness: 0.9,
+    roughness: 0.1,
+  });
+  const star = new THREE.Mesh(starGeo, starMat);
+  star.position.set(0, 0.14 + 1.55 + 0.32 + 0.35 + 0.07, 0);
+  group.add(star);
 
   return group;
 }
@@ -658,7 +861,7 @@ export default function Board3D({
   onTileClick,
   dice = [1, 1],
   isRolling = false,
-  selectedTileId = 0,
+  selectedTileId = null,
   buildPreview = null,
 }) {
   const mountRef = useRef(null);
@@ -673,8 +876,11 @@ export default function Board3D({
   const animationFrameRef = useRef(null);
   const particleSystemRef = useRef(null);
   const previewGroupRef = useRef(null), selectionGroupRef = useRef(null), focusLabelRef = useRef(null);
-  const selectedIdRef = useRef(selectedTileId); selectedIdRef.current = buildPreview?.tileId ?? selectedTileId;
+  const selectedIdRef = useRef(buildPreview?.tileId ?? selectedTileId);
+  selectedIdRef.current = buildPreview?.tileId ?? selectedTileId;
   const previewTileId = buildPreview?.tileId;
+  const prevHousesRef = useRef({});
+  const activeBuildingAnimsRef = useRef({});
 
   // Trạng thái nhảy hoạt họa từng ô (Step-by-step hopping)
   const hoppingStateRef = useRef({});
@@ -996,6 +1202,27 @@ export default function Board3D({
         }
       }
 
+      // HOẠT ẢNH RƠI TIẾP ĐẤT VÀ NẢY KHI MUA / NÂNG CẤP CÔNG TRÌNH (BUILDING DROP & BOUNCE)
+      if (buildingsGroupRef.current) {
+        buildingsGroupRef.current.children.forEach((mesh) => {
+          const tileId = mesh.userData?.tileId;
+          const anim = tileId !== undefined ? activeBuildingAnimsRef.current[tileId] : null;
+          if (anim) {
+            const p = Math.min(1, (now - anim.startTime) / anim.duration);
+            if (p >= 1) {
+              mesh.position.y = anim.targetY;
+              mesh.scale.set(1, 1, 1);
+              delete activeBuildingAnimsRef.current[tileId];
+            } else {
+              const drop = Math.pow(1 - p, 2);
+              mesh.position.y = anim.targetY + drop * 0.85;
+              const bounce = 1 + 0.15 * Math.sin(p * Math.PI);
+              mesh.scale.set(bounce, bounce, bounce);
+            }
+          }
+        });
+      }
+
       // HOẠT ẢNH QUÂN CỜ NHẢY TỪNG Ô (STEP-BY-STEP ARC HOPPING)
       Object.entries(hoppingStateRef.current).forEach(([playerId, hop]) => {
         const token = playerTokensRef.current[playerId];
@@ -1023,12 +1250,15 @@ export default function Board3D({
         }
       });
 
-      if (focusLabelRef.current) {
+      if (focusLabelRef.current && selectedIdRef.current !== null && selectedIdRef.current !== undefined) {
         const tile = getTile3DTransform(selectedIdRef.current);
-        const point = new THREE.Vector3(tile.x, 1.75, tile.z).project(camera);
+        const point = new THREE.Vector3(tile.x, 2.2, tile.z).project(camera);
         const w = container.clientWidth, h = container.clientHeight;
-        focusLabelRef.current.style.left = Math.max(102, Math.min(w - 102, (point.x + 1) * w / 2)) + 'px';
-        focusLabelRef.current.style.top = Math.max(80, Math.min(h - 10, (1 - point.y) * h / 2)) + 'px';
+        const isMobile = w < 640;
+        const minTop = isMobile ? 150 : 80;
+        const padX = isMobile ? 75 : 102;
+        focusLabelRef.current.style.left = Math.max(padX, Math.min(w - padX, (point.x + 1) * w / 2)) + 'px';
+        focusLabelRef.current.style.top = Math.max(minTop, Math.min(h - 10, (1 - point.y) * h / 2)) + 'px';
       }
       renderer.render(scene, camera);
     };
@@ -1111,7 +1341,22 @@ export default function Board3D({
 
     BOARD_TILES.forEach((tile) => {
       const prop = propertiesState[tile.id];
-      if (!prop || !prop.owner) return;
+      if (!prop || !prop.owner) {
+        prevHousesRef.current[tile.id] = 0;
+        return;
+      }
+
+      const prevLevel = prevHousesRef.current[tile.id] || 0;
+      const currentLevel = prop.houses || 0;
+      if (currentLevel > prevLevel) {
+        // Kích hoạt hoạt ảnh rơi tiếp đất và nảy nhẹ khi mua/nâng cấp
+        activeBuildingAnimsRef.current[tile.id] = {
+          startTime: performance.now(),
+          duration: 450,
+          targetY: 0.16,
+        };
+      }
+      prevHousesRef.current[tile.id] = currentLevel;
 
       const transform = getTile3DTransform(tile.id);
       const { inward } = getTileLayoutVectors(transform.side);
@@ -1122,30 +1367,26 @@ export default function Board3D({
       const owner = players.find((p) => p.id === prop.owner);
       const roofColor = owner?.color || '#ef4444';
 
+      let bMesh = null;
       if (houses >= 4) {
         // G04 Cấp 4: Khách Sạn / Kỳ Quan Landmark Bất Khả Xâm Phạm
-        const landmark = createLandmarkMesh(roofColor);
-        landmark.position.set(bX, 0.16, bZ);
-        landmark.rotation.y = transform.rotY;
-        group.add(landmark);
+        bMesh = createLandmarkMesh(roofColor);
       } else if (houses === 3) {
         // G04 Cấp 3: Biệt Thự Sang Trọng
-        const villa = createTier3VillaMesh(roofColor);
-        villa.position.set(bX, 0.16, bZ);
-        villa.rotation.y = transform.rotY;
-        group.add(villa);
+        bMesh = createTier3VillaMesh(roofColor);
       } else if (houses === 2) {
         // G04 Cấp 2: Nhà Phố 2 Tầng
-        const townhouse = createTier2TownhouseMesh(roofColor);
-        townhouse.position.set(bX, 0.16, bZ);
-        townhouse.rotation.y = transform.rotY;
-        group.add(townhouse);
+        bMesh = createTier2TownhouseMesh(roofColor);
       } else if (houses === 1) {
         // G04 Cấp 1: Nhà Mái Dốc Ấm Cúng
-        const cottage = createTier1CottageMesh(roofColor);
-        cottage.position.set(bX, 0.16, bZ);
-        cottage.rotation.y = transform.rotY;
-        group.add(cottage);
+        bMesh = createTier1CottageMesh(roofColor);
+      }
+
+      if (bMesh) {
+        bMesh.position.set(bX, 0.16, bZ);
+        bMesh.rotation.y = transform.rotY;
+        bMesh.userData = { tileId: tile.id };
+        group.add(bMesh);
       }
 
       // Nếu ô đất đang đăng cai LỄ HỘI (World Championship / Joust): Cắm cờ Lễ Hội
@@ -1182,7 +1423,9 @@ export default function Board3D({
     const group = selectionGroupRef.current;
     if (!group) return;
     disposeObject(group); group.clear();
-    const transform = getTile3DTransform(buildPreview?.tileId ?? selectedTileId);
+    const effectiveSelected = buildPreview?.tileId ?? selectedTileId;
+    if (effectiveSelected === null || effectiveSelected === undefined) return;
+    const transform = getTile3DTransform(effectiveSelected);
     const width = transform.isCorner ? 2.8 : 1.8, depth = transform.isCorner ? 2.8 : 2.7;
     const source = new THREE.BoxGeometry(width + 0.02, 0.025, depth + 0.02);
     const frame = new THREE.LineSegments(new THREE.EdgesGeometry(source), new THREE.LineBasicMaterial({ color: buildPreview ? 0x19a567 : 0x176e93, depthTest: false }));
@@ -1226,10 +1469,44 @@ export default function Board3D({
   return (
     <div className="w-full h-full relative overflow-hidden bg-[#e7f0f6]">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-      <div ref={focusLabelRef} className={`tile-focus-label ${buildPreview ? 'is-preview' : ''}`} aria-live="polite">
-        <strong>{BOARD_TILES[buildPreview?.tileId ?? selectedTileId]?.shortName || BOARD_TILES[selectedTileId]?.name}</strong>
-        <span>{buildPreview ? `Xem trước · ${getBuildingLabel(buildPreview.tier)}` : (() => { const details = getTileDetails(BOARD_TILES[selectedTileId], propertiesState, players, dice); return details?.amount !== null ? `${details?.priceLabel}: ${formatVND(details?.amount)}` : details?.typeLabel; })()}</span>
-      </div>
+      {(buildPreview?.tileId ?? selectedTileId) !== null && (buildPreview?.tileId ?? selectedTileId) !== undefined && (() => {
+        const activeId = buildPreview?.tileId ?? selectedTileId;
+        const tile = BOARD_TILES[activeId];
+        if (!tile) return null;
+        const details = getTileDetails(tile, propertiesState, players, dice);
+        const prop = propertiesState[tile.id];
+        const tierName = buildPreview
+          ? `Xem trước · ${getBuildingLabel(buildPreview.tier)}`
+          : (tile.type === 'property'
+              ? (prop?.houses === 4 ? '🏨 Cấp 4 (Landmark)' :
+                 prop?.houses === 3 ? '🏛️ Cấp 3 (Biệt thự)' :
+                 prop?.houses === 2 ? '🏡 Cấp 2 (Nhà phố)' :
+                 prop?.houses === 1 ? '🏡 Cấp 1 (Nhà vườn)' : 'Đất trống')
+              : details?.typeLabel);
+        return (
+          <div ref={focusLabelRef} className={`tile-focus-label ${buildPreview ? 'is-preview' : ''}`} aria-live="polite">
+            <div className="focus-header">
+              <span className="focus-dot" style={{ backgroundColor: details?.owner?.color || details?.group?.color || '#38bdf8' }} />
+              <strong>{tile.name}</strong>
+              {details?.prop?.isFestival && <span className="focus-badge-fest">🎪 x2</span>}
+            </div>
+            <div className="focus-meta">
+              <span className="focus-tier">{tierName}</span>
+              {details?.owner ? (
+                <span className="focus-owner" style={{ color: details.owner.color }}>👤 {details.owner.name}</span>
+              ) : details?.isAsset ? (
+                <span className="focus-unowned">Chưa có chủ</span>
+              ) : null}
+            </div>
+            {details?.amount !== null && (
+              <div className="focus-price">
+                <span className="focus-price-label">{details?.priceLabel}:</span>
+                <span className="focus-price-val">{formatVND(details?.amount)}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Floating Controls (Đặt dưới Card người chơi góc trên bên trái, tránh chồng lấn G01 & R04) */}
       <div className="camera-controls absolute top-3 left-3 z-20 flex items-center gap-1 bg-white/95 p-1 rounded-xl border border-slate-200 shadow-sm">
@@ -1241,7 +1518,7 @@ export default function Board3D({
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
           title="Về góc nhìn chuẩn bao quát 4 góc bàn cờ"
         >
-          <RotateCcw size={14} /> Góc 3D
+          <RotateCcw size={14} /> <span className="cam-btn-label">Góc 3D</span>
         </button>
         <button
           onClick={() => {
@@ -1251,7 +1528,7 @@ export default function Board3D({
           className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5 transition active:scale-95 shadow-sm"
           title="Góc nhìn thẳng từ trên xuống"
         >
-          <Eye size={14} /> Từ trên
+          <Eye size={14} /> <span className="cam-btn-label">Từ trên</span>
         </button>
       </div>
 

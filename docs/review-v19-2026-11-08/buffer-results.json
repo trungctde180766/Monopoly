@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-08T07:08:39.003Z",
+  "mode": "actual hook with controlled event order; not browser/network replay",
+  "normal": {
+    "receivedRevisions": [
+      4,
+      5
+    ],
+    "ackRevision": 3,
+    "expectedRevision": 5,
+    "actualRevision": 5,
+    "myId": "original",
+    "screen": "playing"
+  },
+  "reordered": {
+    "receivedRevisions": [
+      5,
+      4
+    ],
+    "ackRevision": 3,
+    "expectedRevision": 5,
+    "actualRevision": 4,
+    "myId": "original",
+    "screen": "playing"
+  }
+}

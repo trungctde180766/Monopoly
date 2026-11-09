@@ -1,0 +1,20 @@
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const code=(await fs.readFile(new URL('../../src/hooks/useGameController.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'').replace('export function useGameController','function useGameController').replaceAll('import.meta.env','({})');
+const run=(revisions)=>{
+ const events={},callbacks={},effects=[],states=[];
+ let saved=JSON.stringify({roomCode:'ROOM99',resumeToken:'test-only-token'});
+ const socket={id:'new-socket',connected:true,active:true,on(e,h){events[e]=h;},timeout(){return{emit(e,p,cb){callbacks[e]=cb;}};},emit(){},disconnect(){}};
+ const context={useState(v){const i=states.length;states.push(v);return[v,n=>{states[i]=typeof n==='function'?n(states[i]):n;}];},useRef(v){return{current:v};},useEffect(fn){effects.push(fn);},io:()=>socket,sessionStorage:{getItem(){return saved;},setItem(k,v){saved=v;},removeItem(){saved=null;}},setTimeout,clearTimeout,Date,Math,structuredClone};
+ vm.runInNewContext(code+'\nuseGameController();',context);const cleanup=effects[0]();events.connect();
+ const game=r=>({players:[{id:'original',position:0},{id:'other',position:0}],startedAt:1,revision:r});
+ for(const revision of revisions) events.game_state_updated(game(revision));
+ callbacks.resume_room(null,{success:true,playerId:'original',room:{code:'ROOM99',status:'playing'},gameState:game(3)});
+ const out={receivedRevisions:revisions,ackRevision:3,expectedRevision:Math.max(3,...revisions),actualRevision:states[2]?.revision,myId:states[4],screen:states[0]};cleanup();return out;
+};
+const normal=run([4,5]),reordered=run([5,4]);
+assert.equal(normal.myId,'original');assert.equal(normal.actualRevision,5);
+assert.equal(reordered.actualRevision,5);assert.equal(reordered.expectedRevision,5);
+const result={checkedAt:new Date().toISOString(),mode:'actual hook with controlled event order; not browser/network replay',normal,reordered};
+await fs.writeFile(new URL('./buffer-results.json',import.meta.url),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));

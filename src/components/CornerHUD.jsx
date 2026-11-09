@@ -10,6 +10,7 @@ export function BusinessTourCard({
   propertiesState = {},
   onOpenManage,
   onOpenTrade,
+  canTrade = true,
 }) {
   if (!player) return null;
 
@@ -201,8 +202,14 @@ export function BusinessTourCard({
               🏛️ Sổ Đỏ
             </button>
             <button
-              onClick={onOpenTrade}
-              className="flex-1 py-0.5 sm:py-1 px-1.5 rounded-lg text-[9px] sm:text-[10px] font-black bg-white/90 text-sky-800 border border-sky-300 shadow hover:bg-sky-50 transition active:scale-95"
+              onClick={canTrade ? onOpenTrade : undefined}
+              disabled={!canTrade}
+              title={!canTrade ? 'Chưa thể giao dịch lúc này (cần đến lượt, không nợ tiền, không bận)' : 'Giao dịch đổi đất'}
+              className={`flex-1 py-0.5 sm:py-1 px-1.5 rounded-lg text-[9px] sm:text-[10px] font-black border shadow transition ${
+                canTrade
+                  ? 'bg-white/90 text-sky-800 border-sky-300 hover:bg-sky-50 active:scale-95'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
+              }`}
             >
               🤝 Đổi Đất
             </button>
@@ -219,6 +226,7 @@ export default function CornerHUD({
   propertiesState = {},
   onOpenManage,
   onOpenTrade,
+  canTrade = true,
   gameLog = [],
   isLogOpen,
   onToggleLog,
@@ -240,6 +248,7 @@ export default function CornerHUD({
           propertiesState={propertiesState}
           onOpenManage={onOpenManage}
           onOpenTrade={onOpenTrade}
+          canTrade={canTrade}
         />
       ))}
 
@@ -249,7 +258,7 @@ export default function CornerHUD({
           <div className="mobile-active-card">
             <div className="flex items-center gap-2 min-w-0">
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow border border-white"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 shadow border border-white"
                 style={{ backgroundColor: activePlayer.color || '#3b82f6' }}
               >
                 {activeToken.emoji}
@@ -259,7 +268,7 @@ export default function CornerHUD({
                   <span className="font-black text-xs text-slate-900 truncate">{activePlayer.name}</span>
                   {activePlayer.isBot && <span className="text-[8px] bg-slate-200 px-1 rounded font-bold">BOT</span>}
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600">
+                <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 whitespace-nowrap">
                   <span>🪙 {formatVND(activePlayer.money)}</span>
                   <span className="text-slate-400 font-normal">|</span>
                   <span className="text-slate-600 text-[10px]">🏰 {activeOwnedTiles.length} Đất</span>
@@ -277,8 +286,14 @@ export default function CornerHUD({
                   🏛️ Sổ Đỏ
                 </button>
                 <button
-                  onClick={onOpenTrade}
-                  className="px-2 py-1 rounded-lg text-[10px] font-black bg-sky-50 text-sky-800 border border-sky-300"
+                  onClick={canTrade ? onOpenTrade : undefined}
+                  disabled={!canTrade}
+                  title={!canTrade ? 'Chưa thể giao dịch lúc này' : 'Giao dịch đổi đất'}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-black border transition ${
+                    canTrade
+                      ? 'bg-sky-50 text-sky-800 border-sky-300 active:scale-95'
+                      : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
+                  }`}
                 >
                   🤝 Đổi Đất
                 </button>
@@ -302,7 +317,7 @@ export default function CornerHUD({
                   >
                     <span>{oppToken.emoji}</span>
                     <span className="max-w-[70px] truncate">{opp.name}</span>
-                    <span className="text-amber-300 font-black">{formatVND(opp.money)}</span>
+                    <span className="text-amber-300 font-black whitespace-nowrap">{formatVND(opp.money)}</span>
                   </div>
                 );
               })}

@@ -13,7 +13,13 @@ import { publicRoom, conflictError, normalizeRoomCode } from './roomCodec.js';
 const distPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../dist');
 const TOKENS = ['car', 'jet', 'yacht', 'hat', 'diamond', 'dog'];
 const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
-const requireRule = (valid, message) => { if (!valid) throw new Error(message); };
+const requireRule = (valid, message, code) => {
+  if (!valid) {
+    const error = new Error(message);
+    if (code) error.code = code;
+    throw error;
+  }
+};
 
 export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/socket.io' } = {}) {
   const app = express(), httpServer = createServer(app);
@@ -47,6 +53,21 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
   };
   rooms.on?.('broadcast_event', deliver);
   rooms.on?.('room_updated', observe);
+  rooms.on?.('store_reconnected', async () => {
+    const activeCodes = new Set();
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.roomCode) activeCodes.add(socket.roomCode);
+    }
+    for (const code of activeCodes) {
+      try {
+        const room = await rooms.get(code);
+        if (room) {
+          io.to(code).emit('room_updated', publicRoom(room));
+          if (room.gameState) io.to(code).emit('game_state_updated', room.gameState);
+        }
+      } catch {}
+    }
+  });
   // A shared lease also covers instance termination where no disconnect callback can run.
   const heartbeat = setInterval(async () => {
     const active = new Map();
@@ -71,9 +92,9 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
 
   function assertSession(room, socket) {
     const id = socket.playerId || socket.id;
-    requireRule(room?.players.some(p => p.id === id), 'Người chơi không thuộc phòng này.');
+    requireRule(room?.players.some(p => p.id === id), 'Người chơi không thuộc phòng này.', 'NOT_IN_ROOM');
     const owner = room.activeSessions?.get(id);
-    requireRule(!owner || owner.sessionId === socket.sessionId, 'Phiên kết nối này đã được chuyển sang kết nối khác.');
+    requireRule(!owner || owner.sessionId === socket.sessionId, 'Phiên kết nối này đã được chuyển sang kết nối khác.', 'SESSION_SUPERSEDED');
     return id;
   }
 
@@ -156,14 +177,29 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
   }
 
   app.use(cors()); app.use(express.json());
-  io.use((socket, next) => { ready().then(() => next(), () => next(new Error('Chưa kết nối được kho dữ liệu phòng chơi.'))); });
+  io.use((socket, next) => {
+    ready().then(
+      () => next(),
+      () => {
+        const error = new Error('Chưa kết nối được kho dữ liệu phòng chơi.');
+        error.data = { code: 'STORE_UNAVAILABLE' };
+        next(error);
+      }
+    );
+  });
 
   io.on('connection', socket => {
     let queue = Promise.resolve();
     const on = (event, task) => socket.on(event, (payload, callback) => {
       const reply = typeof callback === 'function' ? callback : () => {};
       queue = queue.then(() => task(payload || {}, reply)).catch(error => {
-        reply({ success: false, conflict: !!error.conflict, currentRevision: error.currentRevision, message: error.message });
+        reply({
+          success: false,
+          conflict: !!error.conflict,
+          currentRevision: error.currentRevision,
+          code: error.code || 'ERROR',
+          message: error.message,
+        });
       });
     });
 
@@ -192,12 +228,12 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
     on('join_room', async (payload, reply) => {
       const code = normalizeRoomCode(typeof payload.roomCode === 'string' ? payload.roomCode.trim() : '');
       requireRule(socket.roomCode !== code, 'Bạn đã ở trong phòng này.');
-      requireRule(await expire(code), 'Phòng không tồn tại!');
+      requireRule(await expire(code), 'Phòng không tồn tại!', 'ROOM_NOT_FOUND');
       if (socket.roomCode) await leaveRoom(socket, true);
       const id = socket.id, sessionId = randomUUID(), resumeToken = randomUUID();
       const room = await mutate(code, r => {
-        requireRule(r.status === 'waiting', 'Trận đấu trong phòng này đã bắt đầu!');
-        requireRule(r.players.length < 6, 'Phòng đã đầy (Tối đa 6 người)!');
+        requireRule(r.status === 'waiting', 'Trận đấu trong phòng này đã bắt đầu!', 'ROOM_PLAYING');
+        requireRule(r.players.length < 6, 'Phòng đã đầy (Tối đa 6 người)!', 'ROOM_FULL');
         r.players.push({ id, name: typeof payload.playerName === 'string' ? payload.playerName.slice(0, 40) || 'Người chơi' : 'Người chơi',
           token: TOKENS.includes(payload.token) ? payload.token : 'jet', isHost: false, isReady: false,
           connected: true, color: COLORS[r.players.length] });
@@ -213,13 +249,15 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
 
     on('resume_room', async (payload, reply) => {
       const code = normalizeRoomCode(payload.roomCode);
-      const before = await expire(code), id = before?.resumeTokens.get(payload.resumeToken);
-      requireRule(id, 'Phiên chơi đã hết hạn hoặc mã không hợp lệ.');
-      requireRule(socket.roomCode !== code || !socket.playerId || socket.playerId === id, 'Bạn đang tham gia phòng này với tư cách người chơi khác.');
+      const before = await expire(code);
+      requireRule(before, 'Phòng không tồn tại hoặc đã kết thúc.', 'ROOM_NOT_FOUND');
+      const id = before.resumeTokens.get(payload.resumeToken);
+      requireRule(id, 'Phiên chơi đã hết hạn hoặc mã không hợp lệ.', 'EXPIRED_TOKEN');
+      requireRule(socket.roomCode !== code || !socket.playerId || socket.playerId === id, 'Bạn đang tham gia phòng này với tư cách người chơi khác.', 'CONFLICTING_IDENTITY');
       if (socket.roomCode && socket.roomCode !== code) await leaveRoom(socket, true);
       const sessionId = randomUUID();
       const room = await mutate(code, r => {
-        requireRule(r.resumeTokens.get(payload.resumeToken) === id, 'Phiên chơi đã hết hạn.');
+        requireRule(r.resumeTokens.get(payload.resumeToken) === id, 'Phiên chơi đã hết hạn.', 'EXPIRED_TOKEN');
         r.activeSessions.set(id, { sessionId, socketId: socket.id, expiresAt: Date.now() + 60000 });
         r.connections.set(id, socket.id);
         r.players.find(p => p.id === id).connected = true;
@@ -236,6 +274,7 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
 
     on('leave_room', async (_payload, reply) => { await leaveRoom(socket, true); reply({ success: true }); });
     on('toggle_ready', async (_payload, reply) => {
+      await expire(socket.roomCode);
       const room = await mutate(socket.roomCode, r => {
         const id = assertSession(r, socket), player = r.players.find(p => p.id === id);
         requireRule(r.status === 'waiting' && !player.isHost, 'Không thể đổi trạng thái sẵn sàng.');
@@ -246,7 +285,12 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
     });
 
     on('start_game', async (_payload, reply) => {
+      await expire(socket.roomCode);
       const room = await mutate(socket.roomCode, r => {
+        const now = Date.now();
+        const due = [...(r.activeSessions || [])].filter(([, s]) => s.expiresAt && s.expiresAt <= now);
+        for (const [expiredId] of due) removePlayer(r, expiredId);
+
         const id = assertSession(r, socket);
         requireRule(r.hostId === id, 'Chỉ chủ phòng mới có thể bắt đầu trận đấu.');
         requireRule(r.status === 'waiting' && r.players.length >= 2, 'Cần ít nhất hai người và phòng đang chờ.');
@@ -323,16 +367,29 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
       requireRule(current?.status === 'playing', 'Phòng chưa bắt đầu.');
       const id = assertSession(current, socket), offer = current.pendingOffers.get(response.offer?.id);
       requireRule(offer && offer.targetId === id && typeof response.accept === 'boolean', 'Đề nghị không hợp lệ hoặc đã hết hạn.');
+
+      if (!response.accept) {
+        // Rejection / dismissal: remove pending offer without requiring offer.revision matching current state
+        const room = await mutate(socket.roomCode, r => {
+          assertSession(r, socket);
+          r.pendingOffers.delete(offer.id);
+          return r;
+        });
+        await emit(room.code, 'trade_offer_responded', { offer, accept: false });
+        return reply({ success: true, revision: room.gameState.revision });
+      }
+
+      // Acceptance: strictly validate revision, expiry, and asset validity
       const room = await mutate(socket.roomCode, r => {
         assertSession(r, socket);
         const pending = r.pendingOffers.get(offer.id);
         requireRule(pending && pending.targetId === id && pending.expiresAt >= Date.now(), 'Đề nghị không hợp lệ hoặc đã hết hạn.');
         r.pendingOffers.delete(pending.id);
-        if (response.accept) r.gameState = applySessionTrade(r.gameState, pending);
+        r.gameState = applySessionTrade(r.gameState, pending);
         return r;
       }, offer.revision);
-      await emit(room.code, 'trade_offer_responded', { offer, accept: response.accept });
-      if (response.accept) await emit(room.code, 'game_state_updated', room.gameState);
+      await emit(room.code, 'trade_offer_responded', { offer, accept: true });
+      await emit(room.code, 'game_state_updated', room.gameState);
       reply({ success: true, revision: room.gameState.revision });
     });
 
@@ -340,9 +397,18 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
       const room = await expire(socket.roomCode), id = assertSession(room, socket);
       requireRule(typeof payload.message === 'string' && payload.message.trim(), 'Tin nhắn không hợp lệ.');
       const player = room.players.find(p => p.id === id);
-      await emit(room.code, 'chat_received', { id: randomUUID(), senderName: player.name, token: player.token,
-        message: payload.message.trim().slice(0, 500), time: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }) });
-      reply({ success: true });
+      const timestamp = Date.now();
+      const time = new Date(timestamp).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' });
+      await emit(room.code, 'chat_received', {
+        id: randomUUID(),
+        senderId: id,
+        senderName: player.name,
+        token: player.token,
+        message: payload.message.trim().slice(0, 500),
+        timestamp,
+        time,
+      });
+      reply({ success: true, timestamp, time });
     });
     socket.on('disconnect', () => { queue = queue.then(() => leaveRoom(socket, false)).catch(() => {}); });
   });

@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-11-08T05:17:34.900Z",
+  "redisRecovery": {
+    "readyResolves": true,
+    "clientReady": false,
+    "subscriberReady": false,
+    "getError": "The client is closed"
+  },
+  "expiredWaitingSeat": {
+    "blocked": {
+      "success": false,
+      "conflict": false,
+      "message": "Tất cả người chơi phải bấm Sẵn Sàng!"
+    },
+    "seatsBefore": 3,
+    "seatsAfter": 2,
+    "started": {
+      "success": true
+    }
+  },
+  "rejectStaleTrade": {
+    "rejected": {
+      "success": false,
+      "conflict": true,
+      "currentRevision": 1,
+      "message": "Xung đột phiên bản: kỳ vọng revision 0, thực tế 1"
+    },
+    "offerStillStored": true
+  },
+  "productionHealth": {
+    "status": "ok",
+    "edition": "Business Tour 3D Monopoly Vietnam",
+    "protocol": "actions-v1",
+    "backend": "redis",
+    "activeRooms": 0,
+    "timestamp": "2026-11-08T05:17:35.892Z"
+  }
+}

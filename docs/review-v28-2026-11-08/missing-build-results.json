@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-11-08T13:04:17.823Z",
+  "mode": "isolated empty working directory; workspace dist unchanged",
+  "optional": {
+    "exitCode": 0,
+    "skipReported": true,
+    "missingBuildReported": false
+  },
+  "required": {
+    "exitCode": 1,
+    "skipReported": false,
+    "missingBuildReported": true
+  }
+}

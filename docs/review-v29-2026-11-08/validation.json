@@ -1,0 +1,81 @@
+{
+  "checkedAt": "2026-11-08T13:16:30.243Z",
+  "changedTrackedSinceV28": [
+    "test/browserVerificationV27.js"
+  ],
+  "evidenceDirectories": [
+    {
+      "dir": "docs/review-v27-evidence",
+      "files": [
+        "desktop_board_overview_live.png",
+        "fixture_showcase_tiers_desktop.png",
+        "mobile_board_overview_live.png",
+        "screenshot_build_dialog_live.png",
+        "screenshot_live_gameplay_property_purchased.png"
+      ]
+    },
+    {
+      "dir": "docs/review-v28-evidence",
+      "files": [
+        "desktop_board_overview_live.png",
+        "fixture_showcase_tiers_desktop.png",
+        "mobile_board_overview_live.png",
+        "screenshot_build_dialog_live.png",
+        "screenshot_live_gameplay_property_purchased.png"
+      ]
+    }
+  ],
+  "hashes": {
+    "package.json": "ac0cb7f9de8c51c708581078fd03d6933404b74a62006424bcd0b23c86ca4d2e",
+    "vercel.json": "5a2f3de7cd5a50d1ed9c15d6c3fc36b054948f45ee9e35b44f060c57bebce74e",
+    "api/realtime.js": "bab2968cd653e1b16c4331d06b25b9e9cd34c56c51bfc986eebba68632df2835",
+    "api/health.js": "06c30e08316901c4af76716e963dacd0b914632150b0b34204a19863956fe66a",
+    "server/index.js": "f8d8dc60e25eead430b9a90fbebe80eb34b04924c2b73de727890f768d34da96",
+    "server/roomStore.js": "cf1a5e42a0b1f69bcf5fbab0e582124c392ab98cb50289d264976bc9f64400ef",
+    "src/hooks/useGameController.js": "8805248a23a0cc9f7b1be3e912701d8b0826ed72826a14ff3f9307f4d97d1540",
+    "src/logic/gameSession.js": "67286e769d45cb0d259913d40f53915ca240d660b236b2b08b5c473ab6997f2f",
+    "src/logic/gameEngine.js": "87a74fe9c803353fabe8a051837730ab4569bd0f945c942f3e1f3bc531e67483",
+    "src/logic/boardLayout.js": "7cdac2be272df3b1e180a826738e0604d9c4f609e868ffcd472bb3051561cacb",
+    "src/components/GameInterface.jsx": "9378730a0941555609eab1a1891e8680ad0441dc39b7d3cbce1c0f822d20ea7c",
+    "src/components/CornerHUD.jsx": "b7bee862152649477845df42059e2de95e6bb652f03d743313a9e7e62c381b15",
+    "src/components/BuildDialog.jsx": "f112218e5c2f14fe3ed4f8b84b89b0179260de0a6dda45f6432e744f9a0c0b62",
+    "src/components/Board3D.jsx": "4761d6b2e1e516c9f4b3127a99855f2adbc113a956c454253bea1e7ffdc0e28f",
+    "src/game.css": "ff8517482c02f024a27b8a42cd29d1b6304cd4d6212268c9a198ca9ec10c459d",
+    "test/reviewV7.test.js": "971a4e125fd29d2d732493b4a2500de069cd0ac79ddadab5339fdebe191b9def",
+    "test/reviewV9.test.js": "7c45e33e09c2f3ace779207c7361de751c9845085ab8229351759bc7ca57d86d",
+    "test/reviewV10.test.js": "10d3262fcb07f6494a5b6454dccec918d112250c7085a44fb7379ef85c7fde5d",
+    "test/reviewV11.test.js": "c35d245a6083626771d421aa1193dbc3d11d2886e1c8e8a88226b40e18127859",
+    "test/reviewV12.test.js": "f93972fb7bd995ec8d5a4743cb2350dcce767ec888ef9aea37ba25cab64c4bfb",
+    "server/roomCodec.js": "3dea0a4165216ea19816c7be75eda35be180f29dead16ffb9c96754c47b34421",
+    "server/redisRoomStore.js": "9df438563ee3ec8e31178881f99c5dfc2c52f963c1d5f521bfd39b1d6eea43e3",
+    "test/setup.mjs": "95077546acce491a03034e2a5abad856e128f0323d8b8b58d02e262825e6f7fe",
+    "test/reviewV14.test.js": "43887405f2cab87a8100a26e8611eaebb1117bd1bd56f750035193c08d02b3dc",
+    "test/reviewV13.test.js": "81206deb76196b1c49ee035f4521f0229394bc6387275cc8f3b39e2f775eb540",
+    "test/redisIntegration.test.js": "d70ae8cde09c61679f45aee5c65b2d58c9c50146cc34b156fa5ef6ab797879a6",
+    "test/fixtures/redisCasWorker.mjs": "d0651a7e626eeda870a624f2328ce05a22133bde7975f90bd7539b87c8c52e03",
+    "test/fixtures/unconfiguredHealth.mjs": "0e59695887c5b5a99b41221fa2d0294733167897ceb1ccd6178898ec797bb0b3",
+    "src/App.jsx": "8f62dc54be2e2f8991e31885cdbc10319758147c8479d8dcd42657f157c807f9",
+    "src/components/OnlineRoom.jsx": "b34a8c2f50b25747199946404805d4a7d99d1dde76cbc4358b2fe492443f2308",
+    "package-lock.json": "cdfcf8adb2aa9ca83ea26d5ddf2c23f81c2ab5154792f4a3de73d15dbf16a113",
+    ".env.example": "84eef9d1fa68a72279e6e5b9a8f9c188abad05d299414cfa470665552687522d",
+    "README.md": "196b98121775f38857eb3d9577890b2e75eeb3a0c80a37be62d4f054fc22ad71",
+    "DEPLOY_ONLINE.md": "5fdeff6f5fba745b38728d8aaa5cbe96878da07182764dc67986a9d0d0c532ac",
+    "test/reviewV15.test.js": "b6a7ce9bd97f45349455ee139ec295a4857546f057125dbc2b58702439a3570d",
+    "test/reviewV16.test.js": "003d6fe6cafa225691a7b9eaa249fb28d09029d2669d39f01bd12cc882fc726a",
+    "test/reviewV17.test.js": "b8ab773ed7bdba4fc9c912d2a77423f6db5a3550187bc5411b9e75a177beba5c",
+    "test/reviewV18.test.js": "578866d4aa75eef44929e71b774a0162a6cde6615d7e53f083cd844556d6e2b3",
+    "test/reviewV19.test.js": "9e9ed7c415fa42c1f1a07e66b2af227fb6f4634322a06e24eead898ed8c6e577",
+    "test/reviewV20.test.js": "03e66090fb2605cca949101ca7c7f0480680bed7d5e6eb021cabc71c07f79651",
+    "test/reviewV21.test.js": "3c7266febcf458bc59e899a6be03c34395bf363445be2ad6da24f909a8850f46",
+    "test/reviewV22.test.js": "ae42f6b8c83b89f6f0fa21122242ef9a02cbd44b5ea65753b6f1f536ed98d5e5",
+    "test/onlineActions.test.js": "19d9ed942e201586c336eeaaf28a12060cdb206c13b6e388b7b9ffbf9ccd90d0",
+    "test/browserVerificationV24.js": "b28c0e907637584624a77414101418570020932e31f27e4ae1d21d00afdbd300",
+    "test/captureEvidenceV24.js": "9d8b0ee33fa81e148171e84cbc12ffc207c55e43f862c110aa517fc7abcfeca9",
+    "docs/review-v24-evidence/browser-verification-v24.json": "77453c9ec861df51064170d0b2114245a3b123b6e252d32af764e3354b2befab",
+    "docs/review-v25-evidence/browser-verification-v25.json": "77453c9ec861df51064170d0b2114245a3b123b6e252d32af764e3354b2befab",
+    "test/buildAndSession.test.js": "c1e83427471af93ecfc5ef61ba0d3439dbaeb4f5abca8c0157d6949cf6092334",
+    "docs/review-v26-evidence/browser-verification-v26.json": "77453c9ec861df51064170d0b2114245a3b123b6e252d32af764e3354b2befab",
+    "test/browserVerificationV27.js": "d64dee7a1c1656ddc1c7d3cca2d6b78edca149dad96f56e66d5fd55557a42144",
+    "test/debugPhaseC.js": "7e84c8dd8fd84c8acc2682733e1d4c069be9f19267c6d2694376c0848ad519c0"
+  }
+}

@@ -14,9 +14,36 @@ export function useGameController() {
   const [myId, setMyId] = useState(null), [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false), [animation, setAnimation] = useState({ rolling: false, hopping: false });
   const [error, setError] = useState(''), [pendingTrade, setPendingTrade] = useState(null), [chatMessages, setChatMessages] = useState([]);
+  const [isResuming, setIsResuming] = useState(false);
   const socketRef = useRef(null), gameRef = useRef(null), modeRef = useRef(mode), roomRef = useRef(null), myIdRef = useRef(null);
   const epoch = useRef(0), timers = useRef(new Set()), requestPending = useRef(false), animating = useRef(false);
   const superseded = useRef(false);
+  const reconnectTimer = useRef(null), reconnectAttempts = useRef(0);
+  const resumeRetryTimer = useRef(null), resumeAttempts = useRef(0);
+  const attemptResumeRef = useRef(null);
+  const resumingRef = useRef(false), bufferedGameState = useRef(null), resumeStartedAt = useRef(null);
+  const isStateNewer = (candidate, current) => {
+    if (!candidate || !Array.isArray(candidate.players) || typeof candidate.revision !== 'number') return false;
+    if (!current) return true;
+    if (typeof current.startedAt === 'number' && typeof candidate.startedAt === 'number') {
+      if (candidate.startedAt > current.startedAt) return true;
+      if (candidate.startedAt < current.startedAt) return false;
+    }
+    return candidate.revision > current.revision;
+  };
+  const resolveLatestState = (stateA, stateB) => {
+    if (!stateA && !stateB) return null;
+    if (!stateA) return stateB;
+    if (!stateB) return stateA;
+    if (isStateNewer(stateA, stateB)) return stateA;
+    if (isStateNewer(stateB, stateA)) return stateB;
+    return stateA;
+  };
+  const bufferSnapshot = nextState => {
+    if (isStateNewer(nextState, bufferedGameState.current)) {
+      bufferedGameState.current = nextState;
+    }
+  };
   const setIdentity = id => { myIdRef.current = id; setMyId(id); };
   const setRoomState = value => { roomRef.current = value; setRoom(value); };
   const stopAnimation = () => {
@@ -55,9 +82,16 @@ export function useGameController() {
   const reset = () => {
     superseded.current = false;
     epoch.current++; stopAnimation(); gameRef.current = null; setGame(null);
+    if (resumeRetryTimer.current) { clearTimeout(resumeRetryTimer.current); resumeRetryTimer.current = null; }
     requestPending.current = false; setBusy(false); setPendingTrade(null); setError(''); setChatMessages([]);
   };
   const leave = () => {
+    resumingRef.current = false;
+    setIsResuming(false);
+    resumeStartedAt.current = null;
+    bufferedGameState.current = null;
+    if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
+    if (resumeRetryTimer.current) { clearTimeout(resumeRetryTimer.current); resumeRetryTimer.current = null; }
     if (roomRef.current) socketRef.current?.emit('leave_room', {});
     saveSession(null); setRoomState(null); reset(); setScreen('lobby');
     setConnected(!!socketRef.current?.connected);
@@ -80,48 +114,192 @@ export function useGameController() {
       reconnectionDelay: 1000, reconnectionDelayMax: 5000,
     });
     socketRef.current = socket;
+
+    const scheduleReconnect = () => {
+      if (superseded.current || reconnectTimer.current) return;
+      const delay = Math.min(5000, 1000 * Math.pow(1.5, reconnectAttempts.current));
+      reconnectAttempts.current++;
+      reconnectTimer.current = setTimeout(() => {
+        reconnectTimer.current = null;
+        if (!superseded.current && socketRef.current && !socketRef.current.connected && !socketRef.current.active) {
+          socketRef.current.connect();
+        }
+      }, delay);
+    };
+
+    const attemptResume = () => {
+      if (superseded.current) return;
+      if (resumeRetryTimer.current) {
+        clearTimeout(resumeRetryTimer.current);
+        resumeRetryTimer.current = null;
+      }
+      const saved = readSession(), generation = epoch.current;
+      if (!saved?.resumeToken || !socketRef.current?.connected) {
+        resumingRef.current = false;
+        setIsResuming(false);
+        return;
+      }
+
+      resumingRef.current = true;
+      setIsResuming(true);
+      if (!resumeStartedAt.current) resumeStartedAt.current = Date.now();
+
+      socketRef.current.timeout(5000).emit('resume_room', saved, (failure, response) => {
+        if (generation !== epoch.current || superseded.current) {
+          resumingRef.current = false;
+          setIsResuming(false);
+          bufferedGameState.current = null;
+          return;
+        }
+
+        if (failure) {
+          setError('Đang kết nối lại phiên chơi (chờ phản hồi máy chủ)...');
+          const delay = Math.min(5000, 1500 * Math.pow(1.5, resumeAttempts.current));
+          resumeAttempts.current++;
+          resumeRetryTimer.current = setTimeout(() => {
+            resumeRetryTimer.current = null;
+            if (epoch.current === generation && !superseded.current && socketRef.current?.connected) {
+              attemptResume();
+            }
+          }, delay);
+          return;
+        }
+
+        if (!response?.success) {
+          const isPermanent = response?.code === 'EXPIRED_TOKEN' || response?.code === 'ROOM_NOT_FOUND';
+          if (isPermanent) {
+            resumingRef.current = false;
+            setIsResuming(false);
+            resumeStartedAt.current = null;
+            bufferedGameState.current = null;
+            resumeAttempts.current = 0;
+            saveSession(null);
+            reset();
+            setRoomState(null);
+            setScreen('lobby');
+            setError(response?.message || 'Phiên chơi đã hết hạn hoặc không còn tồn tại.');
+            return;
+          }
+
+          setError(response?.message || 'Không thể khôi phục phiên lúc này. Đang thử lại...');
+          const delay = Math.min(5000, 1500 * Math.pow(1.5, resumeAttempts.current));
+          resumeAttempts.current++;
+          resumeRetryTimer.current = setTimeout(() => {
+            resumeRetryTimer.current = null;
+            if (epoch.current === generation && !superseded.current && socketRef.current?.connected) {
+              attemptResume();
+            }
+          }, delay);
+          return;
+        }
+
+        // Successfully resumed!
+        resumingRef.current = false;
+        setIsResuming(false);
+        resumeStartedAt.current = null;
+        resumeAttempts.current = 0;
+        modeRef.current = 'online';
+        setMode('online');
+        setIdentity(response.playerId);
+        setRoomState(response.room);
+        setError('');
+
+        const latestCandidate = resolveLatestState(bufferedGameState.current, response.gameState);
+        bufferedGameState.current = null;
+        const finalState = resolveLatestState(latestCandidate, gameRef.current);
+
+        if (finalState) {
+          commit(finalState, false, !gameRef.current || (finalState.startedAt !== gameRef.current?.startedAt));
+          setScreen('playing');
+        } else {
+          setScreen('online_waiting');
+        }
+      });
+    };
+    attemptResumeRef.current = attemptResume;
+
     socket.on('connect', () => {
       if (superseded.current) return;
-      setConnected(true); setIdentity(socket.id);
-      const saved = readSession(), generation = epoch.current;
-      if (saved?.resumeToken) socket.timeout(5000).emit('resume_room', saved, (failure, response) => {
-        if (generation !== epoch.current) return;
-        if (failure || !response?.success) {
-          saveSession(null); reset(); setRoomState(null); setScreen('lobby');
-          setError(response?.message || 'Không khôi phục được phiên chơi.'); return;
-        }
-        modeRef.current = 'online'; setMode('online'); setIdentity(response.playerId); setRoomState(response.room); setError('');
-        if (response.gameState) { commit(response.gameState, false, true); setScreen('playing'); }
-        else setScreen('online_waiting');
-      });
+      reconnectAttempts.current = 0;
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      setConnected(true);
+      const saved = readSession();
+      if (!saved?.resumeToken) setIdentity(socket.id);
+      attemptResume();
     });
+
     socket.on('disconnect', () => {
       if (superseded.current) { setConnected(false); setBusy(true); return; }
       setConnected(false); requestPending.current = false; setBusy(false);
       if (modeRef.current === 'online' && gameRef.current) setError('Đang nối lại phiên. Có 60 giây để quay lại ván.');
     });
-    socket.on('connect_error', () => setConnected(false));
+
+    socket.on('connect_error', () => {
+      setConnected(false);
+      if (superseded.current) return;
+      if (modeRef.current === 'online' && gameRef.current) {
+        setError('Đang kết nối lại máy chủ...');
+      } else if (readSession()?.resumeToken) {
+        setError('Đang kết nối lại phiên chơi...');
+      }
+      if (!socket.active) {
+        scheduleReconnect();
+      }
+    });
+
     socket.on('room_updated', updatedRoom => {
       if (superseded.current) return;
-      if (!updatedRoom || (roomRef.current && updatedRoom.code !== roomRef.current.code)) return;
+      const savedCode = readSession()?.roomCode;
+      if (!updatedRoom || (roomRef.current && updatedRoom.code !== roomRef.current.code) || (!roomRef.current && savedCode && updatedRoom.code !== savedCode)) return;
       setRoomState(updatedRoom);
+
+      if (resumingRef.current) {
+        if (updatedRoom.gameState) bufferSnapshot(updatedRoom.gameState);
+        return;
+      }
+
       if (updatedRoom.status === 'playing' && updatedRoom.gameState && (!gameRef.current || modeRef.current !== 'online')) {
         reset(); modeRef.current = 'online'; setMode('online'); commit(updatedRoom.gameState, false, true); setScreen('playing');
       }
     });
+
     socket.on('session_superseded', payload => {
       superseded.current = true;
+      resumingRef.current = false;
+      setIsResuming(false);
+      resumeStartedAt.current = null;
+      bufferedGameState.current = null;
       epoch.current++;
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      if (resumeRetryTimer.current) {
+        clearTimeout(resumeRetryTimer.current);
+        resumeRetryTimer.current = null;
+      }
       setPendingTrade(null);
-      saveSession(null); stopAnimation(); requestPending.current = false;
+      saveSession(null);
+      stopAnimation();
+      requestPending.current = false;
       setError(payload?.message || 'Phiên kết nối đã được chuyển sang cửa sổ hoặc thiết bị khác.');
       setConnected(false);
       setBusy(true);
     });
+
     socket.on('game_started', ({ gameState, roomCode, room }) => {
       if (superseded.current) return;
       if (roomCode && roomRef.current?.code && roomRef.current.code !== roomCode) return;
       if (room) setRoomState(room);
+
+      if (resumingRef.current) {
+        if (gameState) bufferSnapshot(gameState);
+        return;
+      }
+
       if (modeRef.current === 'online' && gameRef.current && gameState) {
         if (gameState.startedAt === gameRef.current.startedAt && gameState.revision <= gameRef.current.revision) return;
         commit(gameState, gameState.revision > gameRef.current.revision);
@@ -129,14 +307,38 @@ export function useGameController() {
       }
       reset(); modeRef.current = 'online'; setMode('online'); commit(gameState, false, true); setScreen('playing');
     });
+
     socket.on('game_state_updated', state => {
       if (superseded.current) return;
+      if (resumingRef.current) {
+        if (state) bufferSnapshot(state);
+        return;
+      }
       if (modeRef.current === 'online' && gameRef.current && state?.players && state.revision > gameRef.current.revision) commit(state, true);
     });
+
     socket.on('trade_offer_received', offer => { if (!superseded.current && offer?.targetId === myIdRef.current) setPendingTrade(offer); });
     socket.on('trade_offer_responded', () => setPendingTrade(null));
     socket.on('chat_received', message => setChatMessages(list => [...list, message]));
-    return () => { epoch.current++; timers.current.forEach(clearTimeout); socket.disconnect(); };
+
+    return () => {
+      epoch.current++;
+      resumingRef.current = false;
+      setIsResuming(false);
+      resumeStartedAt.current = null;
+      bufferedGameState.current = null;
+      timers.current.forEach(clearTimeout);
+      timers.current.clear();
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      if (resumeRetryTimer.current) {
+        clearTimeout(resumeRetryTimer.current);
+        resumeRetryTimer.current = null;
+      }
+      socket.disconnect();
+    };
   }, []);
 
   const dispatch = (type, data = {}) => {
@@ -149,7 +351,7 @@ export function useGameController() {
       catch (failure) { setError(failure.message); }
       return;
     }
-    if (!socketRef.current?.connected) { setError('Chưa kết nối máy chủ. Vui lòng chờ nối lại.'); return; }
+    if (!socketRef.current?.connected || resumingRef.current) { setError('Chưa kết nối máy chủ hoặc đang khôi phục phiên. Vui lòng chờ...'); return; }
     requestPending.current = true; setBusy(true); const generation = epoch.current;
     const requestId = data.requestId || `${myId || 'client'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     socketRef.current.timeout(5000).emit('game_action', { ...data, type, revision: current.revision, requestId }, (failure, response) => {
@@ -216,10 +418,46 @@ export function useGameController() {
     }
     setPendingTrade(null);
   };
-  return {
-    screen, mode, game, room, myId, connected, busy, animation, error, pendingTrade, chatMessages,
+  const controller = {
+    screen, mode, game, room, myId, connected, busy, animation, error, pendingTrade, chatMessages, isResuming,
+    isReconnecting: (!connected || isResuming) && !superseded.current && (mode === 'online' || !!readSession()?.resumeToken),
     clearError: () => superseded.current ? leave() : setError(''), startLocal, leave, dispatch, createRoom, joinRoom, startOnline, sendTrade, respondTrade,
     toggleReady: () => socketRef.current?.emit('toggle_ready'),
-    sendChat: message => socketRef.current?.emit('send_chat', { message }),
+    sendChat: (message, callback) => {
+      const socket = socketRef.current;
+      if (!socket || !socket.connected) {
+        const res = { success: false, message: 'Chưa kết nối đến máy chủ.' };
+        callback?.(res);
+        return Promise.resolve(res);
+      }
+      return new Promise((resolve) => {
+        socket.timeout(4000).emit('send_chat', { message }, (err, res) => {
+          const result = err ? { success: false, message: 'Gửi tin nhắn quá thời gian phản hồi.' } : (res || { success: true });
+          callback?.(result);
+          resolve(result);
+        });
+      });
+    },
+    retryConnect: () => {
+      if (superseded.current) return;
+      if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
+      if (resumeRetryTimer.current) { clearTimeout(resumeRetryTimer.current); resumeRetryTimer.current = null; }
+      if (socketRef.current) {
+        if (!socketRef.current.connected) socketRef.current.connect();
+        else if (readSession()?.resumeToken) attemptResumeRef.current?.();
+      }
+    },
   };
+
+  if (import.meta.env.DEV) {
+    controller.injectVisualShowcaseState = (updater) => {
+      const current = gameRef.current;
+      if (!current) return;
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      commit(next, false, true);
+    };
+    controller.getDevState = () => gameRef.current;
+  }
+
+  return controller;
 }

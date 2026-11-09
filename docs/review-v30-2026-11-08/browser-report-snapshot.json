@@ -1,0 +1,195 @@
+{
+  "timestamp": "2026-11-08T13:35:07.133Z",
+  "gitCommitHash": "b5da0678fa245ab5ec527747b9f93371da226fcb",
+  "workingTreeClean": false,
+  "modifiedFilesCount": 63,
+  "bundleHashes": {
+    "Board3D-D9HDSj6O.js": "388621508fd70a1d",
+    "index-C_2XOu1A.js": "e56065259c8be049"
+  },
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 820,
+      "deviceScaleFactor": 1
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2
+    }
+  },
+  "productionRuntimeIsolation": {
+    "windowHasController": false,
+    "controllerType": "undefined",
+    "hasInject": false,
+    "isolated": true
+  },
+  "chatVerification": {
+    "hostSentMessage": {
+      "success": true,
+      "inputCleared": true
+    },
+    "guestUnreadBadge": {
+      "hasBadge": true,
+      "badgeText": "1"
+    },
+    "disambiguationBySenderId": {
+      "count": 2,
+      "myMsgHasBan": true,
+      "guestMsgNoBan": true,
+      "timeFormatValid": true,
+      "parsed": [
+        {
+          "strong": "Thanh Trung (Bạn)",
+          "body": "Xin chào từ Host Thanh Trung!",
+          "time": "20:35"
+        },
+        {
+          "strong": "Thanh Trung",
+          "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
+          "time": "20:35"
+        }
+      ]
+    },
+    "tallMessageAutoScrollPin": {
+      "distanceFromBottom": 0,
+      "pinnedToBottom": true,
+      "scrollHeight": 387,
+      "scrollTop": 112,
+      "clientHeight": 275
+    },
+    "scrollUpPreserved": {
+      "currentScrollTop": 10,
+      "preservedReadingPosition": true
+    }
+  },
+  "interactiveInspection": {
+    "tileInspector": null
+  },
+  "liveGameplayAction": {
+    "buildDialog": {
+      "open": true,
+      "title": "Cố Đô Huế",
+      "choices": [
+        {
+          "title": "Nhà cấp 1",
+          "cost": "1M₫",
+          "locked": false
+        },
+        {
+          "title": "Nhà cấp 2",
+          "cost": "1.50M₫",
+          "locked": false
+        },
+        {
+          "title": "Biệt thự",
+          "cost": "2M₫",
+          "locked": false
+        },
+        {
+          "title": "Khách sạn Landmark",
+          "cost": "Chưa mở",
+          "locked": true
+        }
+      ]
+    },
+    "confirmClicked": true,
+    "purchaseVerified": true,
+    "synchronizedAcrossClients": true,
+    "tab1Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
+    "tab2Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
+    "tab1CashPostPurchase": "14.000.000₫",
+    "tab1PropertiesPostPurchase": "1 Đất, 1 Nhà",
+    "tab2ReflectedCash": "14.000.000₫",
+    "tab2ReflectedProperties": "1 Đất, 1 Nhà"
+  },
+  "boardVerification": {
+    "canvasPresent": true,
+    "canvasRect": {
+      "top": 0,
+      "bottom": 728,
+      "left": 0,
+      "right": 1256,
+      "width": 1256,
+      "height": 728
+    },
+    "webglContextActive": true
+  },
+  "mobileSafeAreas": {
+    "elementsFound": true,
+    "camRect": {
+      "top": 148,
+      "bottom": 180,
+      "left": 8,
+      "right": 94,
+      "width": 86,
+      "height": 32
+    },
+    "hudRect": {
+      "top": 56,
+      "bottom": 133,
+      "left": 8,
+      "right": 382,
+      "width": 374,
+      "height": 77
+    },
+    "turnRect": {
+      "top": 764,
+      "bottom": 836,
+      "left": 15.6,
+      "right": 374.4,
+      "width": 358.8,
+      "height": 72
+    },
+    "dockRect": {
+      "top": 148,
+      "bottom": 198,
+      "left": 56,
+      "right": 382,
+      "width": 326,
+      "height": 50
+    },
+    "camBelowHud": true,
+    "camAboveTurn": true,
+    "dockPositionedAboveBoard": true,
+    "dockClearanceToProjectedBoardTopPx": 96
+  },
+  "visualShowcaseFixture": {
+    "fixtureType": "visual_showcase_dev_fixture",
+    "label": "[FIXTURE_VISUAL_SHOWCASE - NOT TRANSACTIONAL GAMEPLAY]",
+    "description": "Dedicated development fixture rendering all 4 architectural building tiers (Cottage, Townhouse, Resort Villa, Royal Landmark Castle) and contact shadows on the 3D board canvas.",
+    "result": {
+      "success": true,
+      "verifiedTiers": {
+        "1": {
+          "tileId": 1,
+          "houses": 1,
+          "owner": "player_user",
+          "tierName": "Cottage (Tier 1)"
+        },
+        "3": {
+          "tileId": 3,
+          "houses": 2,
+          "owner": "player_user",
+          "tierName": "Townhouse (Tier 2)"
+        },
+        "6": {
+          "tileId": 6,
+          "houses": 3,
+          "owner": "bot_1",
+          "tierName": "Resort Villa (Tier 3)"
+        },
+        "8": {
+          "tileId": 8,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        }
+      },
+      "canvasReady": true,
+      "webglContextActive": true
+    }
+  },
+  "overallSuccess": true
+}
