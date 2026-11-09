@@ -1239,8 +1239,7 @@ async function main() {
       }`);
       await new Promise(r => setTimeout(r, 800));
 
-      const desktopFocusLabel = await evalInPage(tab1.sendCmd, `async () => {
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const desktopFocusLabel = await evalInPage(tab1.sendCmd, `() => {
         const label = document.querySelector('.tile-focus-label');
         if (!label) return null;
         return {

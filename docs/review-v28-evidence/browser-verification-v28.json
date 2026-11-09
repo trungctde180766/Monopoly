@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-11-08T14:11:40.634Z",
-  "gitCommitHash": "b5da0678fa245ab5ec527747b9f93371da226fcb",
+  "timestamp": "2026-11-09T07:41:43.391Z",
+  "gitCommitHash": "968fda72b2f73b739111688b25d0874d39d09241",
   "workingTreeClean": false,
-  "modifiedFilesCount": 65,
+  "modifiedFilesCount": 2,
   "bundleHashes": {
     "Board3D-Bj_XohnI.js": "cee7b2c032a46649",
     "index-DnTpCz7j.js": "de93eced9c444019"
@@ -28,7 +28,7 @@
   "chatVerification": {
     "hostSentMessage": {
       "success": true,
-      "inputCleared": false
+      "inputCleared": true
     },
     "guestUnreadBadge": {
       "hasBadge": true,
@@ -43,25 +43,25 @@
         {
           "strong": "Thanh Trung (Bạn)",
           "body": "Xin chào từ Host Thanh Trung!",
-          "time": "21:12"
+          "time": "14:41"
         },
         {
           "strong": "Thanh Trung",
           "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
-          "time": "21:12"
+          "time": "14:41"
         }
       ]
     },
     "tallMessageAutoScrollPin": {
       "distanceFromBottom": 0,
       "pinnedToBottom": true,
-      "scrollHeight": 310,
-      "scrollTop": 35,
+      "scrollHeight": 387,
+      "scrollTop": 112,
       "clientHeight": 275
     },
     "scrollUpPreserved": {
-      "currentScrollTop": 96,
-      "preservedReadingPosition": false
+      "currentScrollTop": 10,
+      "preservedReadingPosition": true
     }
   },
   "interactiveInspection": {
@@ -100,18 +100,50 @@
   },
   "liveGameplayAction": {
     "buildDialog": {
-      "open": false
-    }
+      "open": true,
+      "title": "Cố Đô Huế",
+      "choices": [
+        {
+          "title": "Nhà cấp 1",
+          "cost": "1M₫",
+          "locked": false
+        },
+        {
+          "title": "Nhà cấp 2",
+          "cost": "1.50M₫",
+          "locked": false
+        },
+        {
+          "title": "Biệt thự",
+          "cost": "2M₫",
+          "locked": false
+        },
+        {
+          "title": "Khách sạn Landmark",
+          "cost": "Chưa mở",
+          "locked": true
+        }
+      ]
+    },
+    "confirmClicked": true,
+    "purchaseVerified": true,
+    "synchronizedAcrossClients": true,
+    "tab1Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
+    "tab2Log": "🏗️ Thanh Trung mua/nâng Cố Đô Huế, chi 1M₫.",
+    "tab1CashPostPurchase": "14M",
+    "tab1PropertiesPostPurchase": "1 Đất, 1 Nhà",
+    "tab2ReflectedCash": "14M",
+    "tab2ReflectedProperties": "1 Đất, 1 Nhà"
   },
   "boardVerification": {
     "canvasPresent": true,
     "canvasRect": {
       "top": 0,
-      "bottom": 728,
+      "bottom": 727,
       "left": 0,
-      "right": 1256,
-      "width": 1256,
-      "height": 728
+      "right": 1254,
+      "width": 1254,
+      "height": 727
     },
     "webglContextActive": true
   },
@@ -220,9 +252,9 @@
       "tier": "🏨 Cấp 4 (Landmark)",
       "owner": "👤 Đối thủ AI",
       "price": "4M₫",
-      "left": "316.97px",
-      "top": "270.694px"
+      "left": "316.398px",
+      "top": "270.322px"
     }
   },
-  "overallSuccess": false
+  "overallSuccess": true
 }
