@@ -1283,14 +1283,13 @@ export default function Board3D({
           const px = (point.x + 1) * w / 2;
           const py = (1 - point.y) * h / 2;
 
-          // 1. Clamp tâm ngang theo kích thước thực: [clampedX - lw/2, clampedX + lw/2] strictly in [minLeft, maxRight]
-          const minCenterX = minLeft + lw / 2;
-          const maxCenterX = maxRight - lw / 2;
-          let clampedCenterX;
-          if (minCenterX > maxCenterX) {
-            clampedCenterX = w / 2;
+          // 1. Clamp ngang trực tiếp theo bounding box: clampedLeft strictly in [minLeft, maxRight - lw]
+          let clampedLeft;
+          if (lw >= (maxRight - minLeft)) {
+            clampedLeft = minLeft;
           } else {
-            clampedCenterX = Math.max(minCenterX, Math.min(maxCenterX, px));
+            const desiredLeft = px - lw / 2;
+            clampedLeft = Math.max(minLeft, Math.min(maxRight - lw, desiredLeft));
           }
 
           // 2. Định vị dọc: Ưu tiên đặt phía trên ô cờ. Nếu chạm vùng HUD/Dock thì tự động lật xuống dưới
@@ -1301,13 +1300,13 @@ export default function Board3D({
 
           if (spaceAbove >= lh || spaceAbove >= spaceBelow) {
             clampedTop = Math.max(safeTop + lh, Math.min(safeBottom, py - 12));
-            transformStr = 'translate(-50%, -100%)';
+            transformStr = 'translateY(-100%)';
           } else {
             clampedTop = Math.max(safeTop, Math.min(safeBottom - lh, py + 16));
-            transformStr = 'translate(-50%, 0)';
+            transformStr = 'translateY(0)';
           }
 
-          el.style.left = `${clampedCenterX}px`;
+          el.style.left = `${clampedLeft}px`;
           el.style.top = `${clampedTop}px`;
           el.style.transform = transformStr;
           el.dataset.positionedTileId = String(selectedIdRef.current);

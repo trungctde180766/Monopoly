@@ -11,6 +11,9 @@ import { defaultRoomStore, getActionPayloadSignature } from './roomStore.js';
 import { publicRoom, conflictError, normalizeRoomCode } from './roomCodec.js';
 
 const distPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../dist');
+if (process.env.TRACK_STARTUP_IPC) {
+  process.send?.({ event: 'module_start', timestamp: Date.now() });
+}
 const TOKENS = ['car', 'jet', 'yacht', 'hat', 'diamond', 'dog'];
 const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 const requireRule = (valid, message, code) => {
@@ -438,10 +441,17 @@ export function createServerApp({ roomStore = defaultRoomStore, socketPath = '/s
 const defaultApp = createServerApp();
 export const { app, httpServer, io } = defaultApp;
 if (!process.env.VERCEL) {
+  if (process.env.TRACK_STARTUP_IPC) {
+    process.send?.({ event: 'app_ready', timestamp: Date.now() });
+  }
   process.on('message', msg => { if (msg === 'exit') process.exit(0); });
   process.on('disconnect', () => httpServer.close(() => process.exit(0)));
   httpServer.listen(process.env.PORT || 3001, () => {
-    process.send?.({ port: httpServer.address().port });
-    console.log('Máy chủ Cờ Tỷ Phú: http://localhost:' + httpServer.address().port);
+    const port = httpServer.address().port;
+    if (process.env.TRACK_STARTUP_IPC) {
+      process.send?.({ event: 'listening', port, timestamp: Date.now() });
+    }
+    process.send?.({ port });
+    console.log('Máy chủ Cờ Tỷ Phú: http://localhost:' + port);
   });
 }

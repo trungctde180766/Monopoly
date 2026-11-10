@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-11-09T13:30:17.884Z",
-  "gitCommitHash": "1185707d560bcb984f80057e177ecbf70f941ce9",
+  "timestamp": "2026-11-10T03:00:06.013Z",
+  "gitCommitHash": "7430ba3d908017e2f064e28ce288c3a2dd7fa47c",
   "workingTreeClean": false,
-  "modifiedFilesCount": 32,
+  "modifiedFilesCount": 39,
   "bundleHashes": {
-    "Board3D-BstVGBDn.js": "9a303e72ebbec19b",
-    "index-aNehJkHk.js": "da461d34d212ca65"
+    "Board3D-B5aFJBr3.js": "83cf75a7a7ac527a",
+    "index-trDKQhXU.js": "0e3a5af25a3530a8"
   },
   "viewports": {
     "desktop": {
@@ -43,12 +43,12 @@
         {
           "strong": "Thanh Trung (Bạn)",
           "body": "Xin chào từ Host Thanh Trung!",
-          "time": "20:30"
+          "time": "10:00"
         },
         {
           "strong": "Thanh Trung",
           "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
-          "time": "20:30"
+          "time": "10:00"
         }
       ]
     },
@@ -101,21 +101,21 @@
   "liveGameplayAction": {
     "buildDialog": {
       "open": true,
-      "title": "Phố Cổ Hội An",
+      "title": "Bán Đảo Sơn Trà",
       "choices": [
         {
           "title": "Nhà cấp 1",
-          "cost": "1M₫",
+          "cost": "1.20M₫",
           "locked": false
         },
         {
           "title": "Nhà cấp 2",
-          "cost": "1.50M₫",
+          "cost": "1.70M₫",
           "locked": false
         },
         {
           "title": "Biệt thự",
-          "cost": "2M₫",
+          "cost": "2.20M₫",
           "locked": false
         },
         {
@@ -128,8 +128,8 @@
     "confirmClicked": true,
     "purchaseVerified": true,
     "synchronizedAcrossClients": true,
-    "tab1Log": "🏗️ Thanh Trung mua/nâng Phố Cổ Hội An, chi 1M₫.",
-    "tab2Log": "🏗️ Thanh Trung mua/nâng Phố Cổ Hội An, chi 1M₫.",
+    "tab1Log": "🏗️ Thanh Trung mua/nâng Bán Đảo Sơn Trà, chi 1.20M₫.",
+    "tab2Log": "🏗️ Thanh Trung mua/nâng Bán Đảo Sơn Trà, chi 1.20M₫.",
     "tab1CashPostPurchase": "14.000.000₫",
     "tab1PropertiesPostPurchase": "1 Đất, 1 Nhà",
     "tab2ReflectedCash": "14.000.000₫",
@@ -139,11 +139,11 @@
     "canvasPresent": true,
     "canvasRect": {
       "top": 0,
-      "bottom": 728,
+      "bottom": 727,
       "left": 0,
-      "right": 1256,
-      "width": 1256,
-      "height": 728
+      "right": 1254,
+      "width": 1254,
+      "height": 727
     },
     "webglContextActive": true
   },
@@ -159,11 +159,11 @@
     },
     "hudRect": {
       "top": 56,
-      "bottom": 133,
+      "bottom": 130,
       "left": 8,
       "right": 382,
       "width": 374,
-      "height": 77
+      "height": 74
     },
     "turnRect": {
       "top": 764,
@@ -223,11 +223,18 @@
           "owner": "bot_1",
           "tierName": "Royal Landmark Castle (Tier 4)"
         },
-        "28": {
-          "tileId": 28,
+        "27": {
+          "tileId": 27,
           "houses": 4,
           "owner": "bot_1",
           "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "28": {
+          "tileId": 28,
+          "houses": 0,
+          "owner": "bot_1",
+          "tierName": "Utility (No Houses)",
+          "isUtility": true
         },
         "39": {
           "tileId": 39,
@@ -247,8 +254,8 @@
       "owner": "👤 Đối thủ AI",
       "price": "4M₫",
       "rect": {
-        "left": 177.8,
-        "right": 401.5,
+        "left": 177.7,
+        "right": 401.3,
         "top": 208.4,
         "bottom": 292.9,
         "width": 223.6,
@@ -266,8 +273,8 @@
       "owner": "👤 Đối thủ AI",
       "price": "4M₫",
       "rect": {
-        "left": 11.8,
-        "right": 215.2,
+        "left": 12,
+        "right": 215.3,
         "top": 351.1,
         "bottom": 425.1,
         "width": 203.3,
@@ -287,8 +294,8 @@
           "owner": "👤 Đối thủ AI",
           "price": "4M₫",
           "rect": {
-            "left": 11.8,
-            "right": 215.2,
+            "left": 12,
+            "right": 215.3,
             "top": 351.1,
             "bottom": 425.1,
             "width": 203.3,
@@ -306,10 +313,48 @@
           "owner": "👤 Đối thủ AI",
           "price": "7.50M₫",
           "rect": {
-            "left": 57.7,
-            "right": 261,
+            "left": 57.8,
+            "right": 261.1,
             "top": 263.8,
             "bottom": 337.8,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 27,
+          "found": true,
+          "title": "Bãi Biển Mỹ Khê",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "9.75M₫",
+          "rect": {
+            "left": 175,
+            "right": 378.3,
+            "top": 297.4,
+            "bottom": 371.4,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 121.1,
+            "right": 324.4,
+            "top": 414.6,
+            "bottom": 488.6,
             "width": 203.3,
             "height": 74
           },
@@ -325,31 +370,12 @@
           "owner": "👤 Đối thủ AI",
           "price": "80k₫",
           "rect": {
-            "left": 222.9,
-            "right": 378.1,
+            "left": 223,
+            "right": 378.3,
             "top": 305.2,
             "bottom": 379.2,
             "width": 155.3,
             "height": 74
-          },
-          "inBoundsHorizontal": true,
-          "inBoundsVertical": true,
-          "fullyVisible": true
-        },
-        {
-          "tileId": 39,
-          "found": true,
-          "title": "Landmark 81",
-          "tier": "🏨 Cấp 4 (Landmark)",
-          "owner": "👤 Đối thủ AI",
-          "price": "17M₫",
-          "rect": {
-            "left": 138.9,
-            "right": 306.3,
-            "top": 393.6,
-            "bottom": 488.6,
-            "width": 167.4,
-            "height": 95
           },
           "inBoundsHorizontal": true,
           "inBoundsVertical": true,
@@ -365,8 +391,8 @@
           "owner": "👤 Đối thủ AI",
           "price": "4M₫",
           "rect": {
-            "left": 11.8,
-            "right": 215.2,
+            "left": 12,
+            "right": 215.3,
             "top": 328,
             "bottom": 402,
             "width": 203.3,
@@ -384,10 +410,48 @@
           "owner": "👤 Đối thủ AI",
           "price": "7.50M₫",
           "rect": {
-            "left": 45.4,
-            "right": 248.7,
+            "left": 45.5,
+            "right": 248.8,
             "top": 247.2,
             "bottom": 321.2,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 27,
+          "found": true,
+          "title": "Bãi Biển Mỹ Khê",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "9.75M₫",
+          "rect": {
+            "left": 145,
+            "right": 348.3,
+            "top": 278.4,
+            "bottom": 352.4,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 103.9,
+            "right": 307.2,
+            "top": 386.4,
+            "bottom": 460.4,
             "width": 203.3,
             "height": 74
           },
@@ -403,31 +467,12 @@
           "owner": "👤 Đối thủ AI",
           "price": "80k₫",
           "rect": {
-            "left": 192.9,
-            "right": 348.1,
+            "left": 193,
+            "right": 348.3,
             "top": 285.6,
             "bottom": 359.6,
             "width": 155.3,
             "height": 74
-          },
-          "inBoundsHorizontal": true,
-          "inBoundsVertical": true,
-          "fullyVisible": true
-        },
-        {
-          "tileId": 39,
-          "found": true,
-          "title": "Landmark 81",
-          "tier": "🏨 Cấp 4 (Landmark)",
-          "owner": "👤 Đối thủ AI",
-          "price": "17M₫",
-          "rect": {
-            "left": 128.1,
-            "right": 282.7,
-            "top": 365.4,
-            "bottom": 460.4,
-            "width": 154.6,
-            "height": 95
           },
           "inBoundsHorizontal": true,
           "inBoundsVertical": true,

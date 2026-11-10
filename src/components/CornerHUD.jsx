@@ -256,32 +256,32 @@ export default function CornerHUD({
       <div className="mobile-hud-container">
         {activePlayer && (
           <div className="mobile-active-card">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 shadow border border-white"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm sm:text-base shrink-0 shadow border border-white"
                 style={{ backgroundColor: activePlayer.color || '#3b82f6' }}
               >
                 {activeToken.emoji}
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-black text-xs text-slate-900 truncate">{activePlayer.name}</span>
-                  {activePlayer.isBot && <span className="text-[8px] bg-slate-200 px-1 rounded font-bold">BOT</span>}
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="font-black text-xs text-slate-900 truncate max-w-[85px] sm:max-w-none">{activePlayer.name}</span>
+                  {activePlayer.isBot && <span className="text-[8px] bg-slate-200 px-1 rounded font-bold shrink-0">BOT</span>}
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 whitespace-nowrap">
-                  <span>🪙 {formatVND(activePlayer.money)}</span>
-                  <span className="text-slate-400 font-normal">|</span>
-                  <span className="text-slate-600 text-[10px]">🏰 {activeOwnedTiles.length} Đất</span>
+                <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black text-emerald-600 truncate">
+                  <span className="shrink-0">🪙 {formatVND(activePlayer.money)}</span>
+                  <span className="text-slate-300 font-normal shrink-0">|</span>
+                  <span className="text-slate-600 text-[9px] sm:text-[10px] font-bold shrink-0">🏰 {activeOwnedTiles.length} Đất</span>
                 </div>
               </div>
             </div>
 
             {/* Nút hành động nhanh trên mobile nếu là lượt người chơi thật */}
             {!activePlayer.isBot && !activePlayer.isBankrupt && (
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0 ml-1.5">
                 <button
                   onClick={onOpenManage}
-                  className="px-2 py-1 rounded-lg text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300"
+                  className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-[9px] sm:text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 shadow-sm hover:bg-amber-100 active:scale-95 whitespace-nowrap"
                 >
                   🏛️ Sổ Đỏ
                 </button>
@@ -289,9 +289,9 @@ export default function CornerHUD({
                   onClick={canTrade ? onOpenTrade : undefined}
                   disabled={!canTrade}
                   title={!canTrade ? 'Chưa thể giao dịch lúc này' : 'Giao dịch đổi đất'}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-black border transition ${
+                  className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-[9px] sm:text-[10px] font-black border shadow-sm transition whitespace-nowrap ${
                     canTrade
-                      ? 'bg-sky-50 text-sky-800 border-sky-300 active:scale-95'
+                      ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100 active:scale-95'
                       : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
                   }`}
                 >

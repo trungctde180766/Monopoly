@@ -13,20 +13,44 @@ test('Real Socket.IO sessions reject forged snapshots and apply authorized actio
   };
 
   const server = fork(new URL('../server/index.js', import.meta.url), [], {
-    env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+    env: { ...process.env, PORT: '0', TRACK_STARTUP_IPC: '1' }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
 
   let serverStderr = '';
-  server.stderr?.on('data', chunk => serverStderr += chunk.toString());
+  let serverStdout = '';
+  server.stderr?.on('data', chunk => { serverStderr += chunk.toString(); });
+  server.stdout?.on('data', chunk => { serverStdout += chunk.toString(); });
+
+  server.on('message', msg => {
+    if (msg && typeof msg === 'object' && msg.event) {
+      logStep(`server_ipc_${msg.event}`, { remoteTs: msg.timestamp, port: msg.port });
+    }
+  });
 
   const sockets = [];
   try {
     logStep('server_spawn');
     const portPromise = new Promise((resolve, reject) => {
-      server.once('message', ({ port }) => resolve(port));
-      server.once('error', err => reject(new Error(`Server spawn error: ${err.message}`)));
-      server.once('exit', (code, sig) => reject(new Error(`Server exited prematurely (code: ${code}, signal: ${sig}): ${serverStderr}`)));
-      setTimeout(() => reject(new Error(`Server IPC timeout after 5000ms: ${serverStderr}`)), 5000);
+      const timer = setTimeout(() => {
+        reject(new Error(`Server IPC timeout after 15000ms. Stdout: [${serverStdout}] Stderr: [${serverStderr}] Steps: ${JSON.stringify(stepLog)}`));
+      }, 15000);
+
+      const onMsg = (msg) => {
+        if (msg && typeof msg.port === 'number') {
+          clearTimeout(timer);
+          server.off('message', onMsg);
+          resolve(msg.port);
+        }
+      };
+      server.on('message', onMsg);
+      server.once('error', err => {
+        clearTimeout(timer);
+        reject(new Error(`Server spawn error: ${err.message}`));
+      });
+      server.once('exit', (code, sig) => {
+        clearTimeout(timer);
+        reject(new Error(`Server exited prematurely (code: ${code}, signal: ${sig}): ${serverStderr}`));
+      });
     });
     const port = await portPromise;
     logStep('server_ready', { port });

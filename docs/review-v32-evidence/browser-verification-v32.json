@@ -1,0 +1,488 @@
+{
+  "timestamp": "2026-11-10T03:00:06.013Z",
+  "gitCommitHash": "7430ba3d908017e2f064e28ce288c3a2dd7fa47c",
+  "workingTreeClean": false,
+  "modifiedFilesCount": 39,
+  "bundleHashes": {
+    "Board3D-B5aFJBr3.js": "83cf75a7a7ac527a",
+    "index-trDKQhXU.js": "0e3a5af25a3530a8"
+  },
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 820,
+      "deviceScaleFactor": 1
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 2
+    }
+  },
+  "productionRuntimeIsolation": {
+    "windowHasController": false,
+    "controllerType": "undefined",
+    "hasInject": false,
+    "isolated": true
+  },
+  "chatVerification": {
+    "hostSentMessage": {
+      "success": true,
+      "inputCleared": true
+    },
+    "guestUnreadBadge": {
+      "hasBadge": true,
+      "badgeText": "1"
+    },
+    "disambiguationBySenderId": {
+      "count": 2,
+      "myMsgHasBan": true,
+      "guestMsgNoBan": true,
+      "timeFormatValid": true,
+      "parsed": [
+        {
+          "strong": "Thanh Trung (Bạn)",
+          "body": "Xin chào từ Host Thanh Trung!",
+          "time": "10:00"
+        },
+        {
+          "strong": "Thanh Trung",
+          "body": "Chào bạn! Tôi là Guest Thanh Trung (cùng tên nhưng khác senderId).",
+          "time": "10:00"
+        }
+      ]
+    },
+    "tallMessageAutoScrollPin": {
+      "distanceFromBottom": 0,
+      "pinnedToBottom": true,
+      "scrollHeight": 387,
+      "scrollTop": 112,
+      "clientHeight": 275
+    },
+    "scrollUpPreserved": {
+      "currentScrollTop": 10,
+      "preservedReadingPosition": true
+    }
+  },
+  "interactiveInspection": {
+    "tileInspector": {
+      "title": "Bến Xe Miền Tây",
+      "statusBadge": "#01Chưa có chủ",
+      "price": "600k₫",
+      "hasDetailBtn": true
+    },
+    "deedModal": {
+      "title": "Bến Xe Miền Tây",
+      "rowCount": 5,
+      "rows": [
+        {
+          "label": "Đất trống",
+          "rent": "20k₫"
+        },
+        {
+          "label": "Nhà cấp 1",
+          "rent": "100k₫"
+        },
+        {
+          "label": "Nhà cấp 2",
+          "rent": "300k₫"
+        },
+        {
+          "label": "Biệt thự",
+          "rent": "900k₫"
+        },
+        {
+          "label": "Khách sạn Landmark",
+          "rent": "1.60M₫"
+        }
+      ]
+    }
+  },
+  "liveGameplayAction": {
+    "buildDialog": {
+      "open": true,
+      "title": "Bán Đảo Sơn Trà",
+      "choices": [
+        {
+          "title": "Nhà cấp 1",
+          "cost": "1.20M₫",
+          "locked": false
+        },
+        {
+          "title": "Nhà cấp 2",
+          "cost": "1.70M₫",
+          "locked": false
+        },
+        {
+          "title": "Biệt thự",
+          "cost": "2.20M₫",
+          "locked": false
+        },
+        {
+          "title": "Khách sạn Landmark",
+          "cost": "Chưa mở",
+          "locked": true
+        }
+      ]
+    },
+    "confirmClicked": true,
+    "purchaseVerified": true,
+    "synchronizedAcrossClients": true,
+    "tab1Log": "🏗️ Thanh Trung mua/nâng Bán Đảo Sơn Trà, chi 1.20M₫.",
+    "tab2Log": "🏗️ Thanh Trung mua/nâng Bán Đảo Sơn Trà, chi 1.20M₫.",
+    "tab1CashPostPurchase": "14.000.000₫",
+    "tab1PropertiesPostPurchase": "1 Đất, 1 Nhà",
+    "tab2ReflectedCash": "14.000.000₫",
+    "tab2ReflectedProperties": "1 Đất, 1 Nhà"
+  },
+  "boardVerification": {
+    "canvasPresent": true,
+    "canvasRect": {
+      "top": 0,
+      "bottom": 727,
+      "left": 0,
+      "right": 1254,
+      "width": 1254,
+      "height": 727
+    },
+    "webglContextActive": true
+  },
+  "mobileSafeAreas": {
+    "elementsFound": true,
+    "camRect": {
+      "top": 148,
+      "bottom": 180,
+      "left": 8,
+      "right": 94,
+      "width": 86,
+      "height": 32
+    },
+    "hudRect": {
+      "top": 56,
+      "bottom": 130,
+      "left": 8,
+      "right": 382,
+      "width": 374,
+      "height": 74
+    },
+    "turnRect": {
+      "top": 764,
+      "bottom": 836,
+      "left": 15.6,
+      "right": 374.4,
+      "width": 358.8,
+      "height": 72
+    },
+    "dockRect": {
+      "top": 148,
+      "bottom": 198,
+      "left": 56,
+      "right": 382,
+      "width": 326,
+      "height": 50
+    },
+    "camBelowHud": true,
+    "camAboveTurn": true,
+    "dockPositionedAboveBoard": true,
+    "dockClearanceToProjectedBoardTopPx": 96
+  },
+  "visualShowcaseFixture": {
+    "fixtureType": "visual_showcase_dev_fixture",
+    "label": "[FIXTURE_VISUAL_SHOWCASE - NOT TRANSACTIONAL GAMEPLAY]",
+    "description": "Dedicated development fixture rendering all 4 architectural building tiers (Cottage, Townhouse, Resort Villa, Royal Landmark Castle) and contact shadows on the 3D board canvas.",
+    "result": {
+      "success": true,
+      "verifiedTiers": {
+        "1": {
+          "tileId": 1,
+          "houses": 1,
+          "owner": "player_user",
+          "tierName": "Cottage (Tier 1)"
+        },
+        "3": {
+          "tileId": 3,
+          "houses": 2,
+          "owner": "player_user",
+          "tierName": "Townhouse (Tier 2)"
+        },
+        "6": {
+          "tileId": 6,
+          "houses": 3,
+          "owner": "bot_1",
+          "tierName": "Resort Villa (Tier 3)"
+        },
+        "8": {
+          "tileId": 8,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "18": {
+          "tileId": 18,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "27": {
+          "tileId": 27,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        },
+        "28": {
+          "tileId": 28,
+          "houses": 0,
+          "owner": "bot_1",
+          "tierName": "Utility (No Houses)",
+          "isUtility": true
+        },
+        "39": {
+          "tileId": 39,
+          "houses": 4,
+          "owner": "bot_1",
+          "tierName": "Royal Landmark Castle (Tier 4)"
+        }
+      },
+      "canvasReady": true,
+      "webglContextActive": true
+    },
+    "desktopFocusLabel": {
+      "tileId": 8,
+      "found": true,
+      "title": "Phố Cổ Hội An",
+      "tier": "🏨 Cấp 4 (Landmark)",
+      "owner": "👤 Đối thủ AI",
+      "price": "4M₫",
+      "rect": {
+        "left": 177.7,
+        "right": 401.3,
+        "top": 208.4,
+        "bottom": 292.9,
+        "width": 223.6,
+        "height": 84.5
+      },
+      "inBoundsHorizontal": true,
+      "inBoundsVertical": true,
+      "fullyVisible": true
+    },
+    "mobileFocusLabel": {
+      "tileId": 8,
+      "found": true,
+      "title": "Phố Cổ Hội An",
+      "tier": "🏨 Cấp 4 (Landmark)",
+      "owner": "👤 Đối thủ AI",
+      "price": "4M₫",
+      "rect": {
+        "left": 12,
+        "right": 215.3,
+        "top": 351.1,
+        "bottom": 425.1,
+        "width": 203.3,
+        "height": 74
+      },
+      "inBoundsHorizontal": true,
+      "inBoundsVertical": true,
+      "fullyVisible": true
+    },
+    "geometryVerification": {
+      "mobile390x844": [
+        {
+          "tileId": 8,
+          "found": true,
+          "title": "Phố Cổ Hội An",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "4M₫",
+          "rect": {
+            "left": 12,
+            "right": 215.3,
+            "top": 351.1,
+            "bottom": 425.1,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 18,
+          "found": true,
+          "title": "Nha Trang Biển Xanh",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "7.50M₫",
+          "rect": {
+            "left": 57.8,
+            "right": 261.1,
+            "top": 263.8,
+            "bottom": 337.8,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 27,
+          "found": true,
+          "title": "Bãi Biển Mỹ Khê",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "9.75M₫",
+          "rect": {
+            "left": 175,
+            "right": 378.3,
+            "top": 297.4,
+            "bottom": 371.4,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 121.1,
+            "right": 324.4,
+            "top": 414.6,
+            "bottom": 488.6,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 28,
+          "found": true,
+          "title": "Sawaco - Cấp Nước",
+          "tier": "Tiện ích",
+          "owner": "👤 Đối thủ AI",
+          "price": "80k₫",
+          "rect": {
+            "left": 223,
+            "right": 378.3,
+            "top": 305.2,
+            "bottom": 379.2,
+            "width": 155.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        }
+      ],
+      "mobile360x800": [
+        {
+          "tileId": 8,
+          "found": true,
+          "title": "Phố Cổ Hội An",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "4M₫",
+          "rect": {
+            "left": 12,
+            "right": 215.3,
+            "top": 328,
+            "bottom": 402,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 18,
+          "found": true,
+          "title": "Nha Trang Biển Xanh",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "7.50M₫",
+          "rect": {
+            "left": 45.5,
+            "right": 248.8,
+            "top": 247.2,
+            "bottom": 321.2,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 27,
+          "found": true,
+          "title": "Bãi Biển Mỹ Khê",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "9.75M₫",
+          "rect": {
+            "left": 145,
+            "right": 348.3,
+            "top": 278.4,
+            "bottom": 352.4,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 39,
+          "found": true,
+          "title": "Landmark 81",
+          "tier": "🏨 Cấp 4 (Landmark)",
+          "owner": "👤 Đối thủ AI",
+          "price": "17M₫",
+          "rect": {
+            "left": 103.9,
+            "right": 307.2,
+            "top": 386.4,
+            "bottom": 460.4,
+            "width": 203.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        },
+        {
+          "tileId": 28,
+          "found": true,
+          "title": "Sawaco - Cấp Nước",
+          "tier": "Tiện ích",
+          "owner": "👤 Đối thủ AI",
+          "price": "80k₫",
+          "rect": {
+            "left": 193,
+            "right": 348.3,
+            "top": 285.6,
+            "bottom": 359.6,
+            "width": 155.3,
+            "height": 74
+          },
+          "inBoundsHorizontal": true,
+          "inBoundsVertical": true,
+          "fullyVisible": true
+        }
+      ],
+      "all390InBounds": true,
+      "all360InBounds": true
+    }
+  },
+  "overallSuccess": true,
+  "tooltipInSafeBounds": true
+}

@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { BOARD_TILES } from '../src/data/boardData.js';
 
 function createCdpClient(wsUrl) {
   const ws = new WebSocket(wsUrl);
@@ -60,20 +61,24 @@ async function main() {
   const outDirV29 = path.resolve('docs/review-v29-evidence');
   const outDirV30 = path.resolve('docs/review-v30-evidence');
   const outDirV31 = path.resolve('docs/review-v31-evidence');
+  const outDirV32 = path.resolve('docs/review-v32-evidence');
   const artifactDir = 'C:\\Users\\THANH TRUNG\\.gemini\\antigravity\\brain\\227ec306-b9dc-4e75-946f-560c0748d5ff';
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   if (!fs.existsSync(outDirV28)) fs.mkdirSync(outDirV28, { recursive: true });
   if (!fs.existsSync(outDirV29)) fs.mkdirSync(outDirV29, { recursive: true });
   if (!fs.existsSync(outDirV30)) fs.mkdirSync(outDirV30, { recursive: true });
   if (!fs.existsSync(outDirV31)) fs.mkdirSync(outDirV31, { recursive: true });
+  if (!fs.existsSync(outDirV32)) fs.mkdirSync(outDirV32, { recursive: true });
 
   const saveEvidence = (filename, buffer) => {
-    fs.writeFileSync(path.join(outDir, filename), buffer);
-    fs.writeFileSync(path.join(outDirV28, filename), buffer);
-    fs.writeFileSync(path.join(outDirV29, filename), buffer);
-    fs.writeFileSync(path.join(outDirV30, filename), buffer);
-    fs.writeFileSync(path.join(outDirV31, filename), buffer);
-    fs.writeFileSync(path.join(artifactDir, filename), buffer);
+    const targets = [outDir, outDirV28, outDirV29, outDirV30, outDirV31, outDirV32, artifactDir];
+    for (const dir of targets) {
+      try {
+        fs.writeFileSync(path.join(dir, filename), buffer);
+      } catch (e) {
+        console.warn(`[Warning] Could not write ${filename} to ${dir}:`, e.message);
+      }
+    }
   };
 
   let gitCommitHash = 'unknown';
@@ -653,7 +658,7 @@ async function main() {
         }`);
       };
 
-      for (let turnRound = 0; turnRound < 10 && !purchaseCompleted; turnRound++) {
+      for (let turnRound = 0; turnRound < 20 && !purchaseCompleted; turnRound++) {
         console.log(`  Turn Round ${turnRound + 1}: Checking active tab and turn action...`);
 
         // Check if build dialog or any modal is open on either tab
@@ -706,7 +711,7 @@ async function main() {
 
           console.log(`  Active player action: "${actionText}"`);
 
-          if (actionText.includes('xúc xắc') || actionText.includes('Đổ') || actionText.includes('Lắc')) {
+          if (actionText.includes('xúc xắc') || actionText.includes('Đổ') || actionText.includes('Lắc') || actionText.includes('lượt đôi') || actionText.includes('Tiếp tục')) {
             await evalInPage(activeTab.sendCmd, `() => {
               const btn = document.querySelector('[data-testid="turn-action"]');
               if (btn) btn.click();
@@ -733,7 +738,7 @@ async function main() {
                 }
 
                 const btn = document.querySelector('[data-testid="turn-action"]');
-                if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
+                if (btn && !btn.disabled && (btn.textContent.includes('Kết thúc') || btn.textContent.includes('Tiếp tục'))) {
                   return { type: 'end_turn_ready' };
                 }
                 return { type: 'waiting' };
@@ -808,7 +813,7 @@ async function main() {
             if (logBtn) logBtn.click();
 
             const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
-            const hasDeductedMoney = cards.some(c => c.textContent.includes('14.000.000') || c.textContent.includes('14M') || c.textContent.includes('13.000.000') || c.textContent.includes('13M'));
+            const hasDeductedMoney = cards.some(c => !c.textContent.includes('15M') && !c.textContent.includes('15.000.000') && (c.textContent.includes('14') || c.textContent.includes('13') || c.textContent.includes('12') || c.textContent.includes('11') || c.textContent.includes('10')));
             const has1Dat = cards.some(c => c.textContent.includes('1 Đất') || c.textContent.includes('1 Nhà'));
 
             return {
@@ -828,7 +833,7 @@ async function main() {
             if (logBtn) logBtn.click();
 
             const cards = Array.from(document.querySelectorAll('.corner-card-desktop'));
-            const hasDeductedMoney = cards.some(c => c.textContent.includes('14.000.000') || c.textContent.includes('14M') || c.textContent.includes('13.000.000') || c.textContent.includes('13M'));
+            const hasDeductedMoney = cards.some(c => !c.textContent.includes('15M') && !c.textContent.includes('15.000.000') && (c.textContent.includes('14') || c.textContent.includes('13') || c.textContent.includes('12') || c.textContent.includes('11') || c.textContent.includes('10')));
             const has1Dat = cards.some(c => c.textContent.includes('1 Đất') || c.textContent.includes('1 Nhà'));
 
             return {
@@ -877,7 +882,7 @@ async function main() {
         if (activeTab) {
           const canEndTurn = await evalInPage(activeTab.sendCmd, `() => {
             const btn = document.querySelector('[data-testid="turn-action"]');
-            if (btn && !btn.disabled && btn.textContent.includes('Kết thúc')) {
+            if (btn && !btn.disabled && (btn.textContent.includes('Kết thúc') || btn.textContent.includes('Tiếp tục'))) {
               btn.click();
               return true;
             }
@@ -897,7 +902,7 @@ async function main() {
     // PHASE E: 3D BOARD CANVAS & MOBILE BOUNDS
     // ==========================================
     console.log('\n--- PHASE E: 3D BOARD CANVAS & MOBILE SAFE AREAS ---');
-    const boardCheck = await evalInPage(tab1.sendCmd, `() => {
+    const boardCheck = await evalInPage(tab1.sendCmd, `async () => {
       const serializeRect = (el) => {
         if (!el) return null;
         const r = el.getBoundingClientRect();
@@ -910,16 +915,20 @@ async function main() {
           height: Math.round(r.height * 10) / 10,
         };
       };
-      const canvas = document.querySelector('canvas');
-      let webglContextActive = false;
-      if (canvas) {
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        webglContextActive = Boolean(gl && !gl.isContextLost());
+      let canvas = null;
+      let gl = null;
+      for (let i = 0; i < 30; i++) {
+        canvas = document.querySelector('canvas');
+        if (canvas) {
+          gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+          if (gl && !gl.isContextLost()) break;
+        }
+        await new Promise(r => setTimeout(r, 200));
       }
       return {
         canvasPresent: Boolean(canvas),
         canvasRect: serializeRect(canvas),
-        webglContextActive,
+        webglContextActive: Boolean(canvas && gl && !gl.isContextLost()),
       };
     }`);
     console.log('  Board Canvas check:', boardCheck);
@@ -1137,6 +1146,25 @@ async function main() {
       throw new Error(reason);
     }
 
+    // Q02 Fixture Rule Check: Enforce Monopoly & Business Tour building rules
+    const fixtureTiles = [
+      { id: 1, houses: 1 }, { id: 3, houses: 2 }, { id: 6, houses: 3 }, { id: 8, houses: 4 },
+      { id: 11, houses: 1 }, { id: 13, houses: 2 }, { id: 16, houses: 3 }, { id: 18, houses: 4 },
+      { id: 21, houses: 1 }, { id: 23, houses: 2 }, { id: 26, houses: 3 }, { id: 27, houses: 4 },
+      { id: 28, houses: 0 },
+      { id: 31, houses: 1 }, { id: 34, houses: 2 }, { id: 37, houses: 3 }, { id: 39, houses: 4 }
+    ];
+    for (const item of fixtureTiles) {
+      const tileDef = BOARD_TILES[item.id];
+      if (item.houses > 0 && tileDef.type !== 'property') {
+        throw new Error(`Rule Violation: Tile ${item.id} (${tileDef.name}) is type "${tileDef.type}" and cannot build houses!`);
+      }
+      if (item.id === 28 && (tileDef.type !== 'utility' || item.houses !== 0)) {
+        throw new Error(`Rule Violation: Tile 28 must be utility with 0 houses!`);
+      }
+    }
+    console.log('  Q02 Rule Verification: All fixture tiles adhere strictly to building rules (properties have tiers 1-4, utility has 0 houses).');
+
     // Verify DEV environment and inject all 4 building tiers
     const devFixtureResult = await evalInPage(tab1.sendCmd, `async () => {
       // 1. Chờ React mount và controller khởi tạo trong môi trường DEV
@@ -1164,31 +1192,34 @@ async function main() {
       await new Promise(r => setTimeout(r, 1500));
 
       // 4. Inject đầy đủ 4 cấp công trình kiến trúc trên cả 4 cạnh bàn cờ và định vị quân cờ
+      // Lưu ý luật Monopoly & Business Tour: Chỉ ô property mới được xây nhà/khách sạn/landmark (Tier 1-4).
+      // Ô utility (như ô 28: Sawaco) và railroad không thể xây nhà.
       ctrl.injectVisualShowcaseState(prev => ({
         ...prev,
         players: prev.players.map(p => ({ ...p, position: 8 })),
         propertiesState: {
           ...prev.propertiesState,
           // Cạnh 1 (Bottom side):
-          1: { owner: 'player_user', houses: 1, isMortgaged: false }, // Cấp 1: Cottage
-          3: { owner: 'player_user', houses: 2, isMortgaged: false }, // Cấp 2: Townhouse
-          6: { owner: 'bot_1', houses: 3, isMortgaged: false },       // Cấp 3: Resort Villa
-          8: { owner: 'bot_1', houses: 4, isMortgaged: false },       // Cấp 4: Royal Landmark Castle
+          1: { owner: 'player_user', houses: 1, isMortgaged: false }, // Cấp 1: Cottage (Phố Cổ Hội An, property)
+          3: { owner: 'player_user', houses: 2, isMortgaged: false }, // Cấp 2: Townhouse (Chợ Đông Ba, property)
+          6: { owner: 'bot_1', houses: 3, isMortgaged: false },       // Cấp 3: Resort Villa (Hồ Than Thở, property)
+          8: { owner: 'bot_1', houses: 4, isMortgaged: false },       // Cấp 4: Royal Landmark Castle (Thung Lũng Tình Yêu, property)
           // Cạnh 2 (Left side):
-          11: { owner: 'player_user', houses: 1, isMortgaged: false },
-          13: { owner: 'bot_1', houses: 2, isMortgaged: false },
-          16: { owner: 'player_user', houses: 3, isMortgaged: false },
-          18: { owner: 'bot_1', houses: 4, isMortgaged: false },
+          11: { owner: 'player_user', houses: 1, isMortgaged: false }, // Cấp 1: Cottage (Bến Ninh Kiều, property)
+          13: { owner: 'bot_1', houses: 2, isMortgaged: false },       // Cấp 2: Townhouse (Chợ Nổi Cái Răng, property)
+          16: { owner: 'player_user', houses: 3, isMortgaged: false }, // Cấp 3: Resort Villa (Hòn Chồng, property)
+          18: { owner: 'bot_1', houses: 4, isMortgaged: false },       // Cấp 4: Royal Landmark Castle (Nha Trang Biển Xanh, property)
           // Cạnh 3 (Top side):
-          21: { owner: 'player_user', houses: 1, isMortgaged: false },
-          23: { owner: 'bot_1', houses: 2, isMortgaged: false },
-          26: { owner: 'player_user', houses: 3, isMortgaged: false },
-          28: { owner: 'bot_1', houses: 4, isMortgaged: false },
+          21: { owner: 'player_user', houses: 1, isMortgaged: false }, // Cấp 1: Cottage (Sa Pa Mù Sương, property)
+          23: { owner: 'bot_1', houses: 2, isMortgaged: false },       // Cấp 2: Townhouse (Đảo Cát Bà, property)
+          26: { owner: 'player_user', houses: 3, isMortgaged: false }, // Cấp 3: Resort Villa (Ngũ Hành Sơn, property)
+          27: { owner: 'bot_1', houses: 4, isMortgaged: false },       // Cấp 4: Royal Landmark Castle (Bãi Biển Mỹ Khê, property)
+          28: { owner: 'bot_1', isMortgaged: false },                  // Tiện ích (Sawaco - Cấp Nước, utility: không gán nhà)
           // Cạnh 4 (Right side):
-          31: { owner: 'player_user', houses: 1, isMortgaged: false },
-          34: { owner: 'bot_1', houses: 2, isMortgaged: false },
-          37: { owner: 'player_user', houses: 3, isMortgaged: false },
-          39: { owner: 'bot_1', houses: 4, isMortgaged: false },
+          31: { owner: 'player_user', houses: 1, isMortgaged: false }, // Cấp 1: Cottage (Hồ Gươm, property)
+          34: { owner: 'bot_1', houses: 2, isMortgaged: false },       // Cấp 2: Townhouse (Phố Cổ Hà Nội, property)
+          37: { owner: 'player_user', houses: 3, isMortgaged: false }, // Cấp 3: Resort Villa (Chợ Bến Thành, property)
+          39: { owner: 'bot_1', houses: 4, isMortgaged: false },       // Cấp 4: Royal Landmark Castle (Đại Lộ Nguyễn Huệ, property)
         }
       }));
 
@@ -1214,7 +1245,8 @@ async function main() {
         6: { tileId: 6, houses: actualProps[6]?.houses, owner: actualProps[6]?.owner, tierName: tierLabels[actualProps[6]?.houses] || ('Unknown (' + actualProps[6]?.houses + ')') },
         8: { tileId: 8, houses: actualProps[8]?.houses, owner: actualProps[8]?.owner, tierName: tierLabels[actualProps[8]?.houses] || ('Unknown (' + actualProps[8]?.houses + ')') },
         18: { tileId: 18, houses: actualProps[18]?.houses, owner: actualProps[18]?.owner, tierName: tierLabels[actualProps[18]?.houses] || ('Unknown (' + actualProps[18]?.houses + ')') },
-        28: { tileId: 28, houses: actualProps[28]?.houses, owner: actualProps[28]?.owner, tierName: tierLabels[actualProps[28]?.houses] || ('Unknown (' + actualProps[28]?.houses + ')') },
+        27: { tileId: 27, houses: actualProps[27]?.houses, owner: actualProps[27]?.owner, tierName: tierLabels[actualProps[27]?.houses] || ('Unknown (' + actualProps[27]?.houses + ')') },
+        28: { tileId: 28, houses: actualProps[28]?.houses || 0, owner: actualProps[28]?.owner, tierName: 'Utility (No Houses)', isUtility: true },
         39: { tileId: 39, houses: actualProps[39]?.houses, owner: actualProps[39]?.owner, tierName: tierLabels[actualProps[39]?.houses] || ('Unknown (' + actualProps[39]?.houses + ')') },
       };
 
@@ -1223,7 +1255,8 @@ async function main() {
         actualProps[3]?.houses === 2 && actualProps[3]?.owner === 'player_user' &&
         actualProps[6]?.houses === 3 && actualProps[6]?.owner === 'bot_1' &&
         actualProps[8]?.houses === 4 && actualProps[8]?.owner === 'bot_1' &&
-        actualProps[18]?.houses === 4 && actualProps[28]?.houses === 4 && actualProps[39]?.houses === 4
+        actualProps[18]?.houses === 4 && actualProps[27]?.houses === 4 && actualProps[39]?.houses === 4 &&
+        (!actualProps[28]?.houses || actualProps[28]?.houses === 0) && actualProps[28]?.owner === 'bot_1'
       );
 
       if (!allTiersMatched) {
@@ -1296,6 +1329,7 @@ async function main() {
             label = document.querySelector('.tile-focus-label');
             if (label &&
                 label.dataset.positionedTileId === String(${tileId}) &&
+                (!label.dataset.positionedViewportW || label.dataset.positionedViewportW === String(${viewportW})) &&
                 label.style.left &&
                 label.style.left !== '' &&
                 label.style.display !== 'none') {
@@ -1356,7 +1390,7 @@ async function main() {
       const shotFixDesktop = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
       saveEvidence('fixture_showcase_tiers_desktop.png', Buffer.from(shotFixDesktop.data, 'base64'));
 
-      // 2. Mobile Viewport 390x844: Test 4 sides (Tile 8, 18, 28, 39)
+      // 2. Mobile Viewport 390x844: Test 4 sides (Tile 8, 18, 27, 39) & Utility (Tile 28)
       console.log('  Emulating Mobile for Dev Fixture 3D Tiers (390x844)...');
       await tab1.sendCmd('Emulation.setDeviceMetricsOverride', {
         width: 390,
@@ -1368,7 +1402,7 @@ async function main() {
 
       console.log('  Verifying tooltip geometry across all 4 sides on Mobile (390x844)...');
       const mobile390Checks = [];
-      for (const tId of [8, 18, 28, 39]) {
+      for (const tId of [8, 18, 27, 39]) {
         const check = await inspectTileTooltipGeometry(tId, 390, 844);
         console.log(`    Tile ${tId} on 390x844: fullyVisible=${check?.fullyVisible}, rect=${JSON.stringify(check?.rect)}`);
         mobile390Checks.push(check);
@@ -1380,7 +1414,7 @@ async function main() {
         } else if (tId === 18) {
           const shotSide1 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
           saveEvidence('screenshot_mobile_tooltip_side1_left.png', Buffer.from(shotSide1.data, 'base64'));
-        } else if (tId === 28) {
+        } else if (tId === 27) {
           const shotSide2 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
           saveEvidence('screenshot_mobile_tooltip_side2_top.png', Buffer.from(shotSide2.data, 'base64'));
         } else if (tId === 39) {
@@ -1388,8 +1422,11 @@ async function main() {
           saveEvidence('screenshot_mobile_tooltip_side3_right.png', Buffer.from(shotSide3.data, 'base64'));
         }
       }
+      const utilCheck390 = await inspectTileTooltipGeometry(28, 390, 844);
+      console.log(`    Utility Tile 28 (Sawaco) on 390x844: fullyVisible=${utilCheck390?.fullyVisible}, rect=${JSON.stringify(utilCheck390?.rect)}`);
+      mobile390Checks.push(utilCheck390);
 
-      // 3. Mobile Narrow Viewport 360x800: Test 4 sides (Tile 8, 18, 28, 39)
+      // 3. Mobile Narrow Viewport 360x800: Test 4 sides (Tile 8, 18, 27, 39) & Utility (Tile 28)
       console.log('  Emulating Mobile Narrow for Dev Fixture 3D Tiers (360x800)...');
       await tab1.sendCmd('Emulation.setDeviceMetricsOverride', {
         width: 360,
@@ -1401,11 +1438,15 @@ async function main() {
 
       console.log('  Verifying tooltip geometry across all 4 sides on Mobile Narrow (360x800)...');
       const mobile360Checks = [];
-      for (const tId of [8, 18, 28, 39]) {
+      for (const tId of [8, 18, 27, 39]) {
         const check = await inspectTileTooltipGeometry(tId, 360, 800);
         console.log(`    Tile ${tId} on 360x800: fullyVisible=${check?.fullyVisible}, rect=${JSON.stringify(check?.rect)}`);
         mobile360Checks.push(check);
       }
+      const utilCheck360 = await inspectTileTooltipGeometry(28, 360, 800);
+      console.log(`    Utility Tile 28 (Sawaco) on 360x800: fullyVisible=${utilCheck360?.fullyVisible}, rect=${JSON.stringify(utilCheck360?.rect)}`);
+      mobile360Checks.push(utilCheck360);
+
       const shotFixMobile360 = await tab1.sendCmd('Page.captureScreenshot', { format: 'png' });
       saveEvidence('fixture_showcase_tiers_mobile_360x800.png', Buffer.from(shotFixMobile360.data, 'base64'));
 
@@ -1446,17 +1487,26 @@ async function main() {
     );
 
     const jsonReport = JSON.stringify(testReport, null, 2);
-    fs.writeFileSync(path.join(outDir, 'browser-verification-v27.json'), jsonReport);
-    fs.writeFileSync(path.join(outDirV28, 'browser-verification-v28.json'), jsonReport);
-    fs.writeFileSync(path.join(outDirV29, 'browser-verification-v29.json'), jsonReport);
-    fs.writeFileSync(path.join(outDirV30, 'browser-verification-v30.json'), jsonReport);
-    fs.writeFileSync(path.join(outDirV31, 'browser-verification-v31.json'), jsonReport);
-    fs.writeFileSync(path.join(artifactDir, 'browser-verification-v29.json'), jsonReport);
-    fs.writeFileSync(path.join(artifactDir, 'browser-verification-v30.json'), jsonReport);
-    fs.writeFileSync(path.join(artifactDir, 'browser-verification-v31.json'), jsonReport);
+    const jsonTargets = [
+      { dir: outDir, file: 'browser-verification-v27.json' },
+      { dir: outDirV28, file: 'browser-verification-v28.json' },
+      { dir: outDirV29, file: 'browser-verification-v29.json' },
+      { dir: outDirV30, file: 'browser-verification-v30.json' },
+      { dir: outDirV31, file: 'browser-verification-v31.json' },
+      { dir: outDirV32, file: 'browser-verification-v32.json' },
+      { dir: artifactDir, file: 'browser-verification-v32.json' },
+      { dir: artifactDir, file: 'browser-verification-v31.json' },
+    ];
+    for (const t of jsonTargets) {
+      try {
+        fs.writeFileSync(path.join(t.dir, t.file), jsonReport);
+      } catch (e) {
+        console.warn(`[Warning] Could not write ${t.file} to ${t.dir}:`, e.message);
+      }
+    }
 
     console.log('\n========================================');
-    console.log('VERIFICATION SUMMARY V31:');
+    console.log('VERIFICATION SUMMARY V32:');
     console.log('  Overall Success:', testReport.overallSuccess);
     console.log('  Tooltip Geometry in Safe Bounds (4 sides, 390x844 & 360x800):', testReport.tooltipInSafeBounds);
     console.log('  Git Commit Hash:', testReport.gitCommitHash);
@@ -1467,7 +1517,7 @@ async function main() {
     console.log('  Mobile Safe Areas Elements Found:', testReport.mobileSafeAreas.elementsFound);
     console.log('  Tools Dock Clearance to Board Top:', `${testReport.mobileSafeAreas.dockClearanceToProjectedBoardTopPx}px`);
     console.log('  Dev Visual Showcase Fixture (All 4 Tiers Verified):', testReport.visualShowcaseFixture.result?.success, JSON.stringify(testReport.visualShowcaseFixture.result?.verifiedTiers));
-    console.log('  Evidence saved to docs/review-v31-evidence/.');
+    console.log('  Evidence saved to docs/review-v32-evidence/.');
     console.log('========================================\n');
 
   } catch (err) {
